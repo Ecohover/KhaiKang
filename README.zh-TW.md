@@ -15,3 +15,9 @@ TBD
 - [英文規格文件](./doc/en/specs/)
 - [英文 Roadmap](./doc/en/roadmap/)
 - [內部文件](./README.internal.md)
+
+## 授權
+
+本專案採用 Apache License 2.0 授權。
+
+Copyright 2026 KhaiKang Contributors.

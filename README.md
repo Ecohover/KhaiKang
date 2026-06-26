@@ -15,3 +15,9 @@ TBD
 - [Project Specs](./doc/en/specs/)
 - [Roadmap](./doc/en/roadmap/)
 - [Internal Notes](./README.internal.md)
+
+## License
+
+Licensed under the Apache License 2.0.
+
+Copyright 2026 KhaiKang Contributors.

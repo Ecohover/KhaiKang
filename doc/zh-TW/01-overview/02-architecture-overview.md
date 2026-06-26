@@ -18,15 +18,11 @@ KhaiKang 採用 modular monolith 的方式設計。
 
 ```text
 doc/
-  en/
-    architecture/
-    roadmap/
-    specs/
   zh-TW/
-    architecture/
-    roadmap/
-    specs/
-  internal/
+    01-overview/
+    02-specs/
+    03-data-model/
+    04-planning/
 deploy/
   docker/
   compose/
@@ -38,9 +34,10 @@ src/
   worker/
 ```
 
-- `doc/en/`：英文產品文件、架構筆記、Roadmap、規格
-- `doc/zh-TW/`：繁體中文產品文件、架構筆記、Roadmap、規格
-- `doc/internal/`：內部策略與競品分析
+- `doc/zh-TW/01-overview/`：文件導覽、架構說明、語詞總表與通用規範
+- `doc/zh-TW/02-specs/`：功能規格文件
+- `doc/zh-TW/03-data-model/`：資料模型與資料欄位說明
+- `doc/zh-TW/04-planning/`：階段規劃與待處理清單
 - `deploy/`：Docker Compose、腳本、環境範例
 - `src/contracts/`：API、DTO、enum、error、event 契約
 - `src/backend/`：ASP.NET Core 後端應用與各模組

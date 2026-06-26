@@ -46,3 +46,8 @@
 
 If a document is intended to guide implementation or review, write it in English first.
 If a localized version is needed later, add it under the matching language folder and keep the structure aligned with the English version.
+
+## Spec Format
+
+All functional specs should follow the shared template in `doc/spec-template.md`.
+The template exists to keep section order and review flow consistent across languages.
