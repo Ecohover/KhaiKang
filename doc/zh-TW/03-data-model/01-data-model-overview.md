@@ -36,6 +36,7 @@
 - `uuid`：Entity 主鍵與主要識別欄位
 - `boolean`：布林值
 - `integer`：排序值或整數型輔助欄位
+- `bigint`：檔案大小或較大整數數值
 - `timestamp with time zone`：時間欄位
 
 這份規範是目前版本的預設原則。
@@ -58,10 +59,11 @@
 - `issues`
 - `issue_relation_types`
 - `issue_comments`
+- `issue_attachments`
 - `issue_relations`
 
 另外：
 
 - `ai_agents` 先保留設計位置
 - `audit log` 完整策略另行討論
-- `tags / attachments / transitions` 暫不納入目前 MVP 核心表
+- `tags / transitions` 暫不納入目前 MVP 核心表

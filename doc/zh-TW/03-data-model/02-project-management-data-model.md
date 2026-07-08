@@ -768,6 +768,76 @@
 
 ---
 
+### issue_attachments
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `issue_attachments` |
+| 說明 | 保存 Issue 附件中繼資料。 |
+| PK | `id` |
+| FK | `issue_id -> issues.id`, `uploaded_by_account_id -> accounts.id` |
+| 備註 | 只保存附件中繼資料；檔案本體應放在檔案儲存空間，不直接存入資料庫。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 議題附件主鍵（`issue_attachment`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
+| `issue_id` | 議題識別 | `uuid` | Y | N | 對應 `issues.id`。 |
+| `uploaded_by_account_id` | 上傳者帳號識別 | `uuid` | Y | N | 對應 `accounts.id`，可為人類或 AI 帳號。 |
+| `original_file_name` | 原始檔名 | `varchar(200)` | Y | N | 使用者上傳時看到的檔名。 |
+| `storage_provider` | 儲存提供者 | `varchar(20)` | Y | N | 目前建議支援 `local`，後續可擴充 `s3`。 |
+| `storage_key` | 儲存識別路徑 | `text` | Y | N | 應保存邏輯儲存路徑或 object key，不建議直接寫死作業系統絕對路徑。 |
+| `content_type` | 檔案內容類型 | `varchar(100)` | Y | N | 例如 `image/png`、`application/pdf`。 |
+| `file_size` | 檔案大小（bytes） | `bigint` | Y | N | 保存實際檔案大小。 |
+| `file_hash` | 檔案雜湊值 | `varchar(200)` | N | N | 可選，用於後續重複檔案檢查或完整性驗證。 |
+| `is_deleted` | 是否已刪除 | `boolean` | Y | N | 建議採軟刪除，保留審計痕跡。 |
+| `deleted_at` | 刪除時間 | `timestamp with time zone` | N | N | 軟刪除時記錄。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+
+#### 狀態值
+
+| 狀態值 | 說明 | 備註 |
+| --- | --- | --- |
+| `local` | 使用本機檔案儲存。 | 第一版預設。 |
+| `s3` | 使用 S3-compatible object storage。 | 後續擴充方向。 |
+
+#### 欄位分組建議
+
+| 分組 | 欄位 |
+| --- | --- |
+| 身份識別 | `id`、`issue_id` |
+| 人員欄位 | `uploaded_by_account_id` |
+| 檔案識別 | `original_file_name`、`storage_provider`、`storage_key` |
+| 檔案資訊 | `content_type`、`file_size`、`file_hash` |
+| 狀態資訊 | `is_deleted`、`deleted_at` |
+| 系統欄位 | `audit_info` |
+
+#### 補充規則
+
+- `id` 一律使用 UUID。
+- 資料庫只保存附件中繼資料，不直接保存檔案二進位內容。
+- 第一版預設應使用 `local` 儲存提供者，並搭配 Docker volume 做持久化。
+- `storage_key` 應保存邏輯路徑，例如 `projects/{project_id}/issues/{issue_id}/{file_id}`，不建議直接保存機器上的絕對路徑。
+- `uploaded_by_account_id` 應記錄實際上傳者，可為人類或 AI 帳號。
+- 建議附件刪除先採軟刪除，避免直接失去追蹤能力。
+- 若 `is_deleted = true`，則 `deleted_at` 應有值。
+- 後續若要支援 `S3-compatible object storage`，可沿用同一張表，只需切換 `storage_provider` 與 `storage_key` 的解析方式。
+
+#### Index 建議
+
+- 建立 `idx_issue_attachments_issue_id` 於 `issue_id`。
+- 建立 `idx_issue_attachments_uploaded_by_account_id` 於 `uploaded_by_account_id`。
+- 建立 `idx_issue_attachments_issue_deleted` 於 `issue_id + is_deleted`。
+
+#### 唯一約束建議
+
+- 目前不建議對 `original_file_name` 設唯一約束，避免同名檔案上傳受限。
+
+---
+
 ### issue_relations
 
 #### 資料表規格
