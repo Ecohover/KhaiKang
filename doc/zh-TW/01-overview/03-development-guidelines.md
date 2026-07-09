@@ -72,8 +72,34 @@ Page A 直接複製 Page B 的流程
 - 程式碼內註解使用英文。
 - 文件可以先用中文撰寫，確認後再補英文。
 - 權限字串使用 `.` 作為分隔符。
+- PostgreSQL 的資料表、欄位、constraint、index 一律使用 `snake_case`。
+- C# 型別、屬性、方法名稱使用 `PascalCase`。
+- API JSON 欄位名稱使用 `camelCase`。
 
 ### 範例
+
+資料庫命名：
+
+```text
+issue_attachments
+uploaded_by_account_id
+idx_issue_attachments_issue_id
+```
+
+C# 命名：
+
+```text
+IssueAttachment
+UploadedByAccountId
+```
+
+API JSON 命名：
+
+```json
+{
+  "uploadedByAccountId": "..."
+}
+```
 
 好的權限字串：
 
@@ -94,25 +120,27 @@ test-case-create
 
 ## 權限與授權原則
 
-- 初期先使用 `admin` 與 `user` 兩個全域角色。
-- 專案層級角色獨立於全域角色。
-- 權限字串只描述能力，不描述範圍。
+- 系統層角色與專案層角色必須分開。
+- 系統層目前先使用 `System Admin` 與 `User`。
+- `User` 只代表一般登入身份，不代表系統管理能力。
+- 專案層角色使用系統預設角色。
+- MVP 階段不提供角色權限調整與自訂角色功能。
 - 範圍透過 membership / assignment 表示。
-- 後續需要時再加入 workspace scope。
+- 後續需要時再加入更細粒度的 scope 模型。
 
 ### 範例
 
 使用者 A：
 
-- 全域角色：`user`
-- Project X 角色：`project_admin`
-- Project Y 角色：`project_member`
+- 全域角色：`User`
+- Project X 角色：`Owner`
+- Project Y 角色：`Contributor`
 
 這表示：
 
 - A 可以管理 Project X
 - A 可以參與 Project Y
-- A 不能因為在某個專案是 admin，就自動成為系統 admin
+- A 不會因為在某個專案是 `Owner`，就自動成為系統 `System Admin`
 
 ## AI 與人類工作流原則
 
@@ -168,4 +196,3 @@ User -> Queue Job -> AI Agent -> Proposal -> Approval -> Apply -> Audit Log
 - 實作後要回頭對照 spec。
 - 不要為了方便而破壞文件一致性。
 - 不要把測試、規格、程式碼三者的語意寫成不同版本。
-

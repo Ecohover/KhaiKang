@@ -22,6 +22,7 @@
 
 - `accounts`
 - `system_roles`
+- `permissions`
 - `account_system_role_mappings`
 - `projects`
 - `project_roles`
@@ -38,6 +39,7 @@
 - `issue_tags`
 - `issue_relations`
 - `issue_attachments`
+- `issue_watchers`
 - `issue_transitions`
 
 這些表可於後續需求明確後再補。
@@ -173,6 +175,7 @@
 | code | name | description | is_system | is_active | sort_order | 備註 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `system_admin` | `System Admin` | 系統管理者，管理整個平台層級設定與帳號。 | Y | Y | 1 | 第一版最小必要角色。 |
+| `user` | `User` | 一般登入使用者，可登入系統並依專案授權範圍使用功能。 | Y | Y | 2 | 不包含系統管理權限。 |
 
 #### 欄位分組建議
 
@@ -187,8 +190,8 @@
 
 - `id` 一律使用 UUID。
 - `code` 應為唯一欄位。
-- 目前建議只先建立 `system_admin`，避免一開始把全域角色設計得太重。
-- 一般登入使用者不一定需要對應一個全域 `system_user` 角色，可先以是否具備專案 membership 來判斷可用範圍。
+- 目前建議至少建立 `system_admin` 與 `user` 兩個系統預設角色。
+- `user` 只代表一般登入身份，不代表具備任何系統管理能力。
 
 ---
 
@@ -237,6 +240,81 @@
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_account_system_role_mappings_account_role` 於 `account_id + system_role_id`。
+
+---
+
+### permissions
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `permissions` |
+| 說明 | 保存系統中可被授權的權限定義主資料。 |
+| PK | `id` |
+| FK | 無 |
+| 備註 | MVP 階段先只管理權限主資料；角色對權限的對應先由系統固定實作，不先做 mapping table。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 權限主鍵（`permission`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
+| `code` | 權限代號 | `varchar(100)` | Y | Y | 穩定識別碼，例如 `project.create`、`issue.update`。 |
+| `name` | 權限名稱 | `varchar(200)` | Y | N | 顯示名稱。 |
+| `description` | 權限說明 | `text` | N | N | 補充權限用途與邊界。 |
+| `scope_type` | 權限範圍類型 | `varchar(20)` | Y | N | 目前建議支援 `system` 與 `project`。 |
+| `is_system` | 是否為系統預設權限 | `boolean` | Y | N | 預設權限由系統 seed 建立。 |
+| `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新設計引用。 |
+| `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+
+#### 建議預設資料
+
+| code | name | description | scope_type | is_system | is_active | sort_order | 備註 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `project.create` | `Project Create` | 建立新專案。 | `system` | Y | Y | 1 | 系統層權限。 |
+| `project.read` | `Project Read` | 查看專案基本內容。 | `project` | Y | Y | 2 | 專案層權限。 |
+| `project.update` | `Project Update` | 修改專案基本資料。 | `project` | Y | Y | 3 | 專案層權限。 |
+| `project.deactivate` | `Project Deactivate` | 停用專案。 | `system` | Y | Y | 4 | 系統層權限。 |
+| `project.member.add` | `Project Member Add` | 新增專案成員。 | `project` | Y | Y | 5 | 專案層權限。 |
+| `project.member.remove` | `Project Member Remove` | 移除專案成員。 | `project` | Y | Y | 6 | 專案層權限。 |
+| `project.role.assign` | `Project Role Assign` | 指派或調整專案角色。 | `project` | Y | Y | 7 | 專案層權限。 |
+| `issue.create` | `Issue Create` | 建立 Issue。 | `project` | Y | Y | 8 | 專案層權限。 |
+| `issue.read` | `Issue Read` | 查看 Issue。 | `project` | Y | Y | 9 | 專案層權限。 |
+| `issue.update` | `Issue Update` | 編輯 Issue。 | `project` | Y | Y | 10 | 專案層權限。 |
+| `issue.status.change` | `Issue Status Change` | 變更 Issue 狀態。 | `project` | Y | Y | 11 | 專案層權限。 |
+| `issue.assignee.change` | `Issue Assignee Change` | 變更 Issue 處理人。 | `project` | Y | Y | 12 | 專案層權限。 |
+| `issue.comment.create` | `Issue Comment Create` | 新增 Issue 留言。 | `project` | Y | Y | 13 | 專案層權限。 |
+| `issue.relation.create` | `Issue Relation Create` | 建立 Issue 關聯。 | `project` | Y | Y | 14 | 專案層權限。 |
+| `issue.attachment.upload` | `Issue Attachment Upload` | 上傳 Issue 附件。 | `project` | Y | Y | 15 | 專案層權限。 |
+| `issue.attachment.delete` | `Issue Attachment Delete` | 刪除 Issue 附件。 | `project` | Y | Y | 16 | 專案層權限。 |
+
+#### 欄位分組建議
+
+| 分組 | 欄位 |
+| --- | --- |
+| 身份識別 | `id`、`code` |
+| 基本資料 | `name`、`description` |
+| 狀態資訊 | `scope_type`、`is_system`、`is_active`、`sort_order` |
+| 系統欄位 | `audit_info` |
+
+#### 補充規則
+
+- `id` 一律使用 UUID。
+- `code` 應為唯一欄位。
+- 權限定義使用資料表管理，但 MVP 階段先不提供權限編輯功能。
+- MVP 階段角色對權限的對應先由系統固定實作，不先建立 role-permission mapping table。
+- `scope_type` 用來區分系統層與專案層權限，不直接表示授權範圍。
+- 後續若需要自訂角色或可編輯權限矩陣，再補 `system_role_permissions` / `project_role_permissions` 等 mapping table。
+
+#### Index 建議
+
+- 建立 `idx_permissions_scope_type` 於 `scope_type`。
+
+#### 唯一約束建議
+
+- 建立 unique constraint `uq_permissions_code` 於 `code`。
 
 ---
 

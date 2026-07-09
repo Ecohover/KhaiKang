@@ -13,12 +13,25 @@
 - 測試計畫
 - 測試執行
 - 測試結果
-- Issue comment
 - Issue tag
 - Issue parent / sub-task
 - 自訂角色
 - 自訂工作流規則
 - 自訂欄位模板
+
+## 自訂欄位設計方向待處理
+
+- 自訂欄位不是目前 MVP 必要功能，先不列入近期實作
+- 未來方向傾向採用獨立值表，而不是直接把所有自訂欄位塞進 `issues` 主表
+- 目前偏向後續採用：
+  - `custom_fields`
+  - `custom_field_contexts`
+  - `issue_custom_field_values`
+- 自訂欄位實際值後續可保留 `jsonb` 彈性，但不預設依賴 Elasticsearch
+- 初期仍以 PostgreSQL 作為唯一 source of truth
+- 後續若全域搜尋、跨專案查詢、聚合分析需求明顯增加，再評估導入 Elasticsearch
+- 自訂欄位的 audit 不建議直接沿用固定欄位 attribute 模式，而應走資料驅動 diff
+- 等專案管理 MVP 主流程穩定後，再展開自訂欄位的資料表細節、驗證規則與 audit 策略
 
 ## 整合能力待處理
 

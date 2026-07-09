@@ -48,6 +48,7 @@
 
 - `accounts`
 - `system_roles`
+- `permissions`
 - `account_system_role_mappings`
 - `projects`
 - `project_roles`
@@ -66,4 +67,4 @@
 
 - `ai_agents` 先保留設計位置
 - `audit log` 完整策略另行討論
-- `tags / transitions` 暫不納入目前 MVP 核心表
+- `tags / watchers / transitions` 暫不納入目前 MVP 核心表
