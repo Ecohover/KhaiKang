@@ -24,10 +24,12 @@
 - `system_roles`
 - `permissions`
 - `account_system_role_mappings`
+- `system_role_permissions`
 - `projects`
 - `project_roles`
 - `project_members`
 - `project_member_roles`
+- `project_role_permissions`
 - `issue_types`
 - `issue_statuses`
 - `issue_priorities`
@@ -253,7 +255,7 @@
 | 說明 | 保存系統中可被授權的權限定義主資料。 |
 | PK | `id` |
 | FK | 無 |
-| 備註 | MVP 階段先只管理權限主資料；角色對權限的對應先由系統固定實作，不先做 mapping table。 |
+| 備註 | 權限定義與角色對權限的對應都使用資料表管理，但 MVP 階段只提供系統 seed 資料，不提供 UI 編輯。 |
 
 #### 欄位規格
 
@@ -264,31 +266,28 @@
 | `name` | 權限名稱 | `varchar(200)` | Y | N | 顯示名稱。 |
 | `description` | 權限說明 | `text` | N | N | 補充權限用途與邊界。 |
 | `scope_type` | 權限範圍類型 | `varchar(20)` | Y | N | 目前建議支援 `system` 與 `project`。 |
-| `is_system` | 是否為系統預設權限 | `boolean` | Y | N | 預設權限由系統 seed 建立。 |
-| `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新設計引用。 |
-| `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
 | `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
-| code | name | description | scope_type | is_system | is_active | sort_order | 備註 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `project.create` | `Project Create` | 建立新專案。 | `system` | Y | Y | 1 | 系統層權限。 |
-| `project.read` | `Project Read` | 查看專案基本內容。 | `project` | Y | Y | 2 | 專案層權限。 |
-| `project.update` | `Project Update` | 修改專案基本資料。 | `project` | Y | Y | 3 | 專案層權限。 |
-| `project.deactivate` | `Project Deactivate` | 停用專案。 | `system` | Y | Y | 4 | 系統層權限。 |
-| `project.member.add` | `Project Member Add` | 新增專案成員。 | `project` | Y | Y | 5 | 專案層權限。 |
-| `project.member.remove` | `Project Member Remove` | 移除專案成員。 | `project` | Y | Y | 6 | 專案層權限。 |
-| `project.role.assign` | `Project Role Assign` | 指派或調整專案角色。 | `project` | Y | Y | 7 | 專案層權限。 |
-| `issue.create` | `Issue Create` | 建立 Issue。 | `project` | Y | Y | 8 | 專案層權限。 |
-| `issue.read` | `Issue Read` | 查看 Issue。 | `project` | Y | Y | 9 | 專案層權限。 |
-| `issue.update` | `Issue Update` | 編輯 Issue。 | `project` | Y | Y | 10 | 專案層權限。 |
-| `issue.status.change` | `Issue Status Change` | 變更 Issue 狀態。 | `project` | Y | Y | 11 | 專案層權限。 |
-| `issue.assignee.change` | `Issue Assignee Change` | 變更 Issue 處理人。 | `project` | Y | Y | 12 | 專案層權限。 |
-| `issue.comment.create` | `Issue Comment Create` | 新增 Issue 留言。 | `project` | Y | Y | 13 | 專案層權限。 |
-| `issue.relation.create` | `Issue Relation Create` | 建立 Issue 關聯。 | `project` | Y | Y | 14 | 專案層權限。 |
-| `issue.attachment.upload` | `Issue Attachment Upload` | 上傳 Issue 附件。 | `project` | Y | Y | 15 | 專案層權限。 |
-| `issue.attachment.delete` | `Issue Attachment Delete` | 刪除 Issue 附件。 | `project` | Y | Y | 16 | 專案層權限。 |
+| code | name | description | scope_type | 備註 |
+| --- | --- | --- | --- | --- |
+| `project.create` | `Project Create` | 建立新專案。 | `system` | 系統層權限。 |
+| `project.read` | `Project Read` | 查看專案基本內容。 | `project` | 專案層權限。 |
+| `project.update` | `Project Update` | 修改專案基本資料。 | `project` | 專案層權限。 |
+| `project.deactivate` | `Project Deactivate` | 停用專案。 | `system` | 系統層權限。 |
+| `project.member.add` | `Project Member Add` | 新增專案成員。 | `project` | 專案層權限。 |
+| `project.member.remove` | `Project Member Remove` | 移除專案成員。 | `project` | 專案層權限。 |
+| `project.role.assign` | `Project Role Assign` | 指派或調整專案角色。 | `project` | 專案層權限。 |
+| `issue.create` | `Issue Create` | 建立 Issue。 | `project` | 專案層權限。 |
+| `issue.read` | `Issue Read` | 查看 Issue。 | `project` | 專案層權限。 |
+| `issue.update` | `Issue Update` | 編輯 Issue。 | `project` | 專案層權限。 |
+| `issue.status.change` | `Issue Status Change` | 變更 Issue 狀態。 | `project` | 專案層權限。 |
+| `issue.assignee.change` | `Issue Assignee Change` | 變更 Issue 處理人。 | `project` | 專案層權限。 |
+| `issue.comment.create` | `Issue Comment Create` | 新增 Issue 留言。 | `project` | 專案層權限。 |
+| `issue.relation.create` | `Issue Relation Create` | 建立 Issue 關聯。 | `project` | 專案層權限。 |
+| `issue.attachment.upload` | `Issue Attachment Upload` | 上傳 Issue 附件。 | `project` | 專案層權限。 |
+| `issue.attachment.delete` | `Issue Attachment Delete` | 刪除 Issue 附件。 | `project` | 專案層權限。 |
 
 #### 欄位分組建議
 
@@ -296,7 +295,7 @@
 | --- | --- |
 | 身份識別 | `id`、`code` |
 | 基本資料 | `name`、`description` |
-| 狀態資訊 | `scope_type`、`is_system`、`is_active`、`sort_order` |
+| 範圍資訊 | `scope_type` |
 | 系統欄位 | `audit_info` |
 
 #### 補充規則
@@ -304,9 +303,9 @@
 - `id` 一律使用 UUID。
 - `code` 應為唯一欄位。
 - 權限定義使用資料表管理，但 MVP 階段先不提供權限編輯功能。
-- MVP 階段角色對權限的對應先由系統固定實作，不先建立 role-permission mapping table。
+- 角色對權限的對應使用 `system_role_permissions` 與 `project_role_permissions` 管理。
+- MVP 階段權限矩陣由系統 seed 初始化，不提供 UI 調整。
 - `scope_type` 用來區分系統層與專案層權限，不直接表示授權範圍。
-- 後續若需要自訂角色或可編輯權限矩陣，再補 `system_role_permissions` / `project_role_permissions` 等 mapping table。
 
 #### Index 建議
 
@@ -315,6 +314,62 @@
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_permissions_code` 於 `code`。
+
+---
+
+### system_role_permissions
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `system_role_permissions` |
+| 說明 | 保存系統角色與權限的對應關係。 |
+| PK | `id` |
+| FK | `system_role_id -> system_roles.id`, `permission_id -> permissions.id` |
+| 備註 | 這是系統角色與權限的 mapping table，用來定義全域角色可使用哪些系統層權限。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 系統角色權限對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
+| `system_role_id` | 系統角色識別 | `uuid` | Y | N | 對應 `system_roles.id`。 |
+| `permission_id` | 權限識別 | `uuid` | Y | N | 對應 `permissions.id`。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+
+#### 欄位分組建議
+
+| 分組 | 欄位 |
+| --- | --- |
+| 身份識別 | `id` |
+| 關聯欄位 | `system_role_id`、`permission_id` |
+| 系統欄位 | `audit_info` |
+
+#### 補充規則
+
+- `id` 一律使用 UUID。
+- 同一組 `system_role_id + permission_id` 不得重複。
+- 這張表只配置 `scope_type = system` 的權限。
+- MVP 階段由系統 seed 建立預設矩陣，不提供 UI 編輯。
+
+#### 建議預設資料
+
+| 系統角色 | `project.create` | `project.deactivate` | 說明 |
+| --- | --- | --- | --- |
+| `system_admin` | Y | Y | 可建立與停用專案；不因系統角色而自動取得任何既有專案的內部權限。 |
+| `user` | N | N | 一般登入身份；可使用的專案功能完全取決於其專案角色。 |
+
+系統 seed 應依上表建立 `system_role_permissions` 資料。未列出的系統層權限預設不授與。
+
+#### Index 建議
+
+- 建立 `idx_system_role_permissions_system_role_id` 於 `system_role_id`。
+- 建立 `idx_system_role_permissions_permission_id` 於 `permission_id`。
+
+#### 唯一約束建議
+
+- 建立 unique constraint `uq_system_role_permissions_role_permission` 於 `system_role_id + permission_id`。
 
 ---
 
@@ -541,6 +596,74 @@
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_project_member_roles_member_role` 於 `project_member_id + project_role_id`。
+
+---
+
+### project_role_permissions
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `project_role_permissions` |
+| 說明 | 保存專案角色與權限的對應關係。 |
+| PK | `id` |
+| FK | `project_role_id -> project_roles.id`, `permission_id -> permissions.id` |
+| 備註 | 這是專案角色與權限的 mapping table，用來定義各預設專案角色可使用哪些專案層權限。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 專案角色權限對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
+| `project_role_id` | 專案角色識別 | `uuid` | Y | N | 對應 `project_roles.id`。 |
+| `permission_id` | 權限識別 | `uuid` | Y | N | 對應 `permissions.id`。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+
+#### 欄位分組建議
+
+| 分組 | 欄位 |
+| --- | --- |
+| 身份識別 | `id` |
+| 關聯欄位 | `project_role_id`、`permission_id` |
+| 系統欄位 | `audit_info` |
+
+#### 補充規則
+
+- `id` 一律使用 UUID。
+- 同一組 `project_role_id + permission_id` 不得重複。
+- 這張表只配置 `scope_type = project` 的權限。
+- MVP 階段由系統 seed 建立預設矩陣，不提供 UI 編輯。
+
+#### 建議預設資料
+
+| 權限代號 | `owner` | `manager` | `contributor` | `reviewer` | 說明 |
+| --- | --- | --- | --- | --- | --- |
+| `project.read` | Y | Y | Y | Y | 查看已加入專案的基本資訊。 |
+| `project.update` | Y | Y | N | N | 修改專案名稱與說明等基本資料。 |
+| `project.member.add` | Y | Y | N | N | 新增專案成員。 |
+| `project.member.remove` | Y | Y | N | N | 移除專案成員；仍須符合至少保留一名 `owner` 的業務規則。 |
+| `project.role.assign` | Y | Y | N | N | 指派或調整專案成員角色。 |
+| `issue.create` | Y | Y | Y | N | 建立 Issue。 |
+| `issue.read` | Y | Y | Y | Y | 查看 Issue。 |
+| `issue.update` | Y | Y | Y | N | 修改 Issue 內容，例如描述、完成說明與 DoD。 |
+| `issue.status.change` | Y | Y | Y | Y | 自由切換 Issue 狀態。 |
+| `issue.assignee.change` | Y | Y | Y | Y | 自由調整下一手處理人。 |
+| `issue.comment.create` | Y | Y | Y | Y | 新增 Issue 留言與回饋。 |
+| `issue.relation.create` | Y | Y | Y | N | 建立 Issue 間的關聯或相依關係。 |
+| `issue.attachment.upload` | Y | Y | Y | Y | 上傳 Issue 附件。 |
+| `issue.attachment.delete` | Y | Y | N | N | 刪除附件。MVP 不另做「僅可刪除本人附件」的細分權限。 |
+
+系統 seed 應依上表建立 `project_role_permissions` 資料。這些預設角色與權限對應在 MVP 不可由管理介面修改；未列出的專案層權限預設不授與。
+
+#### Index 建議
+
+- 建立 `idx_project_role_permissions_project_role_id` 於 `project_role_id`。
+- 建立 `idx_project_role_permissions_permission_id` 於 `permission_id`。
+
+#### 唯一約束建議
+
+- 建立 unique constraint `uq_project_role_permissions_role_permission` 於 `project_role_id + permission_id`。
 
 ---
 

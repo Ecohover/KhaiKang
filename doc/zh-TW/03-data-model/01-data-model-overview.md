@@ -50,10 +50,12 @@
 - `system_roles`
 - `permissions`
 - `account_system_role_mappings`
+- `system_role_permissions`
 - `projects`
 - `project_roles`
 - `project_members`
 - `project_member_roles`
+- `project_role_permissions`
 - `issue_types`
 - `issue_statuses`
 - `issue_priorities`
