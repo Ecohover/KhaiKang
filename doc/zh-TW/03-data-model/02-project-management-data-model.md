@@ -272,6 +272,10 @@
 
 | code | name | description | scope_type | 備註 |
 | --- | --- | --- | --- | --- |
+| `account.read` | `Account Read` | 查看使用者帳號資料。 | `system` | 系統層權限。 |
+| `account.create` | `Account Create` | 建立本機使用者帳號。 | `system` | 系統層權限。 |
+| `account.update` | `Account Update` | 修改使用者基本資料或重設密碼。 | `system` | 系統層權限。 |
+| `account.suspend` | `Account Suspend` | 停權、停用或恢復使用者帳號。 | `system` | 系統層權限。 |
 | `project.create` | `Project Create` | 建立新專案。 | `system` | 系統層權限。 |
 | `project.read` | `Project Read` | 查看專案基本內容。 | `project` | 專案層權限。 |
 | `project.update` | `Project Update` | 修改專案基本資料。 | `project` | 專案層權限。 |
@@ -355,10 +359,10 @@
 
 #### 建議預設資料
 
-| 系統角色 | `project.create` | `project.deactivate` | 說明 |
-| --- | --- | --- | --- |
-| `system_admin` | Y | Y | 可建立與停用專案；不因系統角色而自動取得任何既有專案的內部權限。 |
-| `user` | N | N | 一般登入身份；可使用的專案功能完全取決於其專案角色。 |
+| 系統角色 | `account.read` | `account.create` | `account.update` | `account.suspend` | `project.create` | `project.deactivate` | 說明 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `system_admin` | Y | Y | Y | Y | Y | Y | 可管理帳號、建立與停用專案；不因系統角色而自動取得任何既有專案的內部權限。 |
+| `user` | N | N | N | N | N | N | 一般登入身份；可使用的專案功能完全取決於其專案角色。 |
 
 系統 seed 應依上表建立 `system_role_permissions` 資料。未列出的系統層權限預設不授與。
 
