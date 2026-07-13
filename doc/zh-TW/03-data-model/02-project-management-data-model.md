@@ -14,7 +14,7 @@
 - 角色、類型、狀態與優先級都保留未來自訂空間
 - 先使用單一 PostgreSQL database，不拆多資料庫
 - 以資料表關聯表示範圍與角色，不把範圍寫進權限字串
-- 主檔 audit metadata 採一致欄位語意，詳細欄位定義另見 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)
+- 主檔 audit metadata 採一致欄位語意，詳細欄位定義另見 [Audit Info 結構](./99-audit-metadata-fields.md)
 
 ## 核心資料表
 
@@ -99,7 +99,7 @@
 | `must_change_password` | 是否要求使用者在下次登入後修改密碼 | `boolean` | Y | N | 初始帳號、管理員重設密碼或發放暫時密碼後可使用。 |
 | `last_login_at` | 最後登入時間 | `timestamp with time zone` | N | N | 可為空。 |
 | `is_builtin` | 是否為系統內建帳號 | `boolean` | Y | N | 例如初始化 `admin`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 補充規則
 
@@ -143,7 +143,7 @@
 
 | 標記 | 說明 |
 | --- | --- |
-| `Audit Metadata` | 表示此欄位屬於共通 audit metadata，詳細定義請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `Audit Metadata` | 表示此欄位屬於共通 audit metadata，詳細定義請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 ---
 
@@ -170,7 +170,7 @@
 | `is_system` | 是否為系統預設角色 | `boolean` | Y | N | 目前預設角色由系統 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新指派。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -216,7 +216,7 @@
 | `id` | 帳號系統角色對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `account_id` | 帳號識別 | `uuid` | Y | N | 對應 `accounts.id`。 |
 | `system_role_id` | 系統角色識別 | `uuid` | Y | N | 對應 `system_roles.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -266,7 +266,7 @@
 | `name` | 權限名稱 | `varchar(200)` | Y | N | 顯示名稱。 |
 | `description` | 權限說明 | `text` | N | N | 補充權限用途與邊界。 |
 | `scope_type` | 權限範圍類型 | `varchar(20)` | Y | N | 目前建議支援 `system` 與 `project`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -340,7 +340,7 @@
 | `id` | 系統角色權限對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `system_role_id` | 系統角色識別 | `uuid` | Y | N | 對應 `system_roles.id`。 |
 | `permission_id` | 權限識別 | `uuid` | Y | N | 對應 `permissions.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -399,7 +399,7 @@
 | `description` | 專案說明 | `text` | N | N | 補充專案用途與範圍。 |
 | `status` | 專案狀態 | `varchar(50)` | Y | N | 目前預計支援 `active`、`inactive`。 |
 | `created_by_account_id` | 建立者帳號識別 | `uuid` | Y | N | 對應 `accounts.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 狀態值
 
@@ -465,7 +465,7 @@
 | `is_system` | 是否為系統預設角色 | `boolean` | Y | N | 目前預設角色由系統 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新指派。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -517,7 +517,7 @@
 | `status` | 專案成員狀態 | `varchar(20)` | Y | N | 目前預計支援 `active`、`removed`。 |
 | `joined_at` | 加入時間 | `timestamp with time zone` | Y | N | 記錄加入專案的時間。 |
 | `removed_at` | 移除時間 | `timestamp with time zone` | N | N | 被移除專案時記錄，可為空。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 狀態值
 
@@ -574,7 +574,7 @@
 | `id` | 專案成員角色對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `project_member_id` | 專案成員識別 | `uuid` | Y | N | 對應 `project_members.id`。 |
 | `project_role_id` | 專案角色識別 | `uuid` | Y | N | 對應 `project_roles.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -622,7 +622,7 @@
 | `id` | 專案角色權限對應主鍵 | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `project_role_id` | 專案角色識別 | `uuid` | Y | N | 對應 `project_roles.id`。 |
 | `permission_id` | 權限識別 | `uuid` | Y | N | 對應 `permissions.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -694,7 +694,7 @@
 | `is_system` | 是否為系統預設資料 | `boolean` | Y | N | 系統預設資料由 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新 Issue 使用。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -748,7 +748,7 @@
 | `is_system` | 是否為系統預設資料 | `boolean` | Y | N | 系統預設資料由 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新 Issue 使用。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -802,7 +802,7 @@
 | `is_system` | 是否為系統預設資料 | `boolean` | Y | N | 系統預設資料由 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新 Issue 使用。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 
@@ -862,7 +862,7 @@
 | `assignee_account_id` | 指派處理人帳號識別 | `uuid` | N | N | 可為空，表示目前未指派。 |
 | `completion_summary` | 完成說明 | `text` | N | N | 記錄實際完成內容、處理結果或交付摘要。 |
 | `completed_at` | 完成時間 | `timestamp with time zone` | N | N | 狀態進入完成態時可由系統帶入。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -946,7 +946,7 @@
 | `issue_id` | 議題識別 | `uuid` | Y | N | 對應 `issues.id`。 |
 | `author_account_id` | 留言作者帳號識別 | `uuid` | Y | N | 對應 `accounts.id`，可為人類或 AI 帳號。 |
 | `content` | 留言內容 | `text` | Y | N | 保存留言本文。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -1000,7 +1000,7 @@
 | `file_hash` | 檔案雜湊值 | `varchar(200)` | N | N | 可選，用於後續重複檔案檢查或完整性驗證。 |
 | `is_deleted` | 是否已刪除 | `boolean` | Y | N | 建議採軟刪除，保留審計痕跡。 |
 | `deleted_at` | 刪除時間 | `timestamp with time zone` | N | N | 軟刪除時記錄。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 狀態值
 
@@ -1063,7 +1063,7 @@
 | `source_issue_id` | 起點議題識別 | `uuid` | Y | N | 對應 `issues.id`。 |
 | `target_issue_id` | 目標議題識別 | `uuid` | Y | N | 對應 `issues.id`。 |
 | `issue_relation_type_id` | 關聯類型識別 | `uuid` | Y | N | 對應 `issue_relation_types.id`。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 欄位分組建議
 
@@ -1119,7 +1119,7 @@
 | `is_system` | 是否為系統預設資料 | `boolean` | Y | N | 系統預設資料由 seed 建立。 |
 | `is_active` | 是否啟用 | `boolean` | Y | N | 停用後不可再被新關聯使用。 |
 | `sort_order` | 排序值 | `integer` | Y | N | 用於顯示排序。 |
-| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Metadata 欄位表](./03-audit-metadata-fields.md)。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
 #### 建議預設資料
 

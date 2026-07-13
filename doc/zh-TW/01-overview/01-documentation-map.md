@@ -52,6 +52,7 @@
 
 - [使用者與登入規格](../02-specs/01-user-authentication.md)
 - [專案管理規格](../02-specs/02-project-management.md)
+- [測試案例管理規格](../02-specs/03-test-case-management.md)
 
 ### 03-data-model
 
@@ -65,7 +66,8 @@
 
 - [資料模型總覽](../03-data-model/01-data-model-overview.md)
 - [專案管理資料模型](../03-data-model/02-project-management-data-model.md)
-- [Audit Metadata 欄位表](../03-data-model/03-audit-metadata-fields.md)
+- [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md)
+- [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md)
 
 ### 04-planning
 

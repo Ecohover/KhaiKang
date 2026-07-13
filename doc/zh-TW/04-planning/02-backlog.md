@@ -8,8 +8,8 @@
 
 ## 產品功能待處理
 
-- 測試案例管理
 - 測試套件
+- Test Workspace 與 Project 關聯
 - 測試計畫
 - 測試執行
 - 測試結果
@@ -35,6 +35,9 @@
 
 ## 整合能力待處理
 
+- 測試自動化執行流程與 Test Run 整合
+- Test Repository、Test Environment、Test Execution Agent 與憑證管理
+- 自動化測試結果回寫與外部結果格式匯入
 - Jenkins 連線
 - Job 對應
 - Build 結果匯入

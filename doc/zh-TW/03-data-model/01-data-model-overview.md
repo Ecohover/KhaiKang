@@ -12,7 +12,8 @@
 ## 目前文件
 
 - [專案管理資料模型](./02-project-management-data-model.md)
-- [Audit Metadata 欄位表](./03-audit-metadata-fields.md)
+- [Audit Info 結構](./99-audit-metadata-fields.md)
+- [測試案例管理資料模型](./03-test-case-management-data-model.md)
 
 ## 使用原則
 
