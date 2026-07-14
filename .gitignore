@@ -1,1 +1,12 @@
 README.internal.md
+
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
+TestResults/
+.packages*/
+.nupkgs/

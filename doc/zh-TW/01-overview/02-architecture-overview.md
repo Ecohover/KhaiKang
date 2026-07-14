@@ -28,10 +28,12 @@ deploy/
   compose/
   scripts/
 src/
-  contracts/
   backend/
+    common/
+    KhaiKang.Api/
+    KhaiKang.Worker/
   frontend/
-  worker/
+  contract/
 ```
 
 - `doc/zh-TW/01-overview/`：文件導覽、架構說明、語詞總表與通用規範
@@ -39,7 +41,7 @@ src/
 - `doc/zh-TW/03-data-model/`：資料模型與資料欄位說明
 - `doc/zh-TW/04-planning/`：階段規劃與待處理清單
 - `deploy/`：Docker Compose、腳本、環境範例
-- `src/contracts/`：API、DTO、enum、error、event 契約
-- `src/backend/`：ASP.NET Core 後端應用與各模組
+- `src/backend/`：ASP.NET Core 後端服務與後端共用元件
+- `src/backend/common/`：後端共用工具、Web middleware、環境變數與後續共用基礎能力
 - `src/frontend/`：Vue 3 前端應用
-- `src/worker/`：背景任務、queue consumer、非同步處理
+- `src/contract/`：共同前後端 API 合約、DTO、enum、error、event 契約

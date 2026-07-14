@@ -4,17 +4,38 @@ KhaiKang is an open-source, self-hostable workflow platform for engineering team
 
 ## Quick Start
 
-TBD
+Prerequisite: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+```shell
+dotnet restore KhaiKang.slnx --configfile NuGet.config
+dotnet run --project src/backend/KhaiKang.Api/KhaiKang.Api.csproj
+```
+
+The development profile listens on `http://localhost:5220`:
+
+- Health: `GET /health/live`
+- System information: `GET /api/v1/system/info`
+
+Run backend verification with:
+
+```shell
+dotnet build KhaiKang.slnx --no-restore --disable-build-servers -m:1
+dotnet test KhaiKang.slnx --no-build --disable-build-servers -m:1
+```
+
+The frontend and Docker Compose workspaces have not been scaffolded yet.
 
 ## Documentation
 
-- [Chinese README](./README.zh-TW.md)
+- [Traditional Chinese README](./README.zh-TW.md)
+- [Contributing](./CONTRIBUTING.md)
+- [Coding Agent Guidelines](./AGENTS.md)
 - [Documentation Guidelines](./doc/documentation-guidelines.md)
+- [Development Guidelines](./doc/en/development-guidelines.md)
 - [English Architecture Overview](./doc/en/architecture/overview.md)
-- [Traditional Chinese Architecture Overview](./doc/zh-TW/architecture/overview.md)
-- [Project Specs](./doc/en/specs/)
-- [Roadmap](./doc/en/roadmap/)
-- [Internal Notes](./README.internal.md)
+- [Traditional Chinese Documentation Map](./doc/zh-TW/01-overview/01-documentation-map.md)
+- [Traditional Chinese Architecture Overview](./doc/zh-TW/01-overview/02-architecture-overview.md)
+- [Current Planning](./doc/zh-TW/04-planning/01-phase-overview.md)
 
 ## License
 

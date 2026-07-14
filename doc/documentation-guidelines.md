@@ -1,53 +1,69 @@
 # Documentation Guidelines
 
+## Purpose
+
+KhaiKang is an open-source project with English public entry points and an
+active Traditional Chinese product-design workspace. This document defines how
+both sets of documentation remain usable without creating two competing sources
+of truth.
+
 ## Language Policy
 
-- Source code comments, XML documentation, and technical notes inside the codebase must be written in English.
-- English is the primary language for all project documentation.
-- Traditional Chinese documentation is allowed as a localized supplement.
-- Other languages may be added later by contributors as localized documentation, but they must not replace the English source of truth.
+- Source code identifiers, comments, XML documentation, log templates, and
+  technical notes inside source files use English.
+- Public repository operations and contributor guidance use English as the
+  primary version. This includes `README.md`, `CONTRIBUTING.md`, `AGENTS.md`,
+  architecture, engineering, deployment, and security guidance.
+- Traditional Chinese translations may accompany public engineering documents.
+- Existing product specs, data models, and planning documents under
+  `doc/zh-TW/` remain authoritative while their English versions are incomplete
+  or explicitly marked as drafts.
+- An English product spec becomes authoritative only after it is reviewed and
+  marked synchronized with the Traditional Chinese source. Do not infer current
+  behavior from an older translation.
 
 ## Documentation Hierarchy
 
 1. `README.md` and `README.zh-TW.md`
-   - Entry points for the project.
-   - Keep them concise and focused on install, quick start, and top-level links.
+   - Concise project entry points, quick start, and top-level links.
+2. `AGENTS.md`
+   - Repository instructions for coding agents.
+3. `CONTRIBUTING.md`
+   - Contribution workflow, commands, commits, and pull request expectations.
+4. `doc/en/`
+   - Public English architecture and engineering guidance.
+5. `doc/zh-TW/`
+   - Current Traditional Chinese product specs, data models, planning, and
+     localized engineering guidance.
 
-2. `doc/en/`
-   - Primary documentation source.
-   - Architecture notes, specs, roadmap, and contribution guidance should live here first.
-
-3. `doc/zh-TW/`
-   - Localized Traditional Chinese documentation.
-   - Should mirror important public-facing docs when needed, but not become the authoritative source.
-
-4. `doc/internal/`
-   - Internal strategy, draft analysis, and working notes.
-   - Keep this content concise, factual, and separated from public-facing docs.
+Working notes that are not intended for the public repository must not be
+linked from the public README.
 
 ## Writing Rules
 
-- Use clear, direct English.
-- Prefer short sections with explicit headings.
-- Keep docs focused on one purpose per file.
-- Avoid mixing product vision, implementation detail, and deployment instructions in the same document.
-- When a document has a public and internal version, keep the same structure across languages.
+- Keep one primary purpose per document.
+- Use clear headings, short paragraphs, and repository-relative links.
+- State scope, non-goals, behavior, and open questions explicitly.
+- Do not duplicate rules across many files. Link to the authoritative rule.
+- Update links and reading maps when files move.
+- Mark drafts and transitional translations clearly.
+- Never place secrets, private URLs, real credentials, or personal data in
+  documentation examples.
 
-## Recommended File Types
+## Functional Spec Format
 
-- `architecture/*.md`
-- `specs/*.md`
-- `roadmap/*.md`
-- `contributing.md`
-- `deployment/*.md`
-- `security/*.md`
+Functional specs follow `doc/spec-template.md` and normally include:
 
-## Practical Rule
+1. Purpose
+2. Related documents
+3. Scope
+4. Non-goals
+5. Core model
+6. Flow
+7. States and rules
+8. Security and audit
+9. Acceptance criteria
+10. Open questions
 
-If a document is intended to guide implementation or review, write it in English first.
-If a localized version is needed later, add it under the matching language folder and keep the structure aligned with the English version.
-
-## Spec Format
-
-All functional specs should follow the shared template in `doc/spec-template.md`.
-The template exists to keep section order and review flow consistent across languages.
+Planning status belongs in planning documents, not inside the functional rules
+or data model.

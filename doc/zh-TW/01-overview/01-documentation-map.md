@@ -17,12 +17,14 @@
 
 第一次接觸專案時，建議依序閱讀：
 
-1. [架構總覽](./02-architecture-overview.md)
-2. [語詞總表](./04-domain-glossary.md)
-3. [專案管理規格](../02-specs/02-project-management.md)
-4. [使用者與登入規格](../02-specs/01-user-authentication.md)
-5. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-6. [階段規劃總覽](../04-planning/01-phase-overview.md)
+1. [貢獻指南](../../../CONTRIBUTING.md)
+2. [架構總覽](./02-architecture-overview.md)
+3. [開發規範](./03-development-guidelines.md)
+4. [語詞總表](./04-domain-glossary.md)
+5. [使用者與登入規格](../02-specs/01-user-authentication.md)
+6. [專案管理規格](../02-specs/02-project-management.md)
+7. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+8. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -84,6 +86,8 @@
 
 ## 文件使用原則
 
+- Agent 開始工作前應先閱讀 repository 根目錄的 [AGENTS.md](../../../AGENTS.md)
+- 公開貢獻流程以 [CONTRIBUTING.md](../../../CONTRIBUTING.md) 為準
 - `overview` 文件優先回答「這個專案是什麼」
 - `specs` 文件優先回答「功能要怎麼定義」
 - `data-model` 文件優先回答「資料如何組織」

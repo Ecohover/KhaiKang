@@ -9,7 +9,7 @@ Describe the goal of this feature or module.
 - `doc/documentation-guidelines.md`
 - `doc/development-guidelines.md`
 - `doc/en/architecture/overview.md`
-- `doc/zh-TW/architecture/overview.md`
+- `doc/zh-TW/01-overview/02-architecture-overview.md`
 - `doc/en/specs/spec-index.md`
 - `doc/zh-TW/specs/spec-index.md`
 
