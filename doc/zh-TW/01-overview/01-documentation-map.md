@@ -20,11 +20,12 @@
 1. [貢獻指南](../../../CONTRIBUTING.md)
 2. [架構總覽](./02-architecture-overview.md)
 3. [開發規範](./03-development-guidelines.md)
-4. [語詞總表](./04-domain-glossary.md)
-5. [使用者與登入規格](../02-specs/01-user-authentication.md)
-6. [專案管理規格](../02-specs/02-project-management.md)
-7. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-8. [階段規劃總覽](../04-planning/01-phase-overview.md)
+4. [.NET 開發準則](./05-dotnet-development-guidelines.md)
+5. [語詞總表](./04-domain-glossary.md)
+6. [使用者與登入規格](../02-specs/01-user-authentication.md)
+7. [專案管理規格](../02-specs/02-project-management.md)
+8. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+9. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -40,6 +41,7 @@
 
 - [架構總覽](./02-architecture-overview.md)
 - [開發規範](./03-development-guidelines.md)
+- [.NET 開發準則](./05-dotnet-development-guidelines.md)
 - [語詞總表](./04-domain-glossary.md)
 
 ### 02-specs

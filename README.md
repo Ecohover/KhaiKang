@@ -7,8 +7,8 @@ KhaiKang is an open-source, self-hostable workflow platform for engineering team
 Prerequisite: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```shell
-dotnet restore KhaiKang.slnx --configfile NuGet.config
-dotnet run --project src/backend/KhaiKang.Api/KhaiKang.Api.csproj
+dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
 The development profile listens on `http://localhost:5220`:
@@ -19,8 +19,8 @@ The development profile listens on `http://localhost:5220`:
 Run backend verification with:
 
 ```shell
-dotnet build KhaiKang.slnx --no-restore --disable-build-servers -m:1
-dotnet test KhaiKang.slnx --no-build --disable-build-servers -m:1
+dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
+dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
 The frontend and Docker Compose workspaces have not been scaffolded yet.

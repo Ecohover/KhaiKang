@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\backend\KhaiKang.Api\KhaiKang.Api.csproj" />
-    <ProjectReference Include="..\..\..\src\contract\KhaiKang.Contracts\KhaiKang.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\KhaiKang.Api\KhaiKang.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\contract\KhaiKang.Contracts\KhaiKang.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

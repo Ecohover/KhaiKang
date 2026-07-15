@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\contract\KhaiKang.Contracts\KhaiKang.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\contract\KhaiKang.Contracts\KhaiKang.Contracts.csproj" />
     <ProjectReference Include="..\common\KhaiKang.CommonUtils\KhaiKang.CommonUtils.csproj" />
     <ProjectReference Include="..\common\KhaiKang.CommonUtils.Web\KhaiKang.CommonUtils.Web.csproj" />
   </ItemGroup>

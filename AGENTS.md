@@ -13,7 +13,8 @@ Read these sources before editing, in order:
 1. The relevant functional spec under `doc/zh-TW/02-specs/`.
 2. The relevant data model under `doc/zh-TW/03-data-model/`.
 3. `doc/en/development-guidelines.md`.
-4. Existing code and tests in the affected module.
+4. `doc/en/dotnet-development-guidelines.md` for backend changes.
+5. Existing code and tests in the affected module.
 
 Do not silently resolve conflicts between specs, data models, tests, and code.
 Report the conflict and keep the authoritative document aligned with behavior.
@@ -21,15 +22,18 @@ Report the conflict and keep the authoritative document aligned with behavior.
 ## Repository Map
 
 ```text
-src/
-  backend/
+backend/
+  KhaiKang.Backend.slnx        Backend workspace
+  src/
     common/                    Domain-neutral backend components
     modules/                   Feature modules
     KhaiKang.Api/              HTTP host and composition root
     KhaiKang.Worker/           Background-processing host
-  frontend/                    Vue 3 application
-  contract/                    HTTP contract support
-tests/                         Automated tests
+  tests/
+    integration/               Backend integration tests
+frontend/                      Vue 3 application
+contract/                      Cross-language HTTP contract support
+tests/                         Cross-component end-to-end tests when needed
 doc/                           Architecture, specs, models, and planning
 deploy/                        Self-hosted deployment assets
 ```
@@ -38,7 +42,7 @@ deploy/                        Self-hosted deployment assets
 
 - Build a modular monolith. Multiple projects express compile-time boundaries,
   not independently deployed microservices.
-- Organize business code by feature under `src/backend/modules/`, using
+- Organize business code by feature under `backend/src/modules/`, using
   `KhaiKang.Modules.<Feature>` for module projects.
 - Keep API and Worker hosts thin. Business rules belong to feature modules.
 - A module owns its entities and persistence configuration. Cross-module access
@@ -66,7 +70,8 @@ deploy/                        Self-hosted deployment assets
 
 ## Engineering Rules
 
-- Target .NET 10, enable nullable reference types, and follow `.editorconfig`.
+- Target .NET 10, enable nullable reference types, follow `.editorconfig`, and
+  apply `doc/en/dotnet-development-guidelines.md` to backend changes.
 - Use constructor injection, async I/O, and propagated `CancellationToken`.
 - Use standard .NET Configuration and validated options. Secrets belong in
   environment variables or user secrets, never committed files.
@@ -91,9 +96,9 @@ deploy/                        Self-hosted deployment assets
 Current backend commands:
 
 ```shell
-dotnet restore KhaiKang.slnx --configfile NuGet.config
-dotnet build KhaiKang.slnx --no-restore --disable-build-servers -m:1
-dotnet test KhaiKang.slnx --no-build --disable-build-servers -m:1
+dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
+dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
 Add frontend commands after the frontend workspace is scaffolded.

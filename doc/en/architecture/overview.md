@@ -40,25 +40,32 @@ deploy/
   docker/
   compose/
   scripts/
-src/
-  backend/
+backend/
+  KhaiKang.Backend.slnx
+  src/
     common/
     modules/
     KhaiKang.Api/
     KhaiKang.Worker/
-  frontend/
-  contract/
+  tests/
+    integration/
+frontend/
+contract/
+tests/                 # Created when cross-component E2E tests exist
 ```
 
 - `doc/en/`: public English architecture and engineering guidance
 - `doc/zh-TW/`: current product specs, data models, planning, and translations
 - `deploy/`: Docker Compose, scripts, and environment examples
-- `src/backend/common/`: stable, domain-neutral backend components
-- `src/backend/modules/`: feature-oriented modular-monolith projects
-- `src/backend/KhaiKang.Api/`: HTTP host and composition root
-- `src/backend/KhaiKang.Worker/`: background-processing host
-- `src/frontend/`: Vue 3 frontend application
-- `src/contract/`: API contract support and generated-model inputs
+- `backend/`: the .NET workspace, solution, source, and backend tests
+- `backend/src/common/`: stable, domain-neutral backend components
+- `backend/src/modules/`: feature-oriented modular-monolith projects
+- `backend/src/KhaiKang.Api/`: HTTP host and composition root
+- `backend/src/KhaiKang.Worker/`: background-processing host
+- `backend/tests/`: backend unit and integration tests
+- `frontend/`: Vue 3 frontend application
+- `contract/`: API contract support and generated-model inputs
+- root `tests/`: added only for cross-component or deployment-level E2E tests
 
 Detailed module, API, persistence, and testing rules are defined in
 `doc/en/development-guidelines.md`.

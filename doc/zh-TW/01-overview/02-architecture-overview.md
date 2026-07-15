@@ -27,13 +27,18 @@ deploy/
   docker/
   compose/
   scripts/
-src/
-  backend/
+backend/
+  KhaiKang.Backend.slnx
+  src/
     common/
+    modules/
     KhaiKang.Api/
     KhaiKang.Worker/
-  frontend/
-  contract/
+  tests/
+    integration/
+frontend/
+contract/
+tests/                 # 有跨元件 E2E 測試時才建立
 ```
 
 - `doc/zh-TW/01-overview/`：文件導覽、架構說明、語詞總表與通用規範
@@ -41,7 +46,10 @@ src/
 - `doc/zh-TW/03-data-model/`：資料模型與資料欄位說明
 - `doc/zh-TW/04-planning/`：階段規劃與待處理清單
 - `deploy/`：Docker Compose、腳本、環境範例
-- `src/backend/`：ASP.NET Core 後端服務與後端共用元件
-- `src/backend/common/`：後端共用工具、Web middleware、環境變數與後續共用基礎能力
-- `src/frontend/`：Vue 3 前端應用
-- `src/contract/`：共同前後端 API 合約、DTO、enum、error、event 契約
+- `backend/`：.NET backend workspace、Solution、source 與後端測試
+- `backend/src/common/`：穩定且 domain-neutral 的後端共用元件
+- `backend/src/modules/`：依功能組織的 modular-monolith project
+- `backend/tests/`：後端 unit 與 integration test
+- `frontend/`：Vue 3 前端應用
+- `contract/`：共同前後端 API 合約與 generated-model inputs
+- root `tests/`：需要跨前後端或部署層 E2E 測試時才建立

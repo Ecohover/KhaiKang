@@ -37,7 +37,7 @@ KhaiKang 是 modular monolith，由少量 process host 部署。Solution 中有�
 
 ### 功能模組
 
-後端商業能力依功能放在 `src/backend/modules/`，project 命名為 `KhaiKang.Modules.<Feature>`。
+後端商業能力依功能放在 `backend/src/modules/`，project 命名為 `KhaiKang.Modules.<Feature>`。
 
 初期每個功能模組只建立一個 class library project，並在內部按需要使用以下資料夾：
 
@@ -119,6 +119,8 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 - 外部系統透過 adapter 隔離，將外部 wire contract 轉為 KhaiKang 內部語意。
 
 ## .NET 規則
+
+後端詳細規則以 [.NET 開發準則](./05-dotnet-development-guidelines.md) 為準；本節只保留跨專案的摘要。
 
 - 使用 .NET 10、啟用 nullable reference type，並使用 file-scoped namespace。
 - Repository 根目錄的 `.editorconfig` 是可執行的格式規則來源。C# 使用四個空格、控制流程加大括號，每個檔案只有一個主要 public type。

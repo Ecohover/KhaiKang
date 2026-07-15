@@ -6,6 +6,7 @@ self-hostable modular monolith and favors small, reviewable changes.
 ## Before You Start
 
 - Read `AGENTS.md` for repository boundaries and verification rules.
+- Read `doc/en/dotnet-development-guidelines.md` before backend changes.
 - Read the relevant spec under `doc/zh-TW/02-specs/` and data model under
   `doc/zh-TW/03-data-model/`.
 - Discuss large architecture changes, new infrastructure dependencies, or
@@ -14,15 +15,16 @@ self-hostable modular monolith and favors small, reviewable changes.
 
 ## Development Setup
 
-The backend currently requires the .NET 10 SDK.
+The backend currently requires the stable .NET 10 SDK. Standard .NET CLI
+commands are sufficient; no company-internal tooling is required.
 
 ```shell
-dotnet restore KhaiKang.slnx --configfile NuGet.config
-dotnet build KhaiKang.slnx --no-restore --disable-build-servers -m:1
+dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
 ```
 
 ```shell
-dotnet test KhaiKang.slnx --no-build --disable-build-servers -m:1
+dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
 Frontend and Docker Compose setup instructions will be added when those

@@ -7,8 +7,8 @@ KhaiKang 是一套開源、可自架的工程團隊工作流平台。
 前置需求：[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
 
 ```shell
-dotnet restore KhaiKang.slnx --configfile NuGet.config
-dotnet run --project src/backend/KhaiKang.Api/KhaiKang.Api.csproj
+dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
 開發設定預設使用 `http://localhost:5220`：
@@ -19,8 +19,8 @@ dotnet run --project src/backend/KhaiKang.Api/KhaiKang.Api.csproj
 後端驗證指令：
 
 ```shell
-dotnet build KhaiKang.slnx --no-restore --disable-build-servers -m:1
-dotnet test KhaiKang.slnx --no-build --disable-build-servers -m:1
+dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
+dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
 Frontend 與 Docker Compose workspace 尚未建立。

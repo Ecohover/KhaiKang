@@ -23,10 +23,10 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore
-        run: dotnet restore KhaiKang.slnx --configfile NuGet.config
+        run: dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
 
       - name: Build
-        run: dotnet build KhaiKang.slnx --configuration Release --no-restore
+        run: dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test KhaiKang.slnx --configuration Release --no-build
+        run: dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build

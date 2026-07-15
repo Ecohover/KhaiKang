@@ -46,7 +46,7 @@ imply independently deployed microservices.
 ### Feature modules
 
 Backend business capabilities are organized by feature under
-`src/backend/modules/` and named `KhaiKang.Modules.<Feature>`.
+`backend/src/modules/` and named `KhaiKang.Modules.<Feature>`.
 
 Start with one class-library project per feature module. Inside that project,
 use only the folders the module needs:
@@ -155,6 +155,10 @@ Web layer maps them centrally to HTTP responses. Use these default mappings:
   into KhaiKang concepts.
 
 ## .NET Rules
+
+See [the .NET development guidelines](./dotnet-development-guidelines.md) for
+the detailed backend baseline. This section keeps only the cross-project
+summary.
 
 - Target .NET 10, enable nullable reference types, and use file-scoped
   namespaces.
