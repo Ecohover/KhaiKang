@@ -1,6 +1,31 @@
 # KhaiKang
 
-KhaiKang is an open-source, self-hostable workflow platform for engineering teams.
+KhaiKang is an open-source, self-hostable development and test management platform for individual developers and small-to-medium software teams.
+
+It connects requirements, delivery planning, implementation, test management, quality gates, and CI/CD feedback while continuing to use specialized external tools such as Jenkins, GitHub Actions, Playwright, and other test runners.
+
+KhaiKang is Kanban-first and Scrum-compatible. AI can assist at every workflow stage, but projects may require human review before work is allowed to continue.
+
+> AI proposes, humans approve when required, automation executes, and KhaiKang tracks.
+
+## Product direction
+
+KhaiKang is intended to become the management and orchestration layer above existing engineering tools. It does not aim to replace source control, CI servers, deployment engines, or test frameworks.
+
+The target delivery flow is:
+
+1. Record a requirement.
+2. Let AI analyze the requirement and relevant repository context.
+3. Propose the technical approach, development plan, acceptance criteria, and test cases.
+4. Develop the feature and its tests in parallel.
+5. Build and run unit, integration, API, end-to-end, and manual tests as applicable.
+6. Promote the same build artifact through project-defined environments.
+7. Evaluate configurable quality conditions and optional human approvals at every stage.
+8. Produce a requirement-level quality report and approve production deployment.
+
+For the MVP, environment workflows remain linear and template-based. The data model should preserve future configurability without requiring a complete visual workflow designer in the first release.
+
+See [Product Vision and MVP Workflow](./doc/en/product-vision-and-mvp-workflow.md).
 
 ## Quick Start
 
@@ -28,6 +53,8 @@ The frontend and Docker Compose workspaces have not been scaffolded yet.
 ## Documentation
 
 - [Traditional Chinese README](./README.zh-TW.md)
+- [Product Vision and MVP Workflow](./doc/en/product-vision-and-mvp-workflow.md)
+- [Traditional Chinese Product Vision and MVP Workflow](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)
 - [Contributing](./CONTRIBUTING.md)
 - [Coding Agent Guidelines](./AGENTS.md)
 - [Documentation Guidelines](./doc/documentation-guidelines.md)
@@ -39,6 +66,6 @@ The frontend and Docker Compose workspaces have not been scaffolded yet.
 
 ## License
 
-Licensed under the Apache License 2.0.
+Licensed under the [Apache License 2.0](./LICENSE).
 
 Copyright 2026 KhaiKang Contributors.
