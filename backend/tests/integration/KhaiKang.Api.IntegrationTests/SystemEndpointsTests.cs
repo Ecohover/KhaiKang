@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using KhaiKang.Contracts.System;
+using KhaiKang.Api.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -22,6 +22,18 @@ public sealed class SystemEndpointsTests(WebApplicationFactory<Program> factory)
 
         Assert.NotNull(systemInfo);
         Assert.Equal("KhaiKang.Api", systemInfo.ServiceName);
+    }
+
+    [Fact]
+    public async Task GetOpenApiContract_ReturnsCanonicalDocument()
+    {
+        var response = await _client.GetAsync("/openapi/v1.yaml");
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("application/yaml", response.Content.Headers.ContentType?.MediaType);
+        var contract = await response.Content.ReadAsStringAsync();
+        Assert.Contains("operationId: Login", contract, StringComparison.Ordinal);
+        Assert.Contains("AuthenticatedUserResponse:", contract, StringComparison.Ordinal);
     }
 
     [Fact]

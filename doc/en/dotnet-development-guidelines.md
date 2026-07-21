@@ -43,7 +43,6 @@ KhaiKang is a modular monolith. Project references establish dependency directio
 KhaiKang.Api
   -> Feature modules
   -> KhaiKang.CommonUtils.Web
-  -> KhaiKang.Contracts
 
 KhaiKang.Worker
   -> Feature modules
@@ -51,15 +50,13 @@ KhaiKang.Worker
 
 KhaiKang.CommonUtils.Web
   -> KhaiKang.CommonUtils
-
-KhaiKang.Contracts
-  -> no business module dependency
 ```
 
 - API and Worker own composition, hosting, and cross-cutting pipelines, not business rules.
 - A feature starts as one `KhaiKang.Modules.<Feature>` class library. Add `Domain`, `Application`, `Infrastructure`, and `Endpoints` folders only when real code needs them.
 - Domain code MUST NOT depend on ASP.NET Core, EF Core implementations, HTTP DTOs, or external-system SDKs.
-- `KhaiKang.Contracts` contains stable HTTP wire types or transport concepts genuinely shared by hosts. It does not contain entities, permission evaluation, or workflow rules.
+- Feature-owned HTTP DTOs remain in the owning module. Host-only DTOs remain in
+  the host. Their wire shapes implement the canonical OpenAPI contract.
 - CommonUtils remains domain-neutral and requires at least two real callers before an abstraction moves there.
 - A module MUST NOT reference another module's entities, DbContext configuration, endpoint types, or internal implementation.
 
@@ -162,7 +159,7 @@ KhaiKang.Contracts
 Before requesting review for a backend change, run:
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
 dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build

@@ -19,7 +19,7 @@ The backend currently requires the stable .NET 10 SDK. Standard .NET CLI
 commands are sufficient; no company-internal tooling is required.
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
 ```
 
@@ -27,8 +27,22 @@ dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers 
 dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
-Frontend and Docker Compose setup instructions will be added when those
-workspaces are scaffolded.
+The frontend uses a pnpm workspace:
+
+```shell
+cd frontend
+pnpm install
+pnpm type-check
+pnpm test
+pnpm build
+```
+
+When the HTTP contract changes, update
+`contract/openapi/khaikang.v1.yaml` first. Then synchronize the owning C# DTOs
+and endpoints and the TypeScript types and HTTP client. These files are
+maintained source code so project-specific behavior is preserved. Follow the
+[AI and OpenAPI workflow](./doc/en/ai-openapi-development-workflow.md) and run
+both backend and frontend verification.
 
 ## Making Changes
 

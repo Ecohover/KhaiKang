@@ -51,6 +51,7 @@ backend/
     integration/
 frontend/
 contract/
+  openapi/
 tests/                 # Created when cross-component E2E tests exist
 ```
 
@@ -64,8 +65,11 @@ tests/                 # Created when cross-component E2E tests exist
 - `backend/src/KhaiKang.Worker/`: background-processing host
 - `backend/tests/`: backend unit and integration tests
 - `frontend/`: Vue 3 frontend application
-- `contract/`: API contract support and generated-model inputs
+- `contract/openapi/`: canonical HTTP wire contracts shared by backend and
+  frontend; language-specific implementations remain in their workspaces
 - root `tests/`: added only for cross-component or deployment-level E2E tests
 
 Detailed module, API, persistence, and testing rules are defined in
 `doc/en/development-guidelines.md`.
+The contract synchronization process is defined in
+`doc/en/ai-openapi-development-workflow.md`.

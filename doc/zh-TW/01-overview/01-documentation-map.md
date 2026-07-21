@@ -21,11 +21,12 @@
 2. [架構總覽](./02-architecture-overview.md)
 3. [開發規範](./03-development-guidelines.md)
 4. [.NET 開發準則](./05-dotnet-development-guidelines.md)
-5. [語詞總表](./04-domain-glossary.md)
-6. [使用者與登入規格](../02-specs/01-user-authentication.md)
-7. [專案管理規格](../02-specs/02-project-management.md)
-8. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-9. [階段規劃總覽](../04-planning/01-phase-overview.md)
+5. [AI 與 OpenAPI 協作開發流程](./06-ai-openapi-development-workflow.md)
+6. [語詞總表](./04-domain-glossary.md)
+7. [使用者與登入規格](../02-specs/01-user-authentication.md)
+8. [專案管理規格](../02-specs/02-project-management.md)
+9. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+10. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -42,6 +43,7 @@
 - [架構總覽](./02-architecture-overview.md)
 - [開發規範](./03-development-guidelines.md)
 - [.NET 開發準則](./05-dotnet-development-guidelines.md)
+- [AI 與 OpenAPI 協作開發流程](./06-ai-openapi-development-workflow.md)
 - [語詞總表](./04-domain-glossary.md)
 
 ### 02-specs

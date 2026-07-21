@@ -38,6 +38,7 @@ backend/
     integration/
 frontend/
 contract/
+  openapi/
 tests/                 # 有跨元件 E2E 測試時才建立
 ```
 
@@ -51,5 +52,5 @@ tests/                 # 有跨元件 E2E 測試時才建立
 - `backend/src/modules/`：依功能組織的 modular-monolith project
 - `backend/tests/`：後端 unit 與 integration test
 - `frontend/`：Vue 3 前端應用
-- `contract/`：共同前後端 API 合約與 generated-model inputs
+- `contract/openapi/`：前後端共同的 canonical HTTP wire contract；C# 與 TypeScript 實作留在各自 workspace
 - root `tests/`：需要跨前後端或部署層 E2E 測試時才建立

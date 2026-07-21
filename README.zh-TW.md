@@ -29,10 +29,14 @@ MVP 階段採用線性、模板化的環境流程；底層資料模型保留未�
 
 ## 快速開始
 
-前置需求：[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
+前置需求：[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)、
+PostgreSQL、Node.js 22 與 pnpm 10。
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
+dotnet tool restore
+dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<你的本機密碼>"
+dotnet ef database update --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
 dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
@@ -40,6 +44,7 @@ dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 
 - 健康檢查：`GET /health/live`
 - 系統資訊：`GET /api/v1/system/info`
+- Canonical OpenAPI 合約：`GET /openapi/v1.yaml`
 
 後端驗證指令：
 
@@ -48,7 +53,15 @@ dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers 
 dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
-Frontend 與 Docker Compose workspace 尚未建立。
+另開終端機啟動前端：
+
+```shell
+cd frontend
+pnpm install
+pnpm dev
+```
+
+Frontend workspace 指令請參考 [frontend/README.md](./frontend/README.md)。
 
 ## 文件
 
@@ -59,6 +72,8 @@ Frontend 與 Docker Compose workspace 尚未建立。
 - [Coding Agent 規範](./AGENTS.md)
 - [文件規範](./doc/documentation-guidelines.md)
 - [開發規範](./doc/zh-TW/01-overview/03-development-guidelines.md)
+- [AI 與 OpenAPI 協作開發流程](./doc/zh-TW/01-overview/06-ai-openapi-development-workflow.md)
+- [Canonical OpenAPI 合約](./contract/openapi/khaikang.v1.yaml)
 - [英文架構總覽](./doc/en/architecture/overview.md)
 - [繁體中文文件導覽](./doc/zh-TW/01-overview/01-documentation-map.md)
 - [繁體中文架構總覽](./doc/zh-TW/01-overview/02-architecture-overview.md)

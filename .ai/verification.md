@@ -7,12 +7,18 @@ Read this file before reporting a completed code change.
 Run the commands relevant to the change:
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
 dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
-Frontend commands will be added after the frontend workspace is scaffolded.
+Frontend commands, run from `frontend/`:
+
+```shell
+pnpm type-check
+pnpm test
+pnpm build
+```
 
 ## Verification Rules
 
@@ -21,7 +27,9 @@ Frontend commands will be added after the frontend workspace is scaffolded.
   sleeps, or external APIs.
 - Use integration tests for HTTP, authorization, persistence, migrations, and
   infrastructure boundaries.
-- Generated output, migrations, and contract artifacts must be reviewed.
+- Migrations and contract artifacts must be reviewed. For an HTTP contract
+  change, report the affected OpenAPI operations and their C# and TypeScript
+  implementations.
 - CI, compiler, analyzers, and test output are evidence. AI reasoning alone is
   not verification.
 

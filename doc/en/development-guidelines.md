@@ -145,14 +145,20 @@ Web layer maps them centrally to HTTP responses. Use these default mappings:
 
 ### Contracts
 
-- OpenAPI is the source of truth for the HTTP wire contract.
-- Frontend API types are generated from OpenAPI and are not edited manually.
-- The C# contract project may contain host-facing DTOs and shared wire concepts,
-  but TypeScript does not consume its source directly.
+- `contract/openapi/khaikang.v1.yaml` is the single source of truth for the HTTP
+  wire contract.
+- C# DTOs and endpoints and TypeScript DTOs and HTTP clients are maintained
+  source code synchronized from OpenAPI, not disposable generated output.
+- Change OpenAPI first, then have AI inspect and synchronize both existing
+  implementations while preserving compatible custom behavior.
+- Feature C# DTOs remain in their owning backend module and TypeScript wire
+  types remain in the frontend; `contract/` has no language-specific project.
 - Treat route, status, request, response, nullability, and enum changes as API
   contract changes.
 - Isolate external systems behind adapters that translate their wire contract
   into KhaiKang concepts.
+- Follow the [AI and OpenAPI workflow](./ai-openapi-development-workflow.md) for
+  the complete synchronization and verification process.
 
 ## .NET Rules
 
@@ -237,7 +243,8 @@ summary.
   `<script setup lang="ts">`.
 - Use PascalCase for components, `use` prefixes for composables, and clear
   feature-oriented folders.
-- Do not use `any`, unchecked casts, or duplicated handwritten API models.
+- Do not use `any` or unchecked casts. TypeScript API models must map explicitly
+  to canonical OpenAPI and must not be duplicated inside features.
 - Views and stores use feature API modules or composables instead of calling
   the HTTP client directly.
 - Keep shared stores for cross-component application state. Keep page-local
@@ -258,7 +265,7 @@ summary.
 - Prefer real PostgreSQL-compatible integration behavior over an EF in-memory
   provider when relational semantics matter.
 - Contract tests protect routes, status codes, problem details, JSON shape,
-  nullability, and generated clients.
+  nullability, and the TypeScript client.
 - Use Arrange, Act, and Assert structure when it improves readability; do not
   add comments that only repeat the code.
 

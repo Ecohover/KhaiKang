@@ -112,11 +112,13 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 
 ### Contract
 
-- OpenAPI 是 HTTP wire contract 的 source of truth。
-- 前端 API model 從 OpenAPI 產生，不得手動修改 generated code。
-- C# contract project 可以放 host 使用的 DTO 與共同 wire concept，但 TypeScript 不直接共用 C# source。
+- `contract/openapi/khaikang.v1.yaml` 是 HTTP wire contract 的唯一來源。
+- C# DTO／endpoint 與 TypeScript DTO／HTTP client 是依 OpenAPI 維護的正式原始碼，不視為可任意覆蓋的 generated code。
+- 公開合約先修改 OpenAPI，再由 AI 讀取現有程式並同步兩端；必須保留仍符合新合約的客製行為。
+- 功能 C# DTO 留在所屬 backend module，TypeScript wire type 留在 frontend；`contract/` 不放特定語言的 implementation project。
 - Route、status、request、response、nullability 與 enum 的變更都視為 API contract 變更。
 - 外部系統透過 adapter 隔離，將外部 wire contract 轉為 KhaiKang 內部語意。
+- 完整流程與檢查項目以 [AI 與 OpenAPI 協作開發流程](./06-ai-openapi-development-workflow.md) 為準。
 
 ## .NET 規則
 
@@ -170,7 +172,7 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 
 - 使用 Vue 3、TypeScript strict mode、Composition API 與 `<script setup lang="ts">`。
 - Component 使用 PascalCase，composable 使用 `use` 前綴，資料夾依 feature 組織。
-- 不使用 `any`、未檢查的強制轉型或重複手寫的 API model。
+- 不使用 `any` 或未檢查的強制轉型。TypeScript API model 必須能逐項對應 canonical OpenAPI，不得在 feature 內建立另一份重複 wire type。
 - View 與 store 透過 feature API module 或 composable 呼叫 API，不直接使用 HTTP client。
 - 只有跨 component 的 application state 才放 shared store；頁面內狀態留在頁面或 page-scoped composable。
 - 工作流程需要時，component 必須包含 loading、empty、error 與 disabled state。
@@ -183,7 +185,7 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 - Unit test 必須具決定性，不依賴真實 database、queue、外部 API、目前時間或任意 sleep。
 - Integration test 驗證 HTTP pipeline、authorization、EF Core mapping、migration 與 infrastructure boundary。
 - 需要驗證 relational behavior 時，優先使用 PostgreSQL 相容的 integration environment，不使用 EF in-memory provider 取代關聯式資料庫語意。
-- Contract test 保護 route、status code、problem details、JSON shape、nullability 與 generated client。
+- Contract test 保護 route、status code、problem details、JSON shape、nullability 與 TypeScript client。
 - Arrange、Act、Assert 能提升可讀性時應採用，但不加入只重述程式碼的註解。
 
 ## Git 與 Review

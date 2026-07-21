@@ -29,10 +29,14 @@ See [Product Vision and MVP Workflow](./doc/en/product-vision-and-mvp-workflow.m
 
 ## Quick Start
 
-Prerequisite: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
+PostgreSQL, Node.js 22, and pnpm 10.
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
+dotnet tool restore
+dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<your-local-password>"
+dotnet ef database update --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
 dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
@@ -40,6 +44,7 @@ The development profile listens on `http://localhost:5220`:
 
 - Health: `GET /health/live`
 - System information: `GET /api/v1/system/info`
+- Canonical OpenAPI contract: `GET /openapi/v1.yaml`
 
 Run backend verification with:
 
@@ -48,7 +53,15 @@ dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers 
 dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
 ```
 
-The frontend and Docker Compose workspaces have not been scaffolded yet.
+Start the frontend in another terminal:
+
+```shell
+cd frontend
+pnpm install
+pnpm dev
+```
+
+See [frontend/README.md](./frontend/README.md) for its workspace commands.
 
 ## Documentation
 
@@ -59,6 +72,8 @@ The frontend and Docker Compose workspaces have not been scaffolded yet.
 - [Coding Agent Guidelines](./AGENTS.md)
 - [Documentation Guidelines](./doc/documentation-guidelines.md)
 - [Development Guidelines](./doc/en/development-guidelines.md)
+- [AI and OpenAPI Development Workflow](./doc/en/ai-openapi-development-workflow.md)
+- [Canonical OpenAPI Contract](./contract/openapi/khaikang.v1.yaml)
 - [English Architecture Overview](./doc/en/architecture/overview.md)
 - [Traditional Chinese Documentation Map](./doc/zh-TW/01-overview/01-documentation-map.md)
 - [Traditional Chinese Architecture Overview](./doc/zh-TW/01-overview/02-architecture-overview.md)

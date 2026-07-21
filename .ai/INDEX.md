@@ -8,11 +8,10 @@ Read only the matching document:
 | Task scope | Context to read |
 | --- | --- |
 | Changes under `backend/` | `.ai/backend.md` |
+| Changes under `frontend/` | `.ai/frontend.md` |
 | Changes under `contract/` or public HTTP API changes | `.ai/contract.md` |
 | Build, test, formatting, or completion reporting | `.ai/verification.md` |
 | Continuing unfinished work from another person or AI | The referenced handoff file based on `.ai/handoff-template.md` |
-
-Frontend context will be added after the frontend workspace is scaffolded.
 
 ## Loading Rules
 

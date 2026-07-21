@@ -4,12 +4,26 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>KhaiKang.Api-LocalDevelopment</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\contract\KhaiKang.Contracts\KhaiKang.Contracts.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\contract\openapi\khaikang.v1.yaml"
+             Link="OpenApi\khaikang.v1.yaml"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\common\KhaiKang.CommonUtils\KhaiKang.CommonUtils.csproj" />
     <ProjectReference Include="..\common\KhaiKang.CommonUtils.Web\KhaiKang.CommonUtils.Web.csproj" />
+    <ProjectReference Include="..\modules\KhaiKang.Modules.Identity\KhaiKang.Modules.Identity.csproj" />
   </ItemGroup>
 
 </Project>

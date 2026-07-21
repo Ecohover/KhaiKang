@@ -1,0 +1,315 @@
+openapi: 3.1.1
+info:
+  title: KhaiKang API
+  version: 1.0.0
+  description: Public HTTP contract for KhaiKang v1.
+paths:
+  /health/live:
+    get:
+      tags: [System]
+      operationId: LiveHealth
+      responses:
+        '200':
+          description: The API process is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/system/info:
+    get:
+      tags: [System]
+      operationId: GetSystemInfo
+      responses:
+        '200':
+          description: Runtime information for the API process.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfoResponse'
+  /api/v1/setup/status:
+    get:
+      tags: [Setup]
+      operationId: GetSetupStatus
+      responses:
+        '200':
+          description: Whether the first administrator must be initialized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusResponse'
+  /api/v1/setup/initialize:
+    post:
+      tags: [Setup]
+      operationId: InitializeAdmin
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: One-time credentials for the initial administrator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitializeAdminResponse'
+        '409':
+          description: The system has already been initialized.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/setup/already-initialized
+                status: 409
+                code: already_initialized
+                detail: KhaiKang has already been initialized.
+  /api/v1/auth/csrf-token:
+    get:
+      tags: [Authentication]
+      operationId: GetCsrfToken
+      responses:
+        '200':
+          description: A CSRF request token and its paired cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfTokenResponse'
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: Login
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: The authenticated user. Session cookies are set by the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: The credentials are invalid or the account cannot sign in.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/auth/invalid-credentials
+                status: 401
+                code: invalid_credentials
+                detail: The username or password is invalid.
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: RefreshSession
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: The refreshed authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '401':
+          description: The refresh session is missing, expired, or revoked.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/auth/session-expired
+                status: 401
+                code: session_expired
+                detail: The login session has expired.
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: GetCurrentUser
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The current authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '401':
+          description: No valid authenticated session exists.
+  /api/v1/auth/password:
+    post:
+      tags: [Authentication]
+      operationId: ChangePassword
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: The password was changed.
+        '400':
+          description: The current password is invalid or validation failed.
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProblemDetails'
+                  - $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: Logout
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: The current session was revoked and cookies were cleared.
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: KhaiKang.Session
+  parameters:
+    CsrfToken:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: Token returned by `getCsrfToken`; its paired cookie is also required.
+      schema:
+        type: string
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          examples: [Healthy]
+    SystemInfoResponse:
+      type: object
+      additionalProperties: false
+      required: [serviceName, environment, serverTime]
+      properties:
+        serviceName:
+          type: string
+        environment:
+          type: string
+        serverTime:
+          type: string
+          format: date-time
+    SetupStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [requiresInitialization]
+      properties:
+        requiresInitialization:
+          type: boolean
+    InitializeAdminResponse:
+      type: object
+      additionalProperties: false
+      required: [username, initialPassword]
+      properties:
+        username:
+          type: string
+        initialPassword:
+          type: string
+          format: password
+          writeOnly: true
+    CsrfTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, rememberMe]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          format: password
+          minLength: 1
+        rememberMe:
+          type: boolean
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+    AuthenticatedUserResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, systemRoles, mustChangePassword]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        systemRoles:
+          type: array
+          items:
+            type: string
+        mustChangePassword:
+          type: boolean
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: [string, 'null']
+        title:
+          type: [string, 'null']
+        status:
+          type: [integer, 'null']
+          format: int32
+        detail:
+          type: [string, 'null']
+        instance:
+          type: [string, 'null']
+        code:
+          type: [string, 'null']
+      additionalProperties: true
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string

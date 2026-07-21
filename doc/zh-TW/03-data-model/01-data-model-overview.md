@@ -11,6 +11,7 @@
 
 ## 目前文件
 
+- [使用者與登入資料模型](./04-authentication-data-model.md)
 - [專案管理資料模型](./02-project-management-data-model.md)
 - [Audit Info 結構](./99-audit-metadata-fields.md)
 - [測試案例管理資料模型](./03-test-case-management-data-model.md)

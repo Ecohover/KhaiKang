@@ -43,7 +43,6 @@ KhaiKang 是 modular monolith。Project reference 用來建立明確依賴方向
 KhaiKang.Api
   -> Feature modules
   -> KhaiKang.CommonUtils.Web
-  -> KhaiKang.Contracts
 
 KhaiKang.Worker
   -> Feature modules
@@ -51,15 +50,12 @@ KhaiKang.Worker
 
 KhaiKang.CommonUtils.Web
   -> KhaiKang.CommonUtils
-
-KhaiKang.Contracts
-  -> 不依賴 business module
 ```
 
 - API 與 Worker 只負責 composition、hosting 與 cross-cutting pipeline，不放商業規則。
 - 功能模組預設是一個 `KhaiKang.Modules.<Feature>` class library；只有出現真實程式碼時才建立 `Domain`、`Application`、`Infrastructure`、`Endpoints` 資料夾。
 - Domain code 不得依賴 ASP.NET Core、EF Core implementation、HTTP DTO 或外部系統 SDK。
-- `KhaiKang.Contracts` 只放穩定的 HTTP wire types 或多個 host 真正共用的 transport concepts，不放 entity、permission evaluation 或 workflow rule。
+- 功能 HTTP DTO 留在所屬模組，只有 host 使用的 DTO 留在 host；其 wire shape 必須實作 canonical OpenAPI contract。
 - CommonUtils 必須保持 domain-neutral，且至少有兩個實際呼叫端後才抽入。
 - 模組不得直接引用其他模組的 entity、DbContext configuration、endpoint type 或 internal implementation。
 
@@ -162,7 +158,7 @@ KhaiKang.Contracts
 後端變更送出 review 前，至少確認：
 
 ```shell
-dotnet restore backend/KhaiKang.Backend.slnx --configfile NuGet.config
+dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
 dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build

@@ -18,9 +18,21 @@ behavior.
 - Keep trace and correlation identifiers in observability data, not in the
   public error contract.
 - Empty collection queries return `200` with an empty collection or page.
-- OpenAPI is the HTTP wire-contract source for generated frontend models.
+- `contract/openapi/khaikang.v1.yaml` is the HTTP wire-contract source of truth.
 - Route, status, request, response, nullability, and enum changes are
   compatibility-sensitive.
 - Isolate external wire formats behind adapters.
-- Do not manually edit generated API models. Change the source contract and
-  regenerate them with the documented command.
+- C# and TypeScript contract implementations are maintained source code, not
+  disposable generated output. Read and preserve compatible custom behavior.
+- Update OpenAPI first, then synchronize backend DTOs/endpoints, TypeScript
+  types/client methods, and tests.
+- Report conflicts among specs, OpenAPI, and code instead of resolving them
+  silently.
+
+## AI Synchronization Check
+
+- Map every changed `operationId` to its backend endpoint and frontend client.
+- Compare routes, methods, status codes, required and nullable properties,
+  enums, security, CSRF, and Problem Details codes.
+- Run the applicable commands from `.ai/verification.md`; AI review alone is
+  not contract verification.
