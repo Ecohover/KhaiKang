@@ -29,6 +29,7 @@
 | data-model | 測試案例管理資料模型 | Draft | [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md) |
 | data-model | Audit Metadata | Draft | [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md) |
 | planning | 任務管理 MVP 實作計畫 | Active | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
+| planning | AI Agent Orchestration 設計方向 | Direction | [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) |
 
 ## 近期範圍
 
@@ -48,7 +49,7 @@
 後續再處理的主題：
 
 - Jenkins / CI 整合
-- AI agents 細部設計與執行能力
+- AI agents 細部設計與執行能力，依 [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) 逐步收斂
 - 更細的權限模型
 - 自訂角色與自訂工作流
 

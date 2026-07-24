@@ -87,6 +87,8 @@
 
 - [階段規劃總覽](../04-planning/01-phase-overview.md)
 - [待處理清單](../04-planning/02-backlog.md)
+- [任務管理 MVP 實作計畫](../04-planning/03-issue-management-implementation-plan.md)
+- [AI Agent Orchestration 設計方向](../04-planning/04-ai-agent-orchestration-direction.md)
 
 ## 文件使用原則
 

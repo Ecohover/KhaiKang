@@ -46,12 +46,17 @@
 
 ## AI 相關待處理
 
+- 整體方向以 [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) 為準
 - `ai_agents` 細部欄位設計
+- AI Agent、Role、Prompt Template、Execution、Workflow 與 Runner 的責任邊界
+- Prompt Catalog、版本管理與依任務動態選擇 Prompt
 - AI prompt / instruction 設計
 - AI 觸發方式與執行模式
 - AI 建立 Issue
 - AI 產生測試案例草稿
 - AI 與 queue / webhook / agent runtime 的整合
+- 單 Agent 閉環完成後，再導入 SwarmForge 類 worktree 隔離、結構化 handoff、
+  durable state、commit-based evidence 與多 Agent 協作
 
 ## 後續原則
 
