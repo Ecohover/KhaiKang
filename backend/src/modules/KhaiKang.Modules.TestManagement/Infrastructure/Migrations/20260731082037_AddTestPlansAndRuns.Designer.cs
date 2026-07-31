@@ -3,6 +3,7 @@ using System;
 using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(TestManagementDbContext))]
-    partial class TestManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731082037_AddTestPlansAndRuns")]
+    partial class AddTestPlansAndRuns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,10 +245,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<int>("RunNo")
-                        .HasColumnType("integer")
-                        .HasColumnName("run_no");
-
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
@@ -285,10 +284,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .HasName("pk_test_runs");
 
                     b.HasIndex("StartedByAccountId");
-
-                    b.HasIndex("TestPlanId", "RunNo")
-                        .IsUnique()
-                        .HasDatabaseName("uq_test_runs_plan_run_no");
 
                     b.HasIndex("TestPlanId", "Status")
                         .HasDatabaseName("idx_test_runs_plan_status");
@@ -789,14 +784,12 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_test_runs_started_by_account");
 
-                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestPlan", "Plan")
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestPlan", null)
                         .WithMany()
                         .HasForeignKey("TestPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_test_runs_plan");
-
-                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItem", b =>

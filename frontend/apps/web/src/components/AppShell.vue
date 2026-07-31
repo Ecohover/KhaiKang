@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, ClipboardCheck, FolderKanban, FolderTree, LayoutDashboard, ListTodo, Settings2, UserRoundCog, Users } from '@lucide/vue'
+import { ArrowLeft, ClipboardCheck, ClipboardList, FolderKanban, FolderTree, LayoutDashboard, ListTodo, Play, Settings2, UserRoundCog, Users } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import ModuleShell from './ModuleShell.vue'
 import { type ApplicationModuleId, visibleApplicationModules } from '../navigation'
@@ -37,6 +37,8 @@ const navigation = computed<NavigationItem[]>(() => {
       { label: t('shell.navigation.backToWorkspaces'), to: { name: 'test-workspaces' }, icon: ArrowLeft },
       { label: t('shell.navigation.home'), to: { name: 'test-home', params: { workspaceId: workspaceId.value } }, icon: LayoutDashboard },
       { label: t('routes.testSuites'), to: { name: 'test-suites', params: { workspaceId: workspaceId.value } }, icon: FolderTree },
+      { label: t('routes.testPlans'), to: { name: 'test-plans', params: { workspaceId: workspaceId.value } }, icon: ClipboardList },
+      { label: t('routes.testRuns'), to: { name: 'test-runs', params: { workspaceId: workspaceId.value } }, icon: Play },
       { label: t('shell.navigation.members'), to: { name: 'test-members', params: { workspaceId: workspaceId.value } }, icon: UserRoundCog },
       { label: t('shell.navigation.workspaceSettings'), to: { name: 'test-settings', params: { workspaceId: workspaceId.value } }, icon: Settings2 },
     ]

@@ -567,18 +567,265 @@ public sealed class TestManagementService(
         testCase.ClearSteps();
         for (var index = 0; index < request.Steps.Count; index++)
         {
-            testCase.AddStep(new TestStep(
+            var step = new TestStep(
                 Guid.NewGuid(),
                 testCase.Id,
                 index + 1,
                 request.Steps[index].Action.Trim(),
                 request.Steps[index].ExpectedResult.Trim(),
                 accountId,
-                now));
+                now);
+            dbContext.CaseSteps.Add(step);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToCaseResponse(testCase));
+    }
+
+    public async Task<TestManagementResult<IReadOnlyList<TestPlanResponse>>> ListPlansAsync(
+        Guid workspaceId, Guid accountId, CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        var plans = await PlanQuery().AsNoTracking()
+            .Where(x => x.TestWorkspaceId == workspaceId)
+            .OrderByDescending(x => x.UpdatedAt)
+            .ToListAsync(cancellationToken);
+        return new(TestManagementOutcome.Succeeded, plans.Select(ToPlanResponse).ToArray());
+    }
+
+    public async Task<TestManagementResult<TestPlanResponse>> GetPlanAsync(
+        Guid workspaceId, Guid planId, Guid accountId, CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        var plan = await PlanQuery().AsNoTracking().SingleOrDefaultAsync(
+            x => x.Id == planId && x.TestWorkspaceId == workspaceId, cancellationToken);
+        return plan is null
+            ? new(TestManagementOutcome.NotFound)
+            : new(TestManagementOutcome.Succeeded, ToPlanResponse(plan));
+    }
+
+    public async Task<TestManagementResult<TestPlanResponse>> CreatePlanAsync(
+        Guid workspaceId, Guid accountId, CreateTestPlanRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+            return new(TestManagementOutcome.Forbidden);
+
+        var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
+        if (cases is null)
+            return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
+
+        var now = timeProvider.GetUtcNow();
+        var planNo = (await dbContext.Plans
+            .Where(x => x.TestWorkspaceId == workspaceId)
+            .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1;
+        var name = PlanName(request.Name, now);
+        var plan = new TestPlan(
+            Guid.NewGuid(), workspaceId, planNo, name, Clean(request.Description),
+            accountId, now);
+        dbContext.Plans.Add(plan);
+        for (var index = 0; index < cases.Count; index++)
+        {
+            dbContext.PlanItems.Add(new TestPlanItem(
+                Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
+    }
+
+    public async Task<TestManagementResult<TestPlanResponse>> UpdatePlanAsync(
+        Guid workspaceId, Guid planId, Guid accountId, UpdateTestPlanRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+            return new(TestManagementOutcome.Forbidden);
+
+        var plan = await dbContext.Plans.Include(x => x.Items).SingleOrDefaultAsync(
+            x => x.Id == planId && x.TestWorkspaceId == workspaceId, cancellationToken);
+        if (plan is null) return new(TestManagementOutcome.NotFound);
+        if (plan.Version != request.Version)
+            return new(TestManagementOutcome.Conflict, Code: "plan_version_conflict");
+        if (plan.Status == "archived")
+            return new(TestManagementOutcome.Conflict, Code: "plan_archived");
+
+        var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
+        if (cases is null || (request.Status == "active" && cases.Count == 0))
+            return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
+
+        var now = timeProvider.GetUtcNow();
+        foreach (var item in plan.Items.ToArray()) dbContext.PlanItems.Remove(item);
+        for (var index = 0; index < cases.Count; index++)
+        {
+            dbContext.PlanItems.Add(new TestPlanItem(
+                Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
+        }
+        plan.Update(
+            PlanName(request.Name, now), Clean(request.Description), request.Status, accountId, now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
+    }
+
+    public async Task<TestManagementResult<IReadOnlyList<TestRunResponse>>> ListRunsAsync(
+        Guid workspaceId, Guid accountId, CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+            return new(TestManagementOutcome.NotFound);
+
+        var runs = await RunQuery().AsNoTracking()
+            .Where(x => dbContext.Plans.Any(
+                plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+        return new(TestManagementOutcome.Succeeded, runs.Select(ToRunResponse).ToArray());
+    }
+
+    public async Task<TestManagementResult<TestRunResponse>> GetRunAsync(
+        Guid workspaceId, Guid runId, Guid accountId, CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+            return new(TestManagementOutcome.NotFound);
+
+        var run = await RunQuery().AsNoTracking().SingleOrDefaultAsync(
+            x => x.Id == runId && dbContext.Plans.Any(
+                plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
+            cancellationToken);
+        return run is null
+            ? new(TestManagementOutcome.NotFound)
+            : new(TestManagementOutcome.Succeeded, ToRunResponse(run));
+    }
+
+    public async Task<TestManagementResult<TestRunResponse>> CreateRunAsync(
+        Guid workspaceId, Guid accountId, CreateTestRunRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanExecute(access.Role) || access.Workspace.Status != "active")
+            return new(TestManagementOutcome.Forbidden);
+
+        var plan = await dbContext.Plans.AsNoTracking()
+            .Include(x => x.Items).ThenInclude(x => x.TestCase).ThenInclude(x => x.Steps)
+            .SingleOrDefaultAsync(
+                x => x.Id == request.PlanId && x.TestWorkspaceId == workspaceId,
+                cancellationToken);
+        if (plan is null) return new(TestManagementOutcome.NotFound);
+        if (plan.Status != "active" || plan.Items.Count == 0)
+            return new(TestManagementOutcome.Conflict, Code: "plan_not_active");
+        if (plan.Items.Any(x => x.TestCase.Status != "active"))
+            return new(TestManagementOutcome.Conflict, Code: "plan_contains_inactive_case");
+
+        var now = timeProvider.GetUtcNow();
+        var runNo = (await dbContext.Runs
+            .Where(x => x.TestPlanId == plan.Id)
+            .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1;
+        var run = new TestRun(
+            Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now);
+        dbContext.Runs.Add(run);
+        foreach (var planItem in plan.Items.OrderBy(x => x.SortOrder))
+        {
+            var runItem = new TestRunItem(
+                Guid.NewGuid(), run.Id, planItem.TestCase, planItem.SortOrder, accountId, now);
+            dbContext.RunItems.Add(runItem);
+            dbContext.RunItemStepResults.AddRange(planItem.TestCase.Steps
+                .OrderBy(x => x.StepNo)
+                .Select(step => new TestRunItemStepResult(
+                    Guid.NewGuid(), runItem.Id, step, accountId, now)));
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRunAsync(workspaceId, run.Id, accountId, cancellationToken);
+    }
+
+    public async Task<TestManagementResult<TestRunResponse>> RecordRunItemAsync(
+        Guid workspaceId, Guid runId, Guid itemId, Guid accountId,
+        RecordTestResultRequest request, CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanExecute(access.Role)) return new(TestManagementOutcome.Forbidden);
+
+        var run = await dbContext.Runs.Include(x => x.Items).SingleOrDefaultAsync(
+            x => x.Id == runId && dbContext.Plans.Any(
+                plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
+            cancellationToken);
+        if (run is null) return new(TestManagementOutcome.NotFound);
+        if (IsTerminal(run.Status))
+            return new(TestManagementOutcome.Conflict, Code: "run_is_terminal");
+        var item = run.Items.SingleOrDefault(x => x.Id == itemId);
+        if (item is null) return new(TestManagementOutcome.NotFound);
+        if (item.Version != request.Version)
+            return new(TestManagementOutcome.Conflict, Code: "run_item_version_conflict");
+
+        var now = timeProvider.GetUtcNow();
+        item.Record(request.Status, Clean(request.ActualResult), accountId, now);
+        run.MarkInProgress(accountId, now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
+    }
+
+    public async Task<TestManagementResult<TestRunResponse>> RecordRunStepAsync(
+        Guid workspaceId, Guid runId, Guid itemId, Guid stepId, Guid accountId,
+        RecordTestResultRequest request, CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanExecute(access.Role)) return new(TestManagementOutcome.Forbidden);
+
+        var run = await dbContext.Runs.Include(x => x.Items).ThenInclude(x => x.Steps)
+            .SingleOrDefaultAsync(
+                x => x.Id == runId && dbContext.Plans.Any(
+                    plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
+                cancellationToken);
+        if (run is null) return new(TestManagementOutcome.NotFound);
+        if (IsTerminal(run.Status))
+            return new(TestManagementOutcome.Conflict, Code: "run_is_terminal");
+        var step = run.Items.SingleOrDefault(x => x.Id == itemId)?.Steps
+            .SingleOrDefault(x => x.Id == stepId);
+        if (step is null) return new(TestManagementOutcome.NotFound);
+        if (step.Version != request.Version)
+            return new(TestManagementOutcome.Conflict, Code: "run_step_version_conflict");
+
+        var now = timeProvider.GetUtcNow();
+        step.Record(request.Status, Clean(request.ActualResult), accountId, now);
+        run.MarkInProgress(accountId, now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
+    }
+
+    public async Task<TestManagementResult<TestRunResponse>> UpdateRunStatusAsync(
+        Guid workspaceId, Guid runId, Guid accountId, UpdateTestRunStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanExecute(access.Role)) return new(TestManagementOutcome.Forbidden);
+
+        var run = await dbContext.Runs.Include(x => x.Items).SingleOrDefaultAsync(
+            x => x.Id == runId && dbContext.Plans.Any(
+                plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
+            cancellationToken);
+        if (run is null) return new(TestManagementOutcome.NotFound);
+        if (run.Version != request.Version)
+            return new(TestManagementOutcome.Conflict, Code: "run_version_conflict");
+        if (IsTerminal(run.Status))
+            return new(TestManagementOutcome.Conflict, Code: "run_is_terminal");
+        if (request.Status == "completed" && run.Items.Any(x => x.ResultStatus == "not_run"))
+            return new(TestManagementOutcome.Conflict, Code: "run_has_unfinished_items");
+
+        run.Finish(request.Status, Clean(request.Summary), accountId, timeProvider.GetUtcNow());
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
     }
 
     private async Task<TestWorkspaceMember?> AccessAsync(
@@ -610,6 +857,29 @@ public sealed class TestManagementService(
 
     private static bool CanManage(string role) => role is "owner" or "manager";
     private static bool CanManageAssets(string role) => role is "owner" or "manager";
+    private static bool CanExecute(string role) => role is "owner" or "manager" or "tester";
+    private static bool IsTerminal(string status) => status is "completed" or "cancelled";
+
+    private IQueryable<TestPlan> PlanQuery() => dbContext.Plans
+        .Include(x => x.Workspace)
+        .Include(x => x.Items).ThenInclude(x => x.TestCase);
+
+    private IQueryable<TestRun> RunQuery() => dbContext.Runs
+        .Include(x => x.Plan).ThenInclude(x => x.Workspace)
+        .Include(x => x.Items).ThenInclude(x => x.Steps);
+
+    private async Task<IReadOnlyList<TestCase>?> ResolvePlanCasesAsync(
+        Guid workspaceId, IReadOnlyList<Guid> caseIds, CancellationToken cancellationToken)
+    {
+        if (caseIds.Count != caseIds.Distinct().Count()) return null;
+        var cases = await dbContext.Cases.AsNoTracking()
+            .Where(x => caseIds.Contains(x.Id) &&
+                x.Suite.TestWorkspaceId == workspaceId && x.Status == "active")
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        return cases.Count == caseIds.Count
+            ? caseIds.Select(x => cases[x]).ToArray()
+            : null;
+    }
     private async Task<string> GeneratePrefixAsync(string name, CancellationToken cancellationToken)
     {
         var basePrefix = Regex.Replace(name.ToUpperInvariant(), "[^A-Z0-9]", "");
@@ -628,6 +898,10 @@ public sealed class TestManagementService(
         throw new InvalidOperationException("Unable to generate a unique workspace prefix.");
     }
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string PlanName(string? value, DateTimeOffset now) =>
+        string.IsNullOrWhiteSpace(value)
+            ? $"TestPlan{now.ToOffset(TimeSpan.FromHours(8)):yyyyMMdd}"
+            : value.Trim();
     private static TestWorkspaceResponse ToWorkspaceResponse(TestWorkspace x, string role) =>
         new(x.Id, x.Name, x.Prefix, x.Description, x.Status, role, x.CreatedAt, x.UpdatedAt, x.Version);
     private static TestSuiteResponse ToSuiteResponse(TestSuite x, int depth) =>
@@ -652,6 +926,41 @@ public sealed class TestManagementService(
             x.CreatedAt,
             x.UpdatedAt,
             x.Version);
+    private static TestPlanResponse ToPlanResponse(TestPlan x) =>
+        new(
+            x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",
+            x.Name, x.Description, x.Status,
+            x.Items.OrderBy(item => item.SortOrder).Select(item =>
+                new TestPlanItemResponse(
+                    item.Id, item.TestCaseId, item.SortOrder, item.TestCase.Title)).ToArray(),
+            x.CreatedAt, x.UpdatedAt, x.Version);
+    private static TestRunResponse ToRunResponse(TestRun x)
+    {
+        var items = x.Items.OrderBy(item => item.SortOrder).Select(item =>
+            new TestRunItemResponse(
+                item.Id, item.TestCaseId, item.SortOrder, item.CaseTitle,
+                item.CaseDescription, item.Preconditions, item.OverallExpectedResult,
+                item.ResultStatus, item.ActualResult, item.ExecutedByAccountId, item.ExecutedAt,
+                item.Steps.OrderBy(step => step.StepNo).Select(step =>
+                    new TestRunStepResponse(
+                        step.Id, step.StepNo, step.Action, step.ExpectedResult,
+                        step.ResultStatus, step.ActualResult, step.ExecutedByAccountId,
+                        step.ExecutedAt, step.Version)).ToArray(),
+                item.Version)).ToArray();
+        var progress = new TestRunProgressResponse(
+            items.Length,
+            items.Count(item => item.ResultStatus == "not_run"),
+            items.Count(item => item.ResultStatus == "passed"),
+            items.Count(item => item.ResultStatus == "failed"),
+            items.Count(item => item.ResultStatus == "blocked"),
+            items.Count(item => item.ResultStatus == "skipped"));
+        return new(
+            x.Id, x.TestPlanId, x.RunNo,
+            $"{x.Plan.Workspace.Prefix}-TP{x.Plan.PlanNo}-R{x.RunNo}",
+            x.Name, x.Status, x.StartedByAccountId,
+            x.StartedAt, x.CompletedAt, x.Summary, progress, items,
+            x.CreatedAt, x.UpdatedAt, x.Version);
+    }
     private static IReadOnlyList<TestSuiteResponse> MapSuites(IReadOnlyList<TestSuite> suites) =>
         suites.Select(x => ToSuiteResponse(x, DepthOf(x.Id, suites) ?? 1)).ToArray();
 

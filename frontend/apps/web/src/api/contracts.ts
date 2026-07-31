@@ -328,3 +328,112 @@ export interface TestCaseResponse {
   updatedAt: string
   version: number
 }
+
+export type TestPlanStatus = 'draft' | 'active' | 'archived'
+
+export interface CreateTestPlanRequest {
+  name?: string | null
+  description: string | null
+  caseIds: string[]
+}
+
+export interface UpdateTestPlanRequest extends CreateTestPlanRequest {
+  status: TestPlanStatus
+  version: number
+}
+
+export interface TestPlanItemResponse {
+  id: string
+  caseId: string
+  sortOrder: number
+  caseTitle: string
+}
+
+export interface TestPlanResponse {
+  id: string
+  workspaceId: string
+  planNo: number
+  code: string
+  name: string
+  description: string | null
+  status: TestPlanStatus
+  items: TestPlanItemResponse[]
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+export type TestResultStatus = 'not_run' | 'passed' | 'failed' | 'blocked' | 'skipped'
+export type TestRunStatus = 'not_started' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface CreateTestRunRequest {
+  planId: string
+  name: string
+}
+
+export interface UpdateTestRunStatusRequest {
+  status: 'completed' | 'cancelled'
+  summary: string | null
+  version: number
+}
+
+export interface RecordTestResultRequest {
+  status: TestResultStatus
+  actualResult: string | null
+  version: number
+}
+
+export interface TestRunStepResponse {
+  id: string
+  stepNo: number
+  action: string
+  expectedResult: string
+  resultStatus: TestResultStatus
+  actualResult: string | null
+  executedByAccountId: string | null
+  executedAt: string | null
+  version: number
+}
+
+export interface TestRunItemResponse {
+  id: string
+  caseId: string
+  sortOrder: number
+  caseTitle: string
+  caseDescription: string | null
+  preconditions: string | null
+  overallExpectedResult: string | null
+  resultStatus: TestResultStatus
+  actualResult: string | null
+  executedByAccountId: string | null
+  executedAt: string | null
+  steps: TestRunStepResponse[]
+  version: number
+}
+
+export interface TestRunProgressResponse {
+  total: number
+  notRun: number
+  passed: number
+  failed: number
+  blocked: number
+  skipped: number
+}
+
+export interface TestRunResponse {
+  id: string
+  planId: string
+  runNo: number
+  code: string
+  name: string
+  status: TestRunStatus
+  startedByAccountId: string
+  startedAt: string | null
+  completedAt: string | null
+  summary: string | null
+  progress: TestRunProgressResponse
+  items: TestRunItemResponse[]
+  createdAt: string
+  updatedAt: string
+  version: number
+}

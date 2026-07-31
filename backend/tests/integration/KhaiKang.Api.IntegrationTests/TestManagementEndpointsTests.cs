@@ -137,6 +137,108 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("Sign in with valid credentials - Updated", updatedCase.Title);
         Assert.Equal(2, updatedCase.Version);
         Assert.Single(updatedCase.Steps);
+
+        var createPlanResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans",
+            JsonContent.Create(new
+            {
+                description = "Fixed release scope.",
+                caseIds = new[] { updatedCase.Id },
+            }),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, createPlanResponse.StatusCode);
+        var draftPlan = await createPlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
+        Assert.NotNull(draftPlan);
+        Assert.Equal("draft", draftPlan.Status);
+        Assert.Matches("^TestPlan\\d{8}$", draftPlan.Name);
+        Assert.Equal(1, draftPlan.PlanNo);
+        Assert.Equal("QA-TP1", draftPlan.Code);
+        Assert.Equal(updatedCase.Id, Assert.Single(draftPlan.Items).CaseId);
+
+        var activatePlanResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans/{draftPlan.Id}",
+            new UpdateTestPlanRequest(
+                draftPlan.Name,
+                draftPlan.Description,
+                "active",
+                draftPlan.Version,
+                [updatedCase.Id]));
+        activatePlanResponse.EnsureSuccessStatusCode();
+        var activePlan = await activatePlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
+        Assert.NotNull(activePlan);
+        Assert.Equal("active", activePlan.Status);
+
+        var createRunResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs",
+            JsonContent.Create(new CreateTestRunRequest(activePlan.Id, "Release 2026.07")),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, createRunResponse.StatusCode);
+        var run = await createRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(run);
+        Assert.Equal(1, run.RunNo);
+        Assert.Equal("QA-TP1-R1", run.Code);
+        var runItem = Assert.Single(run.Items);
+        var runStep = Assert.Single(runItem.Steps);
+        Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
+        Assert.Equal("Updated step 1 action.", runStep.Action);
+
+        var changeSourceResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
+            new UpdateTestCaseRequest(
+                suite.Id,
+                "Source changed after run",
+                "Changed source description.",
+                null,
+                null,
+                2,
+                "active",
+                updatedCase.Version,
+                [new("Changed source step.", "Changed source expected result.")]));
+        changeSourceResponse.EnsureSuccessStatusCode();
+
+        var fetchedRunResponse = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}");
+        fetchedRunResponse.EnsureSuccessStatusCode();
+        var fetchedRun = await fetchedRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(fetchedRun);
+        runItem = Assert.Single(fetchedRun.Items);
+        runStep = Assert.Single(runItem.Steps);
+        Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
+        Assert.Equal("Updated step 1 action.", runStep.Action);
+
+        var stepResultResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/steps/{runStep.Id}",
+            new RecordTestResultRequest("passed", "Displayed as expected.", runStep.Version));
+        stepResultResponse.EnsureSuccessStatusCode();
+        var stepRecordedRun =
+            await stepResultResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(stepRecordedRun);
+        Assert.Equal("in_progress", stepRecordedRun.Status);
+
+        runItem = Assert.Single(stepRecordedRun.Items);
+        var itemResultResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
+            new RecordTestResultRequest("passed", "Scenario passed.", runItem.Version));
+        itemResultResponse.EnsureSuccessStatusCode();
+        var itemRecordedRun =
+            await itemResultResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(itemRecordedRun);
+        Assert.Equal(1, itemRecordedRun.Progress.Passed);
+
+        var completeResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/status",
+            new UpdateTestRunStatusRequest(
+                "completed", "Release accepted.", itemRecordedRun.Version));
+        completeResponse.EnsureSuccessStatusCode();
+        var completedRun = await completeResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(completedRun);
+        Assert.Equal("completed", completedRun.Status);
+
+        runItem = Assert.Single(completedRun.Items);
+        var immutableResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
+            new RecordTestResultRequest("failed", "Must not change.", runItem.Version));
+        Assert.Equal(HttpStatusCode.Conflict, immutableResponse.StatusCode);
     }
 
     private async Task<HttpResponseMessage> CreateWorkspaceAsync(string name, string? prefix)
@@ -167,5 +269,15 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         };
         request.Headers.Add("X-XSRF-TOKEN", csrfToken);
         return _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> PutAsync<T>(string path, T value)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, path)
+        {
+            Content = JsonContent.Create(value),
+        };
+        request.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        return await _client.SendAsync(request);
     }
 }

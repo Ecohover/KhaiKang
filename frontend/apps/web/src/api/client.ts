@@ -37,6 +37,13 @@ import type {
   UpdateTestSuiteRequest,
   UpdateTestWorkspaceMemberRequest,
   UpdateTestWorkspaceRequest,
+  CreateTestPlanRequest,
+  UpdateTestPlanRequest,
+  TestPlanResponse,
+  CreateTestRunRequest,
+  UpdateTestRunStatusRequest,
+  RecordTestResultRequest,
+  TestRunResponse,
 } from './contracts'
 import { i18n } from '../i18n/index'
 
@@ -420,6 +427,90 @@ export const apiClient = {
     headers: HeadersInit,
   ): Promise<ApiResult<TestCaseResponse>> {
     return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}`, {
+      method: 'PUT', headers, body,
+    })
+  },
+
+  listTestPlans(workspaceId: string): Promise<ApiResult<TestPlanResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/plans`)
+  },
+
+  getTestPlan(workspaceId: string, planId: string): Promise<ApiResult<TestPlanResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/plans/${planId}`)
+  },
+
+  createTestPlan(
+    workspaceId: string,
+    body: CreateTestPlanRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestPlanResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/plans`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  updateTestPlan(
+    workspaceId: string,
+    planId: string,
+    body: UpdateTestPlanRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestPlanResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/plans/${planId}`, {
+      method: 'PUT', headers, body,
+    })
+  },
+
+  listTestRuns(workspaceId: string): Promise<ApiResult<TestRunResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs`)
+  },
+
+  getTestRun(workspaceId: string, runId: string): Promise<ApiResult<TestRunResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}`)
+  },
+
+  createTestRun(
+    workspaceId: string,
+    body: CreateTestRunRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  recordTestRunItem(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+    body: RecordTestResultRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}`, {
+      method: 'PUT', headers, body,
+    })
+  },
+
+  recordTestRunStep(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+    stepId: string,
+    body: RecordTestResultRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunResponse>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/steps/${stepId}`,
+      { method: 'PUT', headers, body },
+    )
+  },
+
+  updateTestRunStatus(
+    workspaceId: string,
+    runId: string,
+    body: UpdateTestRunStatusRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}/status`, {
       method: 'PUT', headers, body,
     })
   },

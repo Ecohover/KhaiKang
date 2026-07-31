@@ -1,5 +1,9 @@
 export const common = {
+  views: {
+    list: 'List',
+  },
   actions: {
+    actions: 'Actions',
     cancel: 'Cancel',
     close: 'Close',
     create: 'Create',

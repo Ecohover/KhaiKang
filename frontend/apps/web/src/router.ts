@@ -153,6 +153,24 @@ export const router = createRouter({
           meta: { titleKey: 'routes.testCaseEdit', module: 'tests' },
         },
         {
+          path: 'test-workspaces/:workspaceId/plans',
+          name: 'test-plans',
+          component: () => import('./views/TestPlanView.vue'),
+          meta: { titleKey: 'routes.testPlans', module: 'tests' },
+        },
+        {
+          path: 'test-workspaces/:workspaceId/runs',
+          name: 'test-runs',
+          component: () => import('./views/TestRunView.vue'),
+          meta: { titleKey: 'routes.testRuns', module: 'tests' },
+        },
+        {
+          path: 'test-workspaces/:workspaceId/runs/:runId',
+          name: 'test-run-detail',
+          component: () => import('./views/TestRunExecutionView.vue'),
+          meta: { titleKey: 'routes.testRunExecution', module: 'tests' },
+        },
+        {
           path: 'test-workspaces/:workspaceId/members',
           name: 'test-members',
           component: TestWorkspaceView,

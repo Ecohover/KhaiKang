@@ -1,5 +1,9 @@
 export const common = {
+  views: {
+    list: '列表',
+  },
   actions: {
+    actions: '操作',
     cancel: '取消',
     close: '關閉',
     create: '建立',

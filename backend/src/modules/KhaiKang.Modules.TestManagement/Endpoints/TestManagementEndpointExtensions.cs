@@ -216,6 +216,132 @@ public static class TestManagementEndpointExtensions
         }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
           .WithName("UpdateTestCase").Produces<TestCaseResponse>();
 
+        workspaces.MapGet("/{workspaceId:guid}/plans", async (
+            Guid workspaceId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.ListPlansAsync(workspaceId, accountId, token));
+        }).WithName("ListTestPlans").Produces<IReadOnlyList<TestPlanResponse>>();
+
+        workspaces.MapGet("/{workspaceId:guid}/plans/{planId:guid}", async (
+            Guid workspaceId, Guid planId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.GetPlanAsync(workspaceId, planId, accountId, token));
+        }).WithName("GetTestPlan").Produces<TestPlanResponse>();
+
+        workspaces.MapPost("/{workspaceId:guid}/plans", async (
+            Guid workspaceId, CreateTestPlanRequest request, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (ValidatePlan(request.Name, request.Description, request.CaseIds) is { } invalid)
+                return invalid;
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.CreatePlanAsync(workspaceId, accountId, request, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.Created(
+                    $"/api/v1/test-workspaces/{workspaceId}/plans/{result.Value!.Id}",
+                    result.Value)
+                : Map(result);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("CreateTestPlan").Produces<TestPlanResponse>(201);
+
+        workspaces.MapPut("/{workspaceId:guid}/plans/{planId:guid}", async (
+            Guid workspaceId, Guid planId, UpdateTestPlanRequest request,
+            ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
+        {
+            if (ValidatePlan(request.Name, request.Description, request.CaseIds) is { } invalid)
+                return invalid;
+            if (request.Status is not ("draft" or "active" or "archived") ||
+                request.Version < 1)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["plan"] = ["Plan status or version is invalid."],
+                });
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.UpdatePlanAsync(
+                workspaceId, planId, accountId, request, token));
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("UpdateTestPlan").Produces<TestPlanResponse>();
+
+        workspaces.MapGet("/{workspaceId:guid}/runs", async (
+            Guid workspaceId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.ListRunsAsync(workspaceId, accountId, token));
+        }).WithName("ListTestRuns").Produces<IReadOnlyList<TestRunResponse>>();
+
+        workspaces.MapGet("/{workspaceId:guid}/runs/{runId:guid}", async (
+            Guid workspaceId, Guid runId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.GetRunAsync(workspaceId, runId, accountId, token));
+        }).WithName("GetTestRun").Produces<TestRunResponse>();
+
+        workspaces.MapPost("/{workspaceId:guid}/runs", async (
+            Guid workspaceId, CreateTestRunRequest request, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 200)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["run"] = ["Run name is required and cannot exceed 200 characters."],
+                });
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.CreateRunAsync(workspaceId, accountId, request, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.Created(
+                    $"/api/v1/test-workspaces/{workspaceId}/runs/{result.Value!.Id}",
+                    result.Value)
+                : Map(result);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("CreateTestRun").Produces<TestRunResponse>(201);
+
+        workspaces.MapPut("/{workspaceId:guid}/runs/{runId:guid}/items/{itemId:guid}", async (
+            Guid workspaceId, Guid runId, Guid itemId, RecordTestResultRequest request,
+            ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
+        {
+            if (ValidateResult(request) is { } invalid) return invalid;
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.RecordRunItemAsync(
+                workspaceId, runId, itemId, accountId, request, token));
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("RecordTestRunItem").Produces<TestRunResponse>();
+
+        workspaces.MapPut(
+            "/{workspaceId:guid}/runs/{runId:guid}/items/{itemId:guid}/steps/{stepId:guid}",
+            async (
+                Guid workspaceId, Guid runId, Guid itemId, Guid stepId,
+                RecordTestResultRequest request, ClaimsPrincipal principal,
+                TestManagementService service, CancellationToken token) =>
+            {
+                if (ValidateResult(request) is { } invalid) return invalid;
+                if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+                return Map(await service.RecordRunStepAsync(
+                    workspaceId, runId, itemId, stepId, accountId, request, token));
+            }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+              .WithName("RecordTestRunStep").Produces<TestRunResponse>();
+
+        workspaces.MapPut("/{workspaceId:guid}/runs/{runId:guid}/status", async (
+            Guid workspaceId, Guid runId, UpdateTestRunStatusRequest request,
+            ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
+        {
+            if (request.Status is not ("completed" or "cancelled") ||
+                request.Version < 1 || request.Summary?.Length > 4000)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["run"] = ["Terminal status, valid version, and summary are required."],
+                });
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.UpdateRunStatusAsync(
+                workspaceId, runId, accountId, request, token));
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("UpdateTestRunStatus").Produces<TestRunResponse>();
+
         return endpoints;
     }
 
@@ -298,4 +424,27 @@ public static class TestManagementEndpointExtensions
 
     private static bool ValidRole(string role) =>
         role is "owner" or "manager" or "tester" or "viewer";
+
+    private static IResult? ValidatePlan(
+        string? name, string? description, IReadOnlyList<Guid>? caseIds)
+    {
+        if (name is { Length: > 200 } ||
+            description?.Length > 4000 || caseIds is null || caseIds.Count > 1000)
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["plan"] = ["Plan name, description, or case scope is invalid."],
+            });
+        return null;
+    }
+
+    private static IResult? ValidateResult(RecordTestResultRequest request)
+    {
+        if (request.Status is not ("not_run" or "passed" or "failed" or "blocked" or "skipped") ||
+            request.Version < 1 || request.ActualResult?.Length > 4000)
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["result"] = ["Result status, version, or actual result is invalid."],
+            });
+        return null;
+    }
 }

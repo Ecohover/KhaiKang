@@ -89,3 +89,89 @@ public sealed record TestCaseResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int Version);
+
+public sealed record CreateTestPlanRequest(
+    string? Name,
+    string? Description,
+    IReadOnlyList<Guid> CaseIds);
+
+public sealed record UpdateTestPlanRequest(
+    string? Name,
+    string? Description,
+    string Status,
+    int Version,
+    IReadOnlyList<Guid> CaseIds);
+
+public sealed record TestPlanItemResponse(
+    Guid Id,
+    Guid CaseId,
+    int SortOrder,
+    string CaseTitle);
+
+public sealed record TestPlanResponse(
+    Guid Id,
+    Guid WorkspaceId,
+    int PlanNo,
+    string Code,
+    string Name,
+    string? Description,
+    string Status,
+    IReadOnlyList<TestPlanItemResponse> Items,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    int Version);
+
+public sealed record CreateTestRunRequest(Guid PlanId, string Name);
+public sealed record UpdateTestRunStatusRequest(string Status, string? Summary, int Version);
+public sealed record RecordTestResultRequest(string Status, string? ActualResult, int Version);
+
+public sealed record TestRunStepResponse(
+    Guid Id,
+    int StepNo,
+    string Action,
+    string ExpectedResult,
+    string ResultStatus,
+    string? ActualResult,
+    Guid? ExecutedByAccountId,
+    DateTimeOffset? ExecutedAt,
+    int Version);
+
+public sealed record TestRunItemResponse(
+    Guid Id,
+    Guid CaseId,
+    int SortOrder,
+    string CaseTitle,
+    string? CaseDescription,
+    string? Preconditions,
+    string? OverallExpectedResult,
+    string ResultStatus,
+    string? ActualResult,
+    Guid? ExecutedByAccountId,
+    DateTimeOffset? ExecutedAt,
+    IReadOnlyList<TestRunStepResponse> Steps,
+    int Version);
+
+public sealed record TestRunProgressResponse(
+    int Total,
+    int NotRun,
+    int Passed,
+    int Failed,
+    int Blocked,
+    int Skipped);
+
+public sealed record TestRunResponse(
+    Guid Id,
+    Guid PlanId,
+    int RunNo,
+    string Code,
+    string Name,
+    string Status,
+    Guid StartedByAccountId,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    string? Summary,
+    TestRunProgressResponse Progress,
+    IReadOnlyList<TestRunItemResponse> Items,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    int Version);

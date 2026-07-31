@@ -11,6 +11,11 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<TestSuite> Suites => Set<TestSuite>();
     public DbSet<TestCase> Cases => Set<TestCase>();
     public DbSet<TestStep> CaseSteps => Set<TestStep>();
+    public DbSet<TestPlan> Plans => Set<TestPlan>();
+    public DbSet<TestPlanItem> PlanItems => Set<TestPlanItem>();
+    public DbSet<TestRun> Runs => Set<TestRun>();
+    public DbSet<TestRunItem> RunItems => Set<TestRunItem>();
+    public DbSet<TestRunItemStepResult> RunItemStepResults => Set<TestRunItemStepResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,6 +114,117 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         step.HasOne(x => x.TestCase).WithMany(x => x.Steps)
             .HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("fk_test_case_steps_test_case");
+
+        var plan = modelBuilder.Entity<TestPlan>();
+        plan.ToTable("test_plans");
+        plan.HasKey(x => x.Id).HasName("pk_test_plans");
+        plan.Property(x => x.Id).HasColumnName("id");
+        plan.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
+        plan.Property(x => x.PlanNo).HasColumnName("plan_no");
+        plan.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
+        plan.Property(x => x.Description).HasColumnName("description");
+        plan.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        Audit(plan);
+        plan.HasIndex(x => new { x.TestWorkspaceId, x.Status })
+            .HasDatabaseName("idx_test_plans_workspace_status");
+        plan.HasIndex(x => new { x.TestWorkspaceId, x.PlanNo })
+            .IsUnique().HasDatabaseName("uq_test_plans_workspace_plan_no");
+        plan.HasOne(x => x.Workspace).WithMany()
+            .HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_plans_workspace");
+
+        var planItem = modelBuilder.Entity<TestPlanItem>();
+        planItem.ToTable("test_plan_items");
+        planItem.HasKey(x => x.Id).HasName("pk_test_plan_items");
+        planItem.Property(x => x.Id).HasColumnName("id");
+        planItem.Property(x => x.TestPlanId).HasColumnName("test_plan_id");
+        planItem.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        planItem.Property(x => x.SortOrder).HasColumnName("sort_order");
+        Audit(planItem);
+        planItem.HasIndex(x => new { x.TestPlanId, x.TestCaseId })
+            .IsUnique().HasDatabaseName("uq_test_plan_items_plan_case");
+        planItem.HasIndex(x => new { x.TestPlanId, x.SortOrder })
+            .HasDatabaseName("idx_test_plan_items_plan_sort_order");
+        planItem.HasOne<TestPlan>().WithMany(x => x.Items)
+            .HasForeignKey(x => x.TestPlanId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_plan_items_plan");
+        planItem.HasOne(x => x.TestCase).WithMany()
+            .HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_plan_items_case");
+
+        var run = modelBuilder.Entity<TestRun>();
+        run.ToTable("test_runs");
+        run.HasKey(x => x.Id).HasName("pk_test_runs");
+        run.Property(x => x.Id).HasColumnName("id");
+        run.Property(x => x.TestPlanId).HasColumnName("test_plan_id");
+        run.Property(x => x.RunNo).HasColumnName("run_no");
+        run.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
+        run.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        run.Property(x => x.StartedByAccountId).HasColumnName("started_by_account_id");
+        run.Property(x => x.StartedAt).HasColumnName("started_at");
+        run.Property(x => x.CompletedAt).HasColumnName("completed_at");
+        run.Property(x => x.Summary).HasColumnName("summary");
+        Audit(run);
+        run.HasIndex(x => new { x.TestPlanId, x.Status })
+            .HasDatabaseName("idx_test_runs_plan_status");
+        run.HasIndex(x => new { x.TestPlanId, x.RunNo })
+            .IsUnique().HasDatabaseName("uq_test_runs_plan_run_no");
+        run.HasOne(x => x.Plan).WithMany()
+            .HasForeignKey(x => x.TestPlanId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_runs_plan");
+        run.HasOne<AccountReference>().WithMany()
+            .HasForeignKey(x => x.StartedByAccountId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_runs_started_by_account");
+
+        var runItem = modelBuilder.Entity<TestRunItem>();
+        runItem.ToTable("test_run_items");
+        runItem.HasKey(x => x.Id).HasName("pk_test_run_items");
+        runItem.Property(x => x.Id).HasColumnName("id");
+        runItem.Property(x => x.TestRunId).HasColumnName("test_run_id");
+        runItem.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        runItem.Property(x => x.SortOrder).HasColumnName("sort_order");
+        runItem.Property(x => x.CaseTitle).HasColumnName("case_title").HasMaxLength(200);
+        runItem.Property(x => x.CaseDescription).HasColumnName("case_description");
+        runItem.Property(x => x.Preconditions).HasColumnName("preconditions");
+        runItem.Property(x => x.OverallExpectedResult).HasColumnName("overall_expected_result");
+        runItem.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runItem.Property(x => x.ActualResult).HasColumnName("actual_result");
+        runItem.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
+        runItem.Property(x => x.ExecutedAt).HasColumnName("executed_at");
+        Audit(runItem);
+        runItem.HasIndex(x => new { x.TestRunId, x.SortOrder })
+            .HasDatabaseName("idx_test_run_items_run_sort_order");
+        runItem.HasOne<TestRun>().WithMany(x => x.Items)
+            .HasForeignKey(x => x.TestRunId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_run_items_run");
+        runItem.HasOne<TestCase>().WithMany()
+            .HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_run_items_case");
+        runItem.HasOne<AccountReference>().WithMany()
+            .HasForeignKey(x => x.ExecutedByAccountId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_run_items_executed_by_account");
+
+        var runStep = modelBuilder.Entity<TestRunItemStepResult>();
+        runStep.ToTable("test_run_item_step_results");
+        runStep.HasKey(x => x.Id).HasName("pk_test_run_item_step_results");
+        runStep.Property(x => x.Id).HasColumnName("id");
+        runStep.Property(x => x.TestRunItemId).HasColumnName("test_run_item_id");
+        runStep.Property(x => x.StepNo).HasColumnName("step_no");
+        runStep.Property(x => x.Action).HasColumnName("action");
+        runStep.Property(x => x.ExpectedResult).HasColumnName("expected_result");
+        runStep.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runStep.Property(x => x.ActualResult).HasColumnName("actual_result");
+        runStep.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
+        runStep.Property(x => x.ExecutedAt).HasColumnName("executed_at");
+        Audit(runStep);
+        runStep.HasIndex(x => new { x.TestRunItemId, x.StepNo })
+            .IsUnique().HasDatabaseName("uq_test_run_item_steps_item_step_no");
+        runStep.HasOne<TestRunItem>().WithMany(x => x.Steps)
+            .HasForeignKey(x => x.TestRunItemId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_run_item_steps_run_item");
+        runStep.HasOne<AccountReference>().WithMany()
+            .HasForeignKey(x => x.ExecutedByAccountId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_run_item_steps_executed_by_account");
     }
 
     private static void Audit<TEntity>(
