@@ -29,7 +29,10 @@ export const common = {
     next: 'Next',
     page: 'Page {page} / {total}',
   },
+  time: {
+    hoursAgo: '{count} hours ago',
+  },
   errors: {
-    apiUnavailable: 'Unable to connect to the KhaiKang API.',
+    apiUnavailable: 'Unable to connect to KhaiKang API.',
   },
 } as const

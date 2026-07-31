@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, Clipboard, Pencil, Plus, RefreshCw, Save, UserRound, X } from '@lucide/vue'
+import { Check, Clipboard, List, Pencil, Plus, RefreshCw, Save, UserRound, X } from '@lucide/vue'
 import { UiActionDialog, UiButton, UiCreateActions, UiField } from '@khaikang/ui'
+import ResourcePageHeader from '../components/ResourcePageHeader.vue'
+import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { AccountResponse, AccountStatus } from '../api/contracts'
 import {
@@ -224,17 +227,26 @@ function formatDate(value: string | null): string {
 
 <template>
   <section class="users-page">
-    <header class="page-heading">
-      <div>
-        <p class="eyebrow">System administration</p>
-        <h2>{{ t('system.users.title') }}</h2>
-        <p>{{ t('system.users.description') }}</p>
-      </div>
-      <UiButton v-if="canCreate" @click="showCreateForm = true">
-        <Plus :size="18" aria-hidden="true" />
-        {{ t('system.users.create') }}
-      </UiButton>
-    </header>
+    <SharedBreadcrumb
+      :items="[
+        { label: t('shell.navigation.systemOverview', '系統管理'), to: { name: 'home' } },
+        { label: t('system.users.title', '使用者管理'), active: true },
+      ]"
+    />
+
+    <ResourcePageHeader
+      meta="SYSTEM ADMINISTRATION"
+      :title="t('system.users.title')"
+      :subtitle="t('system.users.description')"
+    />
+
+    <!-- VIEW TABS (分頁標籤列) -->
+    <SharedViewTabs
+      model-value="list"
+      :tabs="[
+        { key: 'list', label: '列表', icon: List }
+      ]"
+    />
 
     <form v-if="showCreateForm" class="create-panel" @submit.prevent="createAccount(false)">
       <div class="create-panel__header">
@@ -387,8 +399,48 @@ function formatDate(value: string | null): string {
 
 <style scoped>
 .users-page {
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.view-switcher-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-switcher {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--kk-surface-subtle);
+  border: 1px solid var(--kk-border);
+  border-radius: 8px;
+}
+
+.view-switcher button {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  color: var(--kk-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 0.85rem;
+}
+
+.view-switcher button.is-active {
+  color: var(--kk-text);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(27, 46, 35, 0.09);
 }
 
 .page-heading,

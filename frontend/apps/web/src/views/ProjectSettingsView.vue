@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Save } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiField } from '@khaikang/ui'
+import { List } from '@lucide/vue'
+import ResourcePageHeader from '../components/ResourcePageHeader.vue'
+import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import SharedResourceSettings from '../components/SharedResourceSettings.vue'
+import SharedStateBanner from '../components/SharedStateBanner.vue'
+import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { ProjectResponse } from '../api/contracts'
 import { PROJECT_DEACTIVATE_PERMISSION, PROJECT_UPDATE_PERMISSION } from '../navigation'
@@ -18,9 +22,6 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const saved = ref(false)
-const name = ref('')
-const description = ref('')
-const status = ref<'active' | 'inactive'>('active')
 const { showUpdated } = useSaveNotice()
 
 const canEdit = computed(() =>
@@ -42,9 +43,6 @@ async function loadProject(): Promise<void> {
       return
     }
     project.value = result.data
-    name.value = result.data.name
-    description.value = result.data.description ?? ''
-    status.value = result.data.status
   } catch {
     error.value = t('projects.detail.connectionError')
   } finally {
@@ -52,8 +50,12 @@ async function loadProject(): Promise<void> {
   }
 }
 
-async function saveProject(): Promise<void> {
-  if (!project.value || !name.value.trim()) return
+async function handleSaveSettings(payload: {
+  name: string
+  description: string
+  status: 'active' | 'inactive'
+}): Promise<void> {
+  if (!project.value) return
 
   saving.value = true
   error.value = ''
@@ -62,9 +64,9 @@ async function saveProject(): Promise<void> {
     const result = await apiClient.updateProject(
       project.value.id,
       {
-        name: name.value.trim(),
-        description: description.value.trim() || null,
-        status: status.value,
+        name: payload.name,
+        description: payload.description || null,
+        status: payload.status,
         version: project.value.version,
       },
       await secureHeaders(),
@@ -86,168 +88,70 @@ async function saveProject(): Promise<void> {
 
 <template>
   <section class="settings-page">
-    <header class="page-heading">
-      <p>{{ project?.code }}</p>
-      <h2>{{ t('projects.settings.title') }}</h2>
-      <span>{{ project?.name }}</span>
-    </header>
+    <SharedBreadcrumb
+      show-back
+      :back-to="{ name: 'projects' }"
+      :back-label="t('projects.create.back')"
+      :items="[
+        { label: t('projects.list.title'), to: { name: 'projects' } },
+        { label: project?.name || t('projects.record'), to: { name: 'project-detail', params: { projectId: String(route.params.projectId) } } },
+        { label: t('projects.settings.title'), active: true },
+      ]"
+    />
 
-    <p v-if="loading" class="page-state">{{ t('projects.settings.loading') }}</p>
-    <form v-else-if="project" class="settings-form" @submit.prevent="saveProject">
-      <div class="settings-form__heading">
-        <div>
-          <h3>{{ t('projects.settings.sectionTitle') }}</h3>
-          <p>{{ t('projects.settings.sectionDescription') }}</p>
-        </div>
-        <span>{{ t('projects.settings.version', { version: project.version }) }}</span>
-      </div>
+    <SharedStateBanner v-if="loading" type="loading" :title="t('projects.settings.loading')" />
+    <SharedStateBanner
+      v-else-if="error"
+      type="error"
+      :title="t('projects.detail.loadError')"
+      :description="error"
+      show-reload
+      @reload="loadProject"
+    />
 
-      <UiField
-        id="project-settings-name"
-        v-model="name"
-        :label="t('projects.settings.name')"
-        :disabled="saving || !canEdit"
+    <template v-else-if="project">
+      <ResourcePageHeader
+        :meta="`${project.code} · PROJECT`"
+        :title="project.name"
+        :subtitle="t('projects.settings.title')"
+        :status="project.status"
       />
-      <label class="form-field">
-        <span>{{ t('projects.settings.code') }}</span>
-        <input :value="project.code" disabled />
-        <small>{{ t('projects.settings.codeImmutable') }}</small>
-      </label>
-      <label class="form-field">
-        <span>{{ t('projects.settings.description') }}</span>
-        <textarea
-          v-model="description"
-          rows="7"
-          maxlength="4000"
-          :disabled="saving || !canEdit"
-        />
-      </label>
-      <label class="form-field">
-        <span>{{ t('projects.settings.status') }}</span>
-        <select v-model="status" :disabled="saving || !canEdit || !canChangeStatus">
-          <option value="active">{{ t('projects.detail.status.active') }}</option>
-          <option value="inactive">{{ t('projects.detail.status.inactive') }}</option>
-        </select>
-        <small v-if="!canChangeStatus">{{ t('projects.settings.statusPermission') }}</small>
-      </label>
 
-      <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <p v-if="saved" class="form-success" role="status">{{ t('projects.settings.saved') }}</p>
-      <div class="settings-form__actions">
-        <span v-if="!canEdit">{{ t('projects.settings.noEditPermission') }}</span>
-        <UiButton
-          v-if="canEdit"
-          type="submit"
-          :loading="saving"
-          :disabled="!name.trim()"
-        >
-          <Save :size="17" aria-hidden="true" />
-          {{ t('projects.settings.save') }}
-        </UiButton>
-      </div>
-    </form>
-    <div v-else class="page-state page-state--error" role="alert">
-      <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadProject">{{ t('common.actions.reload') }}</UiButton>
-    </div>
+      <!-- VIEW TABS (分頁標籤列) -->
+      <SharedViewTabs
+        model-value="settings"
+        :tabs="[
+          { key: 'settings', label: '列表', icon: List }
+        ]"
+      />
+
+      <SharedResourceSettings
+        :title="t('projects.settings.title')"
+        :section-description="t('projects.settings.sectionDescription')"
+        :version="project.version"
+        :name="project.name"
+        :code-or-prefix="project.code"
+        :code-label="t('projects.settings.code')"
+        :description="project.description ?? ''"
+        :status="project.status"
+        :can-edit="canEdit"
+        :can-change-status="canChangeStatus"
+        :loading="loading"
+        :saving="saving"
+        :error="error"
+        :saved="saved"
+        @save="handleSaveSettings"
+      />
+    </template>
   </section>
 </template>
 
 <style scoped>
 .settings-page {
-  display: grid;
-  gap: 22px;
-}
-
-.page-heading p,
-.page-heading h2,
-.settings-form h3,
-.settings-form p {
-  margin: 0;
-}
-
-.page-heading p {
-  color: var(--kk-accent);
-  font-size: 0.75rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-}
-
-.page-heading h2 {
-  font-size: 1.8rem;
-}
-
-.page-heading span,
-.settings-form__heading p,
-.settings-form__heading > span,
-.form-field small,
-.settings-form__actions > span {
-  color: var(--kk-text-muted);
-  font-size: 0.8rem;
-}
-
-.settings-form {
-  display: grid;
-  max-width: 780px;
-  gap: 20px;
-  padding: 24px;
-  background: var(--kk-surface);
-  border: 1px solid var(--kk-border);
-  border-radius: var(--kk-radius);
-}
-
-.settings-form__heading,
-.settings-form__actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.form-field {
-  display: grid;
-  gap: 7px;
-  font-size: 0.875rem;
-  font-weight: 650;
-}
-
-.form-field input,
-.form-field textarea,
-.form-field select {
+  flex-direction: column;
+  gap: 20px;
   width: 100%;
-  padding: 10px 11px;
-  resize: vertical;
-  color: var(--kk-text);
-  background: var(--kk-surface);
-  border: 1px solid var(--kk-border-strong);
-  border-radius: var(--kk-radius);
-  font: inherit;
-}
-
-.form-field input:disabled,
-.form-field textarea:disabled,
-.form-field select:disabled {
-  color: var(--kk-text-muted);
-  background: var(--kk-surface-subtle);
-}
-
-.form-error {
-  color: var(--kk-danger);
-}
-
-.form-success {
-  color: var(--kk-accent);
-}
-
-.page-state {
-  padding: 42px 24px;
-  text-align: center;
-  background: var(--kk-surface);
-  border: 1px dashed var(--kk-border-strong);
-  border-radius: var(--kk-radius);
-}
-
-.page-state--error {
-  color: var(--kk-danger);
+  box-sizing: border-box;
 }
 </style>

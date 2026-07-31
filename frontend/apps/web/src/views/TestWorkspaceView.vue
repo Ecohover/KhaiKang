@@ -2,10 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, ChevronRight, Edit3, FileCheck2, Folder, FolderOpen, FolderPlus, GripVertical, Layers, Plus, Save, Trash2, UserPlus } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Edit3, FileCheck2, Folder, FolderOpen, FolderPlus, FolderTree, GripVertical, Layers, LayoutDashboard, List, Plus, Save, Trash2, UserPlus } from '@lucide/vue'
 import { UiButton } from '@khaikang/ui'
-import TestCaseEditForm from '../components/TestCaseEditForm.vue'
-import TestSuiteEditForm from '../components/TestSuiteEditForm.vue'
+import ResourceMemberManager from '../components/ResourceMemberManager.vue'
+import ResourcePageHeader from '../components/ResourcePageHeader.vue'
+import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import SharedCardSection from '../components/SharedCardSection.vue'
+import SharedResourceSettings from '../components/SharedResourceSettings.vue'
+import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestCaseResponse, TestSuiteResponse, TestWorkspaceMemberResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -26,10 +30,18 @@ const selectedSuiteId = ref<string | null>(null)
 const selectedCaseId = ref<string | null>(null)
 const collapsedSuiteIds = ref<Set<string>>(new Set())
 
-const tab = computed<'suites' | 'members' | 'settings'>(() => {
+const tab = computed<'home' | 'suites' | 'members' | 'settings'>(() => {
+  if (route.name === 'test-home') return 'home'
   if (route.name === 'test-members') return 'members'
   if (route.name === 'test-settings') return 'settings'
   return 'suites'
+})
+
+const tabLabel = computed(() => {
+  if (tab.value === 'home') return '首頁'
+  if (tab.value === 'members') return t('tests.member.title')
+  if (tab.value === 'settings') return t('tests.workspace.settings')
+  return t('routes.testSuites', '測試管理')
 })
 const username = ref('')
 const memberRole = ref<TestWorkspaceRole>('tester')
@@ -536,6 +548,35 @@ async function saveWorkspace(): Promise<void> {
   saving.value = false
 }
 
+
+
+async function saveWorkspaceFromSharedSettings(payload: {
+  name: string
+  description: string
+  status: 'active' | 'inactive'
+}): Promise<void> {
+  if (!workspace.value) return
+  saving.value = true
+  error.value = ''
+  const result = await apiClient.updateTestWorkspace(
+    workspaceId.value,
+    {
+      name: payload.name,
+      description: payload.description || null,
+      status: payload.status,
+      version: workspace.value.version,
+    },
+    await secureHeaders(),
+  )
+  if (result.data) {
+    workspace.value = result.data
+    showUpdated(t('tests.workspace.createdRecord'), result.data.name)
+  } else {
+    error.value = problemMessage(result.error, t('tests.workspace.updateFailed'))
+  }
+  saving.value = false
+}
+
 function formatDate(value: string): string {
   return d(new Date(value), 'medium')
 }
@@ -545,16 +586,49 @@ onMounted(load)
 
 <template>
   <section v-if="workspace" class="page">
-    <header class="workspace-header">
-      <div>
-        <p>{{ workspace.prefix }} · Test Workspace · {{ workspace.currentUserRole }}</p>
-        <h2>{{ workspace.name }}</h2>
-        <span>{{ workspace.description || t('tests.workspace.defaultDescription') }}</span>
-      </div>
-      <span class="status">{{ t(`tests.workspace.${workspace.status}`) }}</span>
-    </header>
+    <SharedBreadcrumb
+      show-back
+      :back-to="{ name: 'test-workspaces' }"
+      :back-label="t('shell.navigation.backToWorkspaces')"
+      :items="[
+        { label: t('shell.navigation.workspaceList', '測試工作區'), to: { name: 'test-workspaces' } },
+        { label: workspace.name, to: { name: 'test-home', params: { workspaceId } } },
+        { label: tabLabel, active: true },
+      ]"
+    />
+    <ResourcePageHeader
+      :meta="`${workspace.prefix} · TEST WORKSPACE · ${workspace.currentUserRole}`"
+      :title="workspace.name"
+      :subtitle="workspace.description || t('tests.workspace.defaultDescription')"
+      :status="workspace.status"
+    />
 
     <p v-if="error" class="error">{{ error }}</p>
+
+    <!-- TAB 0: HOME PLACEHOLDER -->
+    <SharedCardSection
+      v-if="tab === 'home'"
+      :icon="LayoutDashboard"
+      title="首頁"
+      description="測試工作區總覽與數據儀表板"
+    >
+      <div class="home-placeholder-box">
+        <div class="placeholder-icon-wrap">
+          <LayoutDashboard :size="36" />
+        </div>
+        <h4>測試工作區首頁功能預留區</h4>
+        <p>此處已為您完成首頁導覽設定，後續可在此擴充測試執行率圖表、案例涵蓋率統計與最近執行紀錄。</p>
+      </div>
+    </SharedCardSection>
+
+    <!-- VIEW TABS FOR SUITES (分頁標籤列) -->
+    <SharedViewTabs
+      v-if="tab === 'suites'"
+      model-value="tree"
+      :tabs="[
+        { key: 'tree', label: '測試樹', icon: FolderTree }
+      ]"
+    />
 
     <!-- TAB 1: SUITES & CASES VSCODE STYLE SPLIT VIEW -->
     <div v-if="tab === 'suites'" class="suite-split-layout">
@@ -985,64 +1059,64 @@ onMounted(load)
       </main>
     </div>
 
+    <!-- VIEW TABS FOR MEMBERS (分頁標籤列) -->
+    <SharedViewTabs
+      v-if="tab === 'members'"
+      model-value="list"
+      :tabs="[
+        { key: 'list', label: '列表', icon: List }
+      ]"
+    />
+
     <!-- TAB 2: MEMBERS -->
-    <div v-if="tab === 'members'" class="two-column">
-      <section class="panel">
-        <header><div><h3>{{ t('tests.member.title') }}</h3><p>{{ t('tests.member.description') }}</p></div></header>
-        <div class="member-list">
-          <article v-for="member in members" :key="member.id">
-            <div>
-              <strong>{{ member.username }}</strong>
-              <small>{{ t('tests.member.joinedAt', { date: formatDate(member.joinedAt) }) }}</small>
-            </div>
-            <select v-model="member.role" :disabled="!canManage || saving" @change="changeRole(member)">
-              <option value="owner">Owner</option><option value="manager">Manager</option>
-              <option value="tester">Tester</option><option value="viewer">Viewer</option>
-            </select>
-            <button v-if="canManage" type="button" class="remove" :disabled="saving" @click="removeMember(member)">
-              {{ t('tests.member.remove') }}
-            </button>
-          </article>
-        </div>
-      </section>
-      <form v-if="canManage" class="panel form" @submit.prevent="addMember">
-        <header>
-          <div><h3>{{ t('tests.member.addTitle') }}</h3><p>{{ t('tests.member.addDescription') }}</p></div>
-          <UserPlus :size="22" />
-        </header>
-        <label>{{ t('tests.member.username') }}<input v-model="username" required placeholder="username" /></label>
-        <label>
-          {{ t('tests.member.role') }}
-          <select v-model="memberRole">
-            <option value="manager">Manager</option><option value="tester">Tester</option>
-            <option value="viewer">Viewer</option><option value="owner">Owner</option>
-          </select>
-        </label>
-        <UiButton type="submit" :disabled="saving || !username.trim()">{{ t('tests.member.add') }}</UiButton>
-      </form>
-    </div>
+    <ResourceMemberManager
+      v-if="tab === 'members'"
+      resource-type="test-workspace"
+      :resource-id="workspaceId"
+      :title="t('tests.member.title')"
+      :description="t('tests.member.description')"
+      :can-add="canManage"
+      :can-edit-role="canManage"
+      :can-remove="canManage"
+    />
+
+    <!-- VIEW TABS FOR SETTINGS (分頁標籤列) -->
+    <SharedViewTabs
+      v-if="tab === 'settings'"
+      model-value="settings"
+      :tabs="[
+        { key: 'settings', label: '列表', icon: List }
+      ]"
+    />
 
     <!-- TAB 3: SETTINGS -->
-    <form v-if="tab === 'settings'" class="panel settings" @submit.prevent="saveWorkspace">
-      <header><div><h3>{{ t('tests.workspace.settings') }}</h3><p>{{ t('tests.workspace.settingsDescription') }}</p></div></header>
-      <label>{{ t('tests.workspace.name') }}<input v-model="workspace.name" required maxlength="200" /></label>
-      <label>{{ t('tests.workspace.prefix') }}<input :value="workspace.prefix" disabled /></label>
-      <label>{{ t('tests.workspace.descriptionLabel') }}<textarea v-model="workspace.description" rows="4" maxlength="4000" /></label>
-      <label>
-        {{ t('common.fields.status') }}
-        <select v-model="workspace.status">
-          <option value="active">{{ t('tests.workspace.active') }}</option>
-          <option value="inactive">{{ t('tests.workspace.inactive') }}</option>
-        </select>
-      </label>
-      <div><UiButton type="submit" :disabled="saving">{{ t('tests.workspace.saveSettings') }}</UiButton></div>
-    </form>
+    <SharedResourceSettings
+      v-if="tab === 'settings' && workspace"
+      :title="t('tests.workspace.settings')"
+      :section-description="t('tests.workspace.settingsDescription')"
+      :version="workspace.version"
+      :name="workspace.name"
+      :code-or-prefix="workspace.prefix"
+      :code-label="t('tests.workspace.prefix')"
+      :description="workspace.description ?? ''"
+      :status="workspace.status"
+      :can-edit="canManage"
+      :can-change-status="canManage"
+      :loading="loading"
+      :saving="saving"
+      :error="error"
+      @save="saveWorkspaceFromSharedSettings"
+    />
   </section>
   <p v-else class="loading">{{ loading ? t('tests.workspace.loading') : t('tests.workspace.notFound') }}</p>
 </template>
 
 <style scoped>
-.page { display: grid; gap: 22px; }
+.page { display: flex; flex-direction: column; gap: 20px; width: 100%; box-sizing: border-box; }
+.view-switcher-bar { display: flex; align-items: center; }
+.view-switcher { display: flex; gap: 3px; padding: 3px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 8px; }
+.view-switcher button { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 6px 12px; color: var(--kk-text-muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-weight: 650; font-size: 0.85rem; }
+.view-switcher button.is-active { color: var(--kk-text); background: #ffffff; box-shadow: 0 1px 3px rgba(27, 46, 35, 0.09); }
 .workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
 .workspace-header p { margin: 0 0 5px; color: var(--kk-accent); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
 .workspace-header h2 { margin: 0 0 8px; font-size: 2rem; }
@@ -1784,6 +1858,86 @@ input, textarea, select { min-width: 0; padding: 10px 11px; font: inherit; backg
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+/* TEST HOME PLACEHOLDER PANEL */
+.test-home-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #ffffff;
+  border: 1px solid var(--kk-border);
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home-header {
+  border-bottom: 1px solid var(--kk-border);
+  padding-bottom: 16px;
+}
+
+.home-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-icon {
+  color: var(--kk-accent);
+}
+
+.home-title-group h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--kk-text);
+}
+
+.home-title-group p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--kk-text-muted);
+}
+
+.home-placeholder-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border: 1.5px dashed var(--kk-border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.placeholder-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #eef7f2;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.home-placeholder-box h4 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--kk-text);
+}
+
+.home-placeholder-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--kk-text-muted);
+  max-width: 460px;
+  line-height: 1.5;
 }
 
 @media (max-width: 900px) {

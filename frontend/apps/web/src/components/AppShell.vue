@@ -35,7 +35,8 @@ const navigation = computed<NavigationItem[]>(() => {
     if (!workspaceId.value) return [{ label: t('shell.navigation.workspaceList'), to: { name: 'test-workspaces' }, icon: ClipboardCheck }]
     return [
       { label: t('shell.navigation.backToWorkspaces'), to: { name: 'test-workspaces' }, icon: ArrowLeft },
-      { label: t('shell.navigation.suites'), to: { name: 'test-suites', params: { workspaceId: workspaceId.value } }, icon: FolderTree },
+      { label: t('shell.navigation.home'), to: { name: 'test-home', params: { workspaceId: workspaceId.value } }, icon: LayoutDashboard },
+      { label: t('routes.testSuites'), to: { name: 'test-suites', params: { workspaceId: workspaceId.value } }, icon: FolderTree },
       { label: t('shell.navigation.members'), to: { name: 'test-members', params: { workspaceId: workspaceId.value } }, icon: UserRoundCog },
       { label: t('shell.navigation.workspaceSettings'), to: { name: 'test-settings', params: { workspaceId: workspaceId.value } }, icon: Settings2 },
     ]

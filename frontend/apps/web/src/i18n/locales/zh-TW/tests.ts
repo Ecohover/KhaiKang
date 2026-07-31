@@ -29,7 +29,7 @@ export const tests = {
     createdRecord: '測試工作區',
     defaultDescription: '用測試套件整理案例，並安排成員共同維護。',
     notFound: '找不到或無權存取此工作區。',
-    settings: '工作區設定',
+    settings: '設定',
     settingsDescription: '只有 Owner 可以更新基本資料與狀態。',
     saveSettings: '儲存設定',
     updateFailed: '無法更新工作區。',

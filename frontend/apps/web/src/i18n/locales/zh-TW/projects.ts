@@ -47,7 +47,7 @@ export const projects = {
     connectionFailed: '無法連線到伺服器，請稍後再試。',
   },
   settings: {
-    title: '專案設定',
+    title: '設定',
     loading: '正在載入專案設定…',
     sectionTitle: '基本資料',
     sectionDescription: '調整專案名稱、說明與目前狀態。',
@@ -150,5 +150,18 @@ export const projects = {
     contentLabel: '專案首頁內容',
     placeholderTitle: '專案首頁',
     placeholderDescription: '看板與專案摘要將在後續功能中加入。',
+    summaryTitle: '專案數據總覽',
+    summaryDescription: '目前專案任務、成員與執行完成率概況。',
+    metrics: {
+      issues: '任務總數',
+      members: '專案成員',
+      completion: '完成率',
+    },
+    recentActivity: '近期動態',
+    recentActivityDescription: '專案最近的異動紀錄與成員操作。',
+    activities: {
+      issueCreated: '新增了 1 個任務',
+      memberAdded: '加入了 1 位成員',
+    },
   },
 } as const

@@ -150,5 +150,18 @@ export const projects = {
     contentLabel: 'Project home content',
     placeholderTitle: 'Project home',
     placeholderDescription: 'The project board and summary will be added in a future update.',
+    summaryTitle: 'Project Summary',
+    summaryDescription: 'Overview of current project issues, members, and completion rate.',
+    metrics: {
+      issues: 'Total Issues',
+      members: 'Members',
+      completion: 'Completion Rate',
+    },
+    recentActivity: 'Recent Activity',
+    recentActivityDescription: 'Latest project updates and member actions.',
+    activities: {
+      issueCreated: 'Created 1 new issue',
+      memberAdded: 'Added 1 new member',
+    },
   },
 } as const

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Columns3, List, Plus } from '@lucide/vue'
+import { Columns3, List, Plus, Search, X } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiButton, UiPagination } from '@khaikang/ui'
@@ -10,6 +10,10 @@ import type {
   IssueResponse,
   ProjectResponse,
 } from '../api/contracts'
+import ResourcePageHeader from '../components/ResourcePageHeader.vue'
+import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import SharedCardSection from '../components/SharedCardSection.vue'
+import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { shouldWarnMissingCompletionSummary } from '../issues/issueWorkflow'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
@@ -30,10 +34,26 @@ const loading = ref(true)
 const error = ref('')
 const actionError = ref('')
 const completionWarning = ref<{ issueId: string; key: string }>()
+const searchQuery = ref('')
+const filterStatus = ref('')
 const activeView = ref<IssueView>('list')
 const updatingIssueId = ref<string>()
 const draggedIssueId = ref<string>()
 const { showCreated, showUpdated } = useSaveNotice()
+
+const filteredIssues = computed(() => {
+  let list = issues.value
+  if (filterStatus.value) {
+    list = list.filter((i) => i.statusCode === filterStatus.value)
+  }
+  const query = searchQuery.value.trim().toLowerCase()
+  if (query) {
+    list = list.filter(
+      (i) => i.title.toLowerCase().includes(query) || i.key.toLowerCase().includes(query),
+    )
+  }
+  return list
+})
 
 const canCreate = computed(
   () => project.value?.status === 'active'
@@ -153,20 +173,23 @@ function formatDate(value: string): string {
 
 <template>
   <section class="issues-page">
-    <header class="page-heading">
-      <div>
-        <p>{{ project?.code }}</p>
-        <h2>{{ t('projects.issues.title') }}</h2>
-        <span>{{ project?.name }}</span>
-      </div>
-      <UiButton
-        v-if="canCreate"
-        @click="router.push({ name: 'project-issue-new', params: { projectId } })"
-      >
-        <Plus :size="17" aria-hidden="true" />
-        {{ t('projects.issues.create') }}
-      </UiButton>
-    </header>
+    <SharedBreadcrumb
+      show-back
+      :back-to="{ name: 'projects' }"
+      :back-label="t('projects.create.back')"
+      :items="[
+        { label: t('projects.list.title'), to: { name: 'projects' } },
+        { label: project?.name || t('projects.record'), to: { name: 'project-detail', params: { projectId } } },
+        { label: t('projects.issues.title'), active: true },
+      ]"
+    />
+    <ResourcePageHeader
+      v-if="project"
+      :meta="`${project.code} · PROJECT`"
+      :title="project.name"
+      :subtitle="t('projects.issues.title')"
+      :status="project.status"
+    />
 
     <p v-if="loading" class="page-state">{{ t('projects.issues.loading') }}</p>
     <div v-else-if="error" class="page-state page-state--error" role="alert">
@@ -188,23 +211,61 @@ function formatDate(value: string): string {
         </RouterLink>
       </div>
 
-      <div class="issue-toolbar">
-        <div class="view-switcher" role="group" :aria-label="t('projects.issues.viewMode')">
-          <button type="button" :class="{ 'is-active': activeView === 'list' }" @click="activeView = 'list'">
-            <List :size="16" aria-hidden="true" />{{ t('projects.issues.listView') }}
-          </button>
-          <button type="button" :class="{ 'is-active': activeView === 'board' }" @click="activeView = 'board'">
-            <Columns3 :size="16" aria-hidden="true" />{{ t('projects.issues.boardView') }}
-          </button>
+      <!-- VIEW TABS (分頁標籤列) -->
+      <SharedViewTabs
+        v-model="activeView"
+        :tabs="[
+          { key: 'list', label: t('projects.issues.listView'), icon: List },
+          { key: 'board', label: t('projects.issues.boardView'), icon: Columns3 }
+        ]"
+      />
+
+      <SharedCardSection
+        :title="t('projects.issues.title')"
+        :description="t('projects.issues.createDescription', '追蹤與處理專案內所有 Issue 與狀態')"
+      >
+        <template #headerRight>
+          <span class="count-badge">{{ t('projects.issues.count', { count: filteredIssues.length }, filteredIssues.length) }}</span>
+        </template>
+
+        <!-- TOOLBAR: SEARCH & ACTION AREA (清單上面的查詢區塊與新增任務按鈕) -->
+        <div class="list-toolbar">
+          <div class="search-filters">
+            <div class="search-box">
+              <Search :size="15" class="search-icon" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                class="search-input"
+                placeholder="搜尋任務編號或標題..."
+              />
+              <button v-if="searchQuery" type="button" class="clear-btn" @click="searchQuery = ''">
+                <X :size="13" />
+              </button>
+            </div>
+
+            <select v-model="filterStatus" class="status-select">
+              <option value="">所有狀態</option>
+              <option v-for="s in metadata.statuses" :key="s.code" :value="s.code">
+                {{ s.name }}
+              </option>
+            </select>
+          </div>
+
+          <UiButton
+            v-if="canCreate"
+            @click="router.push({ name: 'project-issue-new', params: { projectId } })"
+          >
+            <Plus :size="17" aria-hidden="true" />
+            {{ t('projects.issues.create') }}
+          </UiButton>
         </div>
-        <span>{{ t('projects.issues.count', { count: totalCount }, totalCount) }}</span>
-      </div>
 
       <div v-if="activeView === 'list'" class="issue-list">
         <div class="issue-list__header">
           <span>{{ t('projects.issues.columns.key') }}</span><span>{{ t('projects.issues.columns.title') }}</span><span>{{ t('projects.issues.columns.status') }}</span><span>{{ t('projects.issues.columns.assignee') }}</span><span>{{ t('projects.issues.columns.updatedAt') }}</span>
         </div>
-        <div v-for="issue in issues" :key="issue.id" class="issue-row">
+        <div v-for="issue in filteredIssues" :key="issue.id" class="issue-row">
           <strong>{{ issue.key }}</strong>
           <RouterLink
             :to="{ name: 'project-issue-edit', params: { projectId, issueId: issue.id } }"
@@ -294,6 +355,7 @@ function formatDate(value: string): string {
         @page-change="changePage"
         @page-size-change="changePageSize"
       />
+      </SharedCardSection>
     </template>
 
   </section>
@@ -320,6 +382,15 @@ function formatDate(value: string): string {
 .action-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: #715514; background: #fff8df; border: 1px solid #e9d48a; border-radius: 7px; font-size: .82rem; }
 .action-warning a { color: inherit; font-weight: 700; }
 .issue-toolbar { min-height: 42px; }
+.view-switcher-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.count-badge { font-size: 0.82rem; color: var(--kk-text-muted); }
+.list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.search-filters { display: flex; align-items: center; gap: 10px; flex: 1; }
+.search-box { display: flex; align-items: center; gap: 8px; background: #f9fafb; border: 1px solid var(--kk-border); border-radius: 6px; padding: 0 10px; height: 34px; flex: 1; max-width: 320px; }
+.search-icon { color: var(--kk-text-muted); }
+.search-input { border: none; background: transparent; outline: none; font-size: 0.85rem; width: 100%; color: var(--kk-text); }
+.clear-btn { border: none; background: transparent; color: var(--kk-text-muted); cursor: pointer; display: flex; align-items: center; padding: 2px; }
+.status-select { height: 34px; padding: 0 10px; font-size: 0.85rem; border: 1px solid var(--kk-border); border-radius: 6px; background: white; color: var(--kk-text); }
 .view-switcher { gap: 3px; padding: 3px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 8px; }
 .view-switcher button { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 6px 12px; color: var(--kk-text-muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-weight: 650; }
 .view-switcher button.is-active { color: var(--kk-text); background: var(--kk-surface); box-shadow: 0 1px 3px rgb(27 46 35 / 9%); }

@@ -1,32 +1,28 @@
+import type { RouteLocationRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AppShell from './components/AppShell.vue'
-import {
-  ACCOUNT_READ_PERMISSION,
-  PROJECT_CREATE_PERMISSION,
-  type ApplicationModuleId,
-  hasRequiredSystemPermission,
-} from './navigation'
+import { type ApplicationModuleId, ACCOUNT_CREATE_PERMISSION, ACCOUNT_READ_PERMISSION, ACCOUNT_SUSPEND_PERMISSION, ACCOUNT_UPDATE_PERMISSION, PROJECT_CREATE_PERMISSION, hasRequiredSystemPermission } from './navigation'
 import { useAuthStore } from './stores/auth'
-import { i18n } from './i18n/index'
+import { i18n } from './i18n'
 import ChangePasswordView from './views/ChangePasswordView.vue'
 import ForbiddenView from './views/ForbiddenView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
 import ProjectCreateView from './views/ProjectCreateView.vue'
 import ProjectDetailView from './views/ProjectDetailView.vue'
-import ProjectIssuesView from './views/ProjectIssuesView.vue'
 import ProjectIssueFormView from './views/ProjectIssueFormView.vue'
+import ProjectIssuesView from './views/ProjectIssuesView.vue'
 import ProjectListView from './views/ProjectListView.vue'
 import ProjectMembersView from './views/ProjectMembersView.vue'
 import ProjectSettingsView from './views/ProjectSettingsView.vue'
 import SetupView from './views/SetupView.vue'
+import TestCaseCreateView from './views/TestCaseCreateView.vue'
+import TestSuiteCreateView from './views/TestSuiteCreateView.vue'
+import TestWorkspaceCreateView from './views/TestWorkspaceCreateView.vue'
+import TestWorkspaceListView from './views/TestWorkspaceListView.vue'
+import TestWorkspaceView from './views/TestWorkspaceView.vue'
 import UnavailableView from './views/UnavailableView.vue'
 import UserManagementView from './views/UserManagementView.vue'
-import TestWorkspaceListView from './views/TestWorkspaceListView.vue'
-import TestWorkspaceCreateView from './views/TestWorkspaceCreateView.vue'
-import TestWorkspaceView from './views/TestWorkspaceView.vue'
-import TestSuiteCreateView from './views/TestSuiteCreateView.vue'
-import TestCaseCreateView from './views/TestCaseCreateView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -124,7 +120,13 @@ export const router = createRouter({
         {
           path: 'test-workspaces/:workspaceId',
           name: 'test-workspace',
-          redirect: { name: 'test-suites' },
+          redirect: (to) => ({ name: 'test-home', params: to.params }),
+        },
+        {
+          path: 'test-workspaces/:workspaceId/home',
+          name: 'test-home',
+          component: TestWorkspaceView,
+          meta: { titleKey: 'routes.testHome', module: 'tests' },
         },
         {
           path: 'test-workspaces/:workspaceId/suites',
@@ -226,7 +228,7 @@ router.beforeEach(async (to) => {
   }
 
   if (
-    to.meta.requiredSystemPermissions?.length &&
+    to.meta.requiredSystemPermissions &&
     !hasRequiredSystemPermission(
       auth.user?.systemPermissions ?? [],
       to.meta.requiredSystemPermissions,

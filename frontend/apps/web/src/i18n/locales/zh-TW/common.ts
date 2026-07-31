@@ -29,6 +29,9 @@ export const common = {
     next: '下一頁',
     page: '第 {page} / {total} 頁',
   },
+  time: {
+    hoursAgo: '{count} 小時前',
+  },
   errors: {
     apiUnavailable: '無法連線到 KhaiKang API。',
   },
