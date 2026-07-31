@@ -198,6 +198,292 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.ToTable("login_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scope_type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_permissions");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("uq_permissions_code");
+
+                    b.HasIndex("ScopeType")
+                        .HasDatabaseName("idx_permissions_scope_type");
+
+                    b.ToTable("permissions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2d19d818-0214-4be2-b080-621e0cf0c526"),
+                            Code = "account.read",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "查看使用者帳號資料。",
+                            Name = "Account Read",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("da7ff46b-3349-4a09-a4e9-5d60542bc2b2"),
+                            Code = "account.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "建立本機使用者帳號。",
+                            Name = "Account Create",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("3cda75d2-995b-4e94-bdab-9307429352c5"),
+                            Code = "account.update",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "修改使用者基本資料或重設密碼。",
+                            Name = "Account Update",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("ae2a3092-bd64-42bc-88f1-708e7abdac8a"),
+                            Code = "account.suspend",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "停權、停用或恢復使用者帳號。",
+                            Name = "Account Suspend",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("297e6b10-207a-47f5-b604-47c40f1e6bc1"),
+                            Code = "project.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "建立新專案。",
+                            Name = "Project Create",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("1a8f54ab-c19f-4356-a40b-fe4fcbeda0fb"),
+                            Code = "project.deactivate",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "停用或恢復專案。",
+                            Name = "Project Deactivate",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("1e42b09d-9839-4e8c-951c-38c941f9e4ca"),
+                            Code = "project.read",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "查看專案基本內容。",
+                            Name = "Project Read",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("f622c88d-d0f0-40ed-86c0-bba2c3ff44c9"),
+                            Code = "project.update",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "修改專案基本資料。",
+                            Name = "Project Update",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("23cffaf6-9d01-4116-9a79-a4970bc01eae"),
+                            Code = "project.member.add",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "新增專案成員。",
+                            Name = "Project Member Add",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("bb8afb36-8753-4383-bce7-83065a92c0d3"),
+                            Code = "project.member.remove",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "移除專案成員。",
+                            Name = "Project Member Remove",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("0cc976a0-4f5a-4ce4-9309-6f4476522aa6"),
+                            Code = "project.role.assign",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "指派或調整專案角色。",
+                            Name = "Project Role Assign",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("3c2bdd52-7445-4a16-9750-1b28d97bf109"),
+                            Code = "issue.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "建立 Issue。",
+                            Name = "Issue Create",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("3ed83136-9532-4e6e-8adb-b73ae9863a2c"),
+                            Code = "issue.read",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "查看 Issue。",
+                            Name = "Issue Read",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("a5fa36de-f8eb-491a-981c-f2f17244fa2b"),
+                            Code = "issue.update",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "編輯 Issue。",
+                            Name = "Issue Update",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("084b565e-e59c-4b48-9a4d-2de2a58e0a9d"),
+                            Code = "issue.status.change",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "變更 Issue 狀態。",
+                            Name = "Issue Status Change",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("60098112-f880-40d8-97d6-bed5784f83a0"),
+                            Code = "issue.assignee.change",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "變更 Issue 處理人。",
+                            Name = "Issue Assignee Change",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("2f36b9f4-b7f1-4cd2-af25-46393d560b13"),
+                            Code = "issue.comment.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "新增 Issue 留言。",
+                            Name = "Issue Comment Create",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("081eced1-97b4-4f3e-bb05-56cc3053de6f"),
+                            Code = "issue.relation.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "建立 Issue 關聯。",
+                            Name = "Issue Relation Create",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("bce4a59e-47d6-4664-bda4-c1ea66b50ec1"),
+                            Code = "issue.attachment.upload",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "上傳 Issue 附件。",
+                            Name = "Issue Attachment Upload",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("811e7203-b5ab-4b2c-83aa-8e071f68b36f"),
+                            Code = "issue.attachment.delete",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "刪除 Issue 附件。",
+                            Name = "Issue Attachment Delete",
+                            ScopeType = "project",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        });
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.SystemRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -225,6 +511,66 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .HasDatabaseName("ux_system_roles_normalized_name");
 
                     b.ToTable("system_roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("94fbc708-1764-4d11-a8e6-df5e786cb678"),
+                            Name = "User",
+                            NormalizedName = "USER"
+                        });
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.SystemRolePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("permission_id");
+
+                    b.Property<Guid>("SystemRoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("system_role_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_system_role_permissions");
+
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("idx_system_role_permissions_permission_id");
+
+                    b.HasIndex("SystemRoleId")
+                        .HasDatabaseName("idx_system_role_permissions_system_role_id");
+
+                    b.HasIndex("SystemRoleId", "PermissionId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_system_role_permissions_role_permission");
+
+                    b.ToTable("system_role_permissions", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AccountSystemRole", b =>
@@ -260,6 +606,27 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.SystemRolePermission", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.Identity.Domain.Permission", "Permission")
+                        .WithMany("SystemRoles")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_system_role_permissions_permission");
+
+                    b.HasOne("KhaiKang.Modules.Identity.Domain.SystemRole", "SystemRole")
+                        .WithMany("Permissions")
+                        .HasForeignKey("SystemRoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_system_role_permissions_role");
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("SystemRole");
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.Account", b =>
                 {
                     b.Navigation("Sessions");
@@ -267,9 +634,16 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.Navigation("SystemRoles");
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.Permission", b =>
+                {
+                    b.Navigation("SystemRoles");
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.SystemRole", b =>
                 {
                     b.Navigation("Accounts");
+
+                    b.Navigation("Permissions");
                 });
 #pragma warning restore 612, 618
         }

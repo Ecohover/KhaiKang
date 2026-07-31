@@ -1,160 +1,150 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { LogOut, ShieldCheck } from '@lucide/vue'
-import { UiButton } from '@khaikang/ui'
+import { ClipboardCheck, FolderKanban, ShieldCheck } from '@lucide/vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
-const router = useRouter()
-const loggingOut = ref(false)
-
-async function logout(): Promise<void> {
-  loggingOut.value = true
-  try {
-    await auth.logout()
-    await router.push({ name: 'login' })
-  } finally {
-    loggingOut.value = false
-  }
-}
 </script>
 
 <template>
-  <div class="app-shell">
-    <header class="app-header">
-      <div class="app-header__brand"><span>K</span>KhaiKang</div>
-      <div class="app-header__account">
-        <span>{{ auth.user?.username }}</span>
-        <UiButton variant="ghost" :loading="loggingOut" @click="logout">
-          <LogOut :size="17" aria-hidden="true" />
-          登出
-        </UiButton>
+  <div class="dashboard-page">
+    <section class="dashboard-hero">
+      <div>
+        <p>Workspace</p>
+        <h2>歡迎回來，{{ auth.user?.username }}</h2>
+        <span>主框架已就緒，可以從下一個垂直切片開始加入實際功能。</span>
       </div>
-    </header>
-
-    <main class="workspace">
-      <div class="workspace__heading">
+      <div class="dashboard-status">
+        <ShieldCheck :size="19" aria-hidden="true" />
         <div>
-          <p>Workspace</p>
-          <h1>開始使用 KhaiKang</h1>
+          <strong>已安全登入</strong>
+          <span>{{ auth.user?.systemRoles.join(' · ') }}</span>
         </div>
-        <span class="status-chip"><ShieldCheck :size="16" />已安全登入</span>
       </div>
+    </section>
 
-      <section class="empty-state">
-        <h2>尚未建立測試工作區</h2>
-        <p>專案與測試案例功能會在下一個垂直切片加入。</p>
-      </section>
-    </main>
+    <section class="dashboard-grid" aria-label="功能狀態">
+      <article>
+        <FolderKanban :size="21" aria-hidden="true" />
+        <h3>專案</h3>
+        <p>尚未建立專案，後續會從專案與成員權限開始。</p>
+        <RouterLink :to="{ name: 'projects' }">查看預留頁</RouterLink>
+      </article>
+      <article>
+        <ClipboardCheck :size="21" aria-hidden="true" />
+        <h3>測試案例</h3>
+        <p>測試工作區與案例管理會在專案基礎完成後加入。</p>
+        <RouterLink :to="{ name: 'test-cases' }">查看預留頁</RouterLink>
+      </article>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.app-shell {
-  min-height: 100vh;
-  background: var(--kk-surface-subtle);
-}
-
-.app-header {
-  display: flex;
-  min-height: 62px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 clamp(18px, 4vw, 46px);
-  background: var(--kk-surface);
-  border-bottom: 1px solid var(--kk-border);
-}
-
-.app-header__brand,
-.app-header__account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.app-header__brand {
-  font-weight: 750;
-}
-
-.app-header__brand > span {
+.dashboard-page {
   display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  color: white;
-  background: #25332b;
-  border-radius: 5px;
+  gap: 24px;
 }
 
-.app-header__account > span {
-  color: var(--kk-text-muted);
-  font-size: 0.875rem;
-}
-
-.workspace {
-  width: min(1180px, calc(100% - 36px));
-  margin: 0 auto;
-  padding: 44px 0;
-}
-
-.workspace__heading {
+.dashboard-hero {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--kk-border);
+  gap: 28px;
+  padding: clamp(24px, 5vw, 42px);
+  background: var(--kk-surface);
+  border: 1px solid var(--kk-border);
+  border-radius: var(--kk-radius);
 }
 
-.workspace__heading p {
-  margin: 0 0 6px;
-  color: var(--kk-text-muted);
-  font-size: 0.8125rem;
+.dashboard-hero p {
+  margin: 0 0 7px;
+  color: var(--kk-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.workspace__heading h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  letter-spacing: 0;
+.dashboard-hero h2 {
+  margin: 0 0 9px;
+  font-size: clamp(1.45rem, 4vw, 2rem);
 }
 
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 9px;
-  color: var(--kk-accent);
-  background: var(--kk-accent-soft);
-  border-radius: 5px;
-  font-size: 0.8125rem;
-  font-weight: 650;
-}
-
-.empty-state {
-  padding: 72px 0;
-  text-align: center;
-}
-
-.empty-state h2 {
-  margin: 0 0 8px;
-  font-size: 1.2rem;
-}
-
-.empty-state p {
-  margin: 0;
+.dashboard-hero > div > span,
+.dashboard-status span,
+.dashboard-grid p {
   color: var(--kk-text-muted);
 }
 
-@media (max-width: 620px) {
-  .app-header__account > span {
-    display: none;
+.dashboard-status {
+  display: flex;
+  min-width: 210px;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px;
+  color: var(--kk-accent);
+  background: var(--kk-accent-soft);
+  border-radius: var(--kk-radius);
+}
+
+.dashboard-status > div {
+  display: grid;
+  gap: 3px;
+}
+
+.dashboard-status span {
+  font-size: 0.78rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.dashboard-grid article {
+  padding: 24px;
+  background: var(--kk-surface);
+  border: 1px solid var(--kk-border);
+  border-radius: var(--kk-radius);
+}
+
+.dashboard-grid article > svg {
+  color: var(--kk-accent);
+}
+
+.dashboard-grid h3 {
+  margin: 16px 0 7px;
+}
+
+.dashboard-grid p {
+  min-height: 48px;
+  margin: 0 0 18px;
+  line-height: 1.55;
+}
+
+.dashboard-grid a {
+  color: var(--kk-accent);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+@media (max-width: 680px) {
+  .dashboard-hero {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .workspace__heading {
-    align-items: start;
-    flex-direction: column;
+  .dashboard-status {
+    min-width: 0;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid p {
+    min-height: 0;
   }
 }
 </style>

@@ -6,13 +6,20 @@ public sealed class Account
     {
     }
 
-    public Account(Guid id, string username, string normalizedUsername, DateTimeOffset createdAt)
+    public Account(
+        Guid id,
+        string username,
+        string normalizedUsername,
+        DateTimeOffset createdAt,
+        Guid? createdByAccountId = null)
     {
         Id = id;
         Username = username;
         NormalizedUsername = normalizedUsername;
         CreatedAt = createdAt;
+        CreatedByAccountId = createdByAccountId;
         UpdatedAt = createdAt;
+        UpdatedByAccountId = createdByAccountId;
     }
 
     public Guid Id { get; private set; }
@@ -61,6 +68,37 @@ public sealed class Account
     {
         PasswordHash = passwordHash;
         MustChangePassword = false;
+        UpdatedByAccountId = actorId;
+        UpdatedAt = occurredAt;
+        Version++;
+    }
+
+    public void ChangeStatus(AccountStatus status, Guid actorId, DateTimeOffset occurredAt)
+    {
+        if (Status == status)
+        {
+            return;
+        }
+
+        Status = status;
+        UpdatedByAccountId = actorId;
+        UpdatedAt = occurredAt;
+        Version++;
+    }
+
+    public void Rename(
+        string username,
+        string normalizedUsername,
+        Guid actorId,
+        DateTimeOffset occurredAt)
+    {
+        if (NormalizedUsername == normalizedUsername && Username == username)
+        {
+            return;
+        }
+
+        Username = username;
+        NormalizedUsername = normalizedUsername;
         UpdatedByAccountId = actorId;
         UpdatedAt = occurredAt;
         Version++;

@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using KhaiKang.Modules.Identity.Application;
 using KhaiKang.Modules.Identity.Configuration;
+using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Endpoints;
 using KhaiKang.Modules.Identity.Infrastructure;
@@ -39,8 +40,11 @@ public static class IdentityModuleExtensions
             Microsoft.AspNetCore.Identity.IPasswordHasher<Account>,
             Microsoft.AspNetCore.Identity.PasswordHasher<Account>>();
         services.AddScoped<IdentityService>();
+        services.AddScoped<AccountManagementService>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionCookieEvents>();
+        services.AddScoped<IdentityPrincipalFactory>();
+        services.AddScoped<IAccountDirectory, AccountDirectory>();
 
         services.AddDataProtection()
             .SetApplicationName("KhaiKang");
@@ -73,7 +77,14 @@ public static class IdentityModuleExtensions
                 options.EventsType = typeof(SessionCookieEvents);
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            foreach (var permissionCode in PermissionCatalog.SystemPermissionCodes)
+            {
+                options.AddPolicy(permissionCode, policy =>
+                    policy.RequireClaim(PermissionCatalog.ClaimType, permissionCode));
+            }
+        });
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

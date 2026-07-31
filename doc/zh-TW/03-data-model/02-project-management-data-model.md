@@ -35,12 +35,13 @@
 - `issue_priorities`
 - `issues`
 
+`issue_attachments` 依功能規格納入任務管理 MVP 的最後一個實作階段。
+
 以下資料表屬於延伸資料表，目前不列入 MVP 核心必做範圍，但先保留資料模型方向：
 
 - `issue_comments`
 - `issue_tags`
 - `issue_relations`
-- `issue_attachments`
 - `issue_watchers`
 - `issue_transitions`
 
@@ -922,7 +923,7 @@
 | `issue_relations` | Mapping | N | 保存 Issue 與 Issue 的關聯，例如 blocked by / relates to。 |
 | `issue_tags` | Mapping | N | 若未來支援標籤，建議再搭配 `tags` 主表使用。 |
 | `issue_watchers` | Mapping | N | 若未來支援關注者通知，再建立此表。 |
-| `issue_attachments` | Entity | N | 保存附件中繼資料，屬於獨立主體，不是單純 mapping。 |
+| `issue_attachments` | Entity | Y | 保存附件中繼資料，排在任務管理 MVP 核心流程穩定後實作。 |
 
 ---
 

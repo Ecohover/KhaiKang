@@ -28,6 +28,7 @@
 | data-model | 專案管理資料模型 | Draft | [專案管理資料模型](../03-data-model/02-project-management-data-model.md) |
 | data-model | 測試案例管理資料模型 | Draft | [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md) |
 | data-model | Audit Metadata | Draft | [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md) |
+| planning | 任務管理 MVP 實作計畫 | Active | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
 
 ## 近期範圍
 

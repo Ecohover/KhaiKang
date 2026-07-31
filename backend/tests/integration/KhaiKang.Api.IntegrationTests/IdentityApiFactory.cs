@@ -1,9 +1,13 @@
+using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Infrastructure;
+using KhaiKang.Modules.ProjectManagement.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -22,6 +26,19 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         _connection.Open();
     }
 
+    public async Task<Guid> AddActiveAccountAsync(string username)
+    {
+        using var scope = Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<Account>>();
+        var now = DateTimeOffset.UtcNow;
+        var account = new Account(Guid.NewGuid(), username, username.ToUpperInvariant(), now);
+        account.SetInitialPassword(passwordHasher.HashPassword(account, "Temporary-Pass-123!"));
+        dbContext.Accounts.Add(account);
+        await dbContext.SaveChangesAsync();
+        return account.Id;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -36,6 +53,12 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<IdentityDbContext>(options => options
                 .UseSqlite(_connection)
                 .UseInternalServiceProvider(_sqliteServices));
+            services.RemoveAll<DbContextOptions<ProjectManagementDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<ProjectManagementDbContext>>();
+            services.RemoveAll<ProjectManagementDbContext>();
+            services.AddDbContext<ProjectManagementDbContext>(options => options
+                .UseSqlite(_connection)
+                .UseInternalServiceProvider(_sqliteServices));
         });
     }
 
@@ -45,6 +68,8 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         using var scope = host.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         dbContext.Database.EnsureCreated();
+        var projectDbContext = scope.ServiceProvider.GetRequiredService<ProjectManagementDbContext>();
+        projectDbContext.Database.GetService<IRelationalDatabaseCreator>().CreateTables();
 
         return host;
     }

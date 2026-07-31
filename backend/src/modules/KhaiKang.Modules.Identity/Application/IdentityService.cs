@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.Identity.Configuration;
+using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Identity;
@@ -42,10 +42,20 @@ public sealed class IdentityService(
             Guid.NewGuid(),
             IdentityConstants.SystemAdminRole,
             IdentityConstants.SystemAdminRole.ToUpperInvariant());
+        var systemPermissions = await dbContext.Permissions
+            .Where(permission => permission.ScopeType == "system")
+            .ToArrayAsync(cancellationToken);
 
         dbContext.Accounts.Add(account);
         dbContext.SystemRoles.Add(systemAdminRole);
         dbContext.AccountSystemRoles.Add(new AccountSystemRole(account.Id, systemAdminRole.Id));
+        dbContext.SystemRolePermissions.AddRange(systemPermissions.Select(permission =>
+            new SystemRolePermission(
+                Guid.NewGuid(),
+                systemAdminRole.Id,
+                permission.Id,
+                now,
+                account.Id)));
         dbContext.AuditEvents.Add(new AuditEvent(
             Guid.NewGuid(),
             account.Id,
@@ -75,6 +85,8 @@ public sealed class IdentityService(
         var account = await dbContext.Accounts
             .Include(x => x.SystemRoles)
             .ThenInclude(x => x.SystemRole)
+            .ThenInclude(x => x.Permissions)
+            .ThenInclude(x => x.Permission)
             .SingleOrDefaultAsync(
                 x => x.NormalizedUsername == NormalizeUsername(request.Username),
                 cancellationToken);
@@ -129,6 +141,8 @@ public sealed class IdentityService(
             .Include(x => x.Account)
             .ThenInclude(x => x.SystemRoles)
             .ThenInclude(x => x.SystemRole)
+            .ThenInclude(x => x.Permissions)
+            .ThenInclude(x => x.Permission)
             .SingleOrDefaultAsync(x => x.Id == sessionId, cancellationToken);
 
         if (session is null ||
@@ -233,6 +247,12 @@ public sealed class IdentityService(
             account.Id,
             account.Username,
             account.SystemRoles.Select(x => x.SystemRole.Name).Order().ToArray(),
+            account.SystemRoles
+                .SelectMany(x => x.SystemRole.Permissions)
+                .Select(x => x.Permission.Code)
+                .Distinct()
+                .Order()
+                .ToArray(),
             account.MustChangePassword);
     }
 

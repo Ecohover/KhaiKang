@@ -105,6 +105,19 @@ KhaiKang.CommonUtils.Web
 
 - Use resource-oriented routes under `/api/v1`.
 - Minimal APIs and controllers are both valid, but a feature module SHOULD be internally consistent and endpoints do not own business rules.
+- Controllers SHOULD group ordinary resource operations under
+  `#region Standard Operations`. Put non-CRUD behavior in narrowly named
+  regions such as `Status Operations`, `Assignment Operations`, or
+  `Metadata Operations`.
+- A standard operations region contains only operations the resource actually
+  supports. Do not add delete, restore, or other behavior merely to complete a
+  CRUD-shaped template.
+- Controller region names, XML documentation, comments, identifiers, routes,
+  and public contract names MUST use English.
+- Collection endpoints use the shared one-based paging convention:
+  `page` defaults to `1`, `pageSize` defaults to `20`, and `pageSize` cannot
+  exceed `100`. Paged responses expose `items`, `page`, `pageSize`,
+  `totalCount`, `totalPages`, `hasPreviousPage`, and `hasNextPage`.
 - Return resources or operation DTOs directly. Do not use a generic `ApiResponse<T>` envelope.
 - Resource creation SHOULD return `201 Created` with a location. Successful deletion without a body returns `204 No Content`.
 - Errors use RFC 9457 Problem Details. HTTP status is authoritative; stable `type` values and an optional `code` extension provide machine-readable identity.

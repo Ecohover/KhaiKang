@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Http;
 
 namespace KhaiKang.Modules.Identity.Infrastructure;
 
-public sealed class SessionCookieEvents(IdentityService identityService) : CookieAuthenticationEvents
+public sealed class SessionCookieEvents(
+    IdentityService identityService,
+    IdentityPrincipalFactory principalFactory) : CookieAuthenticationEvents
 {
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
@@ -22,6 +24,22 @@ public sealed class SessionCookieEvents(IdentityService identityService) : Cooki
         if (session is null)
         {
             context.RejectPrincipal();
+            return;
+        }
+
+        var currentClaims = context.Principal!.Claims
+            .Select(claim => (claim.Type, claim.Value))
+            .Order()
+            .ToArray();
+        var refreshedPrincipal = principalFactory.Create(session.Value.Session, session.Value.User);
+        var refreshedClaims = refreshedPrincipal.Claims
+            .Select(claim => (claim.Type, claim.Value))
+            .Order()
+            .ToArray();
+        if (!currentClaims.SequenceEqual(refreshedClaims))
+        {
+            context.ReplacePrincipal(refreshedPrincipal);
+            context.ShouldRenew = true;
         }
     }
 

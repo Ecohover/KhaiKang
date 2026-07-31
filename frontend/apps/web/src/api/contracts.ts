@@ -30,7 +30,174 @@ export interface AuthenticatedUserResponse {
   id: string
   username: string
   systemRoles: string[]
+  systemPermissions: string[]
   mustChangePassword: boolean
+}
+
+export type AccountStatus = 'active' | 'suspended' | 'disabled'
+
+export interface AccountResponse {
+  id: string
+  username: string
+  accountType: 'human' | 'ai_agent'
+  status: AccountStatus
+  systemRoles: string[]
+  mustChangePassword: boolean
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+export interface CreateAccountRequest {
+  username: string
+}
+
+export interface CreateAccountResponse {
+  account: AccountResponse
+  initialPassword: string
+}
+
+export interface UpdateAccountStatusRequest {
+  status: AccountStatus
+  version: number
+}
+
+export interface UpdateAccountRequest {
+  username: string
+  version: number
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export interface CreateProjectRequest {
+  code: string
+  name: string
+  description: string | null
+}
+
+export interface UpdateProjectRequest {
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  version: number
+}
+
+export interface ProjectResponse {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  currentUserRoles: string[]
+  currentUserPermissions: string[]
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+export interface ProjectRoleResponse {
+  code: string
+  name: string
+  description: string
+}
+
+export interface ProjectMemberResponse {
+  id: string
+  accountId: string
+  username: string
+  status: 'active' | 'removed'
+  roleCodes: string[]
+  joinedAt: string
+  version: number
+}
+
+export interface AddProjectMemberRequest {
+  username: string
+  roleCodes: string[]
+}
+
+export interface UpdateProjectMemberRolesRequest {
+  roleCodes: string[]
+  version: number
+}
+
+export interface IssueOptionResponse {
+  code: string
+  name: string
+  description: string | null
+  category: string | null
+}
+
+export interface IssueMetadataResponse {
+  types: IssueOptionResponse[]
+  statuses: IssueOptionResponse[]
+  priorities: IssueOptionResponse[]
+}
+
+export interface CreateIssueRequest {
+  title: string
+  typeCode: string
+  priorityCode?: string | null
+  description: string | null
+  userStory: string | null
+  definitionOfDone: string | null
+  assigneeAccountId: string | null
+}
+
+export interface UpdateIssueStatusRequest {
+  statusCode: string
+  version: number
+}
+
+export interface UpdateIssueRequest {
+  title: string
+  typeCode: string
+  priorityCode: string
+  description: string | null
+  userStory: string | null
+  definitionOfDone: string | null
+  completionSummary: string | null
+  version: number
+}
+
+export interface UpdateIssueAssigneeRequest {
+  assigneeAccountId: string | null
+  version: number
+}
+
+export interface IssueResponse {
+  id: string
+  projectId: string
+  issueNo: number
+  key: string
+  title: string
+  description: string | null
+  userStory: string | null
+  definitionOfDone: string | null
+  completionSummary: string | null
+  typeCode: string
+  typeName: string
+  statusCode: string
+  statusName: string
+  priorityCode: string
+  priorityName: string
+  reporterAccountId: string
+  reporterUsername: string
+  assigneeAccountId: string | null
+  assigneeUsername: string | null
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
+  version: number
 }
 
 export interface ApiProblem {

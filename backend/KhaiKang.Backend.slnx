@@ -10,8 +10,12 @@
   </Folder>
   <Folder Name="/src/modules/">
     <Project Path="src/modules/KhaiKang.Modules.Identity/KhaiKang.Modules.Identity.csproj" />
+    <Project Path="src/modules/KhaiKang.Modules.ProjectManagement/KhaiKang.Modules.ProjectManagement.csproj" />
   </Folder>
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/KhaiKang.Api.IntegrationTests/KhaiKang.Api.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/KhaiKang.Domain.UnitTests/KhaiKang.Domain.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -62,6 +62,9 @@ public sealed class IdentityEndpointsTests(IdentityApiFactory factory)
         Assert.NotNull(authenticatedUser);
         Assert.True(authenticatedUser.MustChangePassword);
         Assert.Contains("System Admin", authenticatedUser.SystemRoles);
+        Assert.Contains("account.read", authenticatedUser.SystemPermissions);
+        Assert.Contains("project.create", authenticatedUser.SystemPermissions);
+        Assert.DoesNotContain("project.read", authenticatedUser.SystemPermissions);
 
         var currentUser = await _client.GetFromJsonAsync<AuthenticatedUserResponse>(
             "/api/v1/auth/me");

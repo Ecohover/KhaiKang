@@ -20,4 +20,6 @@ public sealed class SystemRole
     public string NormalizedName { get; private set; } = null!;
 
     public ICollection<AccountSystemRole> Accounts { get; } = [];
+
+    public ICollection<SystemRolePermission> Permissions { get; } = [];
 }

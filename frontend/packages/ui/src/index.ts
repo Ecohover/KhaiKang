@@ -1,3 +1,6 @@
 export { default as UiButton } from './UiButton.vue'
 export { default as UiCheckbox } from './UiCheckbox.vue'
 export { default as UiField } from './UiField.vue'
+export { default as UiSaveToast } from './UiSaveToast.vue'
+export { default as UiSaveToastStack } from './UiSaveToastStack.vue'
+export { default as UiPagination } from './UiPagination.vue'
