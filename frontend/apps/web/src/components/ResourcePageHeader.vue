@@ -49,6 +49,7 @@ const isStatusActive = computed(() => props.status === 'active')
 
 .header-content {
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 
@@ -79,6 +80,8 @@ const isStatusActive = computed(() => props.status === 'active')
 .header-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   padding-top: 4px;
 }
@@ -100,5 +103,18 @@ const isStatusActive = computed(() => props.status === 'active')
 .header-status-badge.inactive {
   background: #f1f3f4;
   color: #5f6368;
+}
+
+@media (max-width: 760px) {
+  .resource-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 0;
+  }
 }
 </style>

@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { LayoutDashboard } from '@lucide/vue'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
+import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage } from '../api/client'
 import type { IssueResponse, ProjectResponse } from '../api/contracts'
 
@@ -102,6 +104,14 @@ function formatDate(value: string): string {
         :title="project.name"
         :subtitle="project.description || '專案總覽儀表板與狀態管理'"
         :status="project.status"
+      />
+
+      <!-- VIEW TABS (分頁標籤列) -->
+      <SharedViewTabs
+        model-value="home"
+        :tabs="[
+          { key: 'home', label: '首頁', icon: LayoutDashboard }
+        ]"
       />
 
       <div class="home-canvas" :aria-label="t('projects.detail.contentLabel')">

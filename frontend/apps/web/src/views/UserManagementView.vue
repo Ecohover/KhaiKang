@@ -5,6 +5,7 @@ import { Check, Clipboard, List, Pencil, Plus, RefreshCw, Save, UserRound, X } f
 import { UiActionDialog, UiButton, UiCreateActions, UiField } from '@khaikang/ui'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import SharedStateBanner from '../components/SharedStateBanner.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { AccountResponse, AccountStatus } from '../api/contracts'
@@ -283,14 +284,19 @@ function formatDate(value: string | null): string {
       {{ statusError || editError }}
     </p>
 
-    <p v-if="loading" class="state-panel" aria-live="polite">{{ t('system.users.loading') }}</p>
-    <div v-else-if="loadingError" class="state-panel state-panel--error" role="alert">
-      <p>{{ loadingError }}</p>
-      <UiButton variant="secondary" @click="loadAccounts">
-        <RefreshCw :size="17" aria-hidden="true" />
-        {{ t('common.actions.reload') }}
-      </UiButton>
-    </div>
+    <SharedStateBanner
+      v-if="loading"
+      type="loading"
+      :title="t('system.users.loading')"
+    />
+    <SharedStateBanner
+      v-else-if="loadingError"
+      type="error"
+      :title="t('system.users.loadFailed')"
+      :description="loadingError"
+      show-reload
+      @reload="loadAccounts"
+    />
     <div v-else class="account-list">
       <article v-for="account in accounts" :key="account.id" class="account-card">
         <div class="account-card__identity">
@@ -370,10 +376,12 @@ function formatDate(value: string | null): string {
           </select>
         </label>
       </article>
-      <div v-if="accounts.length === 0" class="state-panel">
-        <UserRound :size="28" aria-hidden="true" />
-        <p>{{ t('system.users.empty') }}</p>
-      </div>
+      <SharedStateBanner
+        v-if="accounts.length === 0"
+        type="empty"
+        :icon="UserRound"
+        :title="t('system.users.empty')"
+      />
     </div>
 
     <UiActionDialog
@@ -406,44 +414,6 @@ function formatDate(value: string | null): string {
   box-sizing: border-box;
 }
 
-.view-switcher-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.view-switcher {
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  background: var(--kk-surface-subtle);
-  border: 1px solid var(--kk-border);
-  border-radius: 8px;
-}
-
-.view-switcher button {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  color: var(--kk-text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 650;
-  font-size: 0.85rem;
-}
-
-.view-switcher button.is-active {
-  color: var(--kk-text);
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(27, 46, 35, 0.09);
-}
-
-.page-heading,
 .create-panel__header,
 .create-panel__actions,
 .account-card,
@@ -452,37 +422,15 @@ function formatDate(value: string | null): string {
   display: flex;
 }
 
-.page-heading {
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.page-heading h2,
 .create-panel h3,
 .account-card h3 {
   margin: 0;
 }
 
-.page-heading h2 {
-  margin-top: 3px;
-  font-size: clamp(1.65rem, 3vw, 2.2rem);
-}
-
-.page-heading > div > p:last-child,
 .create-panel__header p,
 .account-card p {
   margin: 7px 0 0;
   color: var(--kk-text-muted);
-}
-
-.eyebrow {
-  margin: 0;
-  color: var(--kk-accent);
-  font-size: 0.75rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .create-panel {
@@ -672,19 +620,6 @@ dd {
   font: inherit;
 }
 
-.state-panel {
-  display: grid;
-  margin: 0;
-  padding: 36px 20px;
-  place-items: center;
-  gap: 10px;
-  text-align: center;
-  background: var(--kk-surface);
-  border: 1px dashed var(--kk-border-strong);
-  border-radius: var(--kk-radius);
-}
-
-.state-panel--error,
 .form-error,
 .page-error {
   color: var(--kk-danger);
@@ -721,7 +656,6 @@ dd {
 }
 
 @media (max-width: 780px) {
-  .page-heading,
   .account-card {
     align-items: stretch;
     flex-direction: column;

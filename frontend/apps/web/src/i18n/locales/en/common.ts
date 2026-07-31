@@ -18,6 +18,9 @@ export const common = {
     list: 'List',
     grid: 'Cards',
   },
+  search: {
+    clear: 'Clear search',
+  },
   fields: {
     status: 'Status',
   },

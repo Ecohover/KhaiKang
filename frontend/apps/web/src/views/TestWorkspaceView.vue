@@ -9,6 +9,7 @@ import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
 import SharedResourceSettings from '../components/SharedResourceSettings.vue'
+import SharedStateBanner from '../components/SharedStateBanner.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestCaseResponse, TestSuiteResponse, TestWorkspaceMemberResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
@@ -605,6 +606,15 @@ onMounted(load)
 
     <p v-if="error" class="error">{{ error }}</p>
 
+    <!-- VIEW TABS FOR HOME (分頁標籤列) -->
+    <SharedViewTabs
+      v-if="tab === 'home'"
+      model-value="home"
+      :tabs="[
+        { key: 'home', label: '首頁', icon: LayoutDashboard }
+      ]"
+    />
+
     <!-- TAB 0: HOME PLACEHOLDER -->
     <SharedCardSection
       v-if="tab === 'home'"
@@ -1085,7 +1095,7 @@ onMounted(load)
       v-if="tab === 'settings'"
       model-value="settings"
       :tabs="[
-        { key: 'settings', label: '列表', icon: List }
+        { key: 'settings', label: '設定', icon: List }
       ]"
     />
 
@@ -1113,20 +1123,6 @@ onMounted(load)
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 20px; width: 100%; box-sizing: border-box; }
-.view-switcher-bar { display: flex; align-items: center; }
-.view-switcher { display: flex; gap: 3px; padding: 3px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 8px; }
-.view-switcher button { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 6px 12px; color: var(--kk-text-muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-weight: 650; font-size: 0.85rem; }
-.view-switcher button.is-active { color: var(--kk-text); background: #ffffff; box-shadow: 0 1px 3px rgba(27, 46, 35, 0.09); }
-.workspace-header { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
-.workspace-header p { margin: 0 0 5px; color: var(--kk-accent); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
-.workspace-header h2 { margin: 0 0 8px; font-size: 2rem; }
-.workspace-header span:not(.status), .panel p { color: var(--kk-text-muted); }
-.status { padding: 6px 10px; color: #237047; background: #e5f5ec; border-radius: 99px; font-size: .75rem; font-weight: 700; }
-
-.two-column { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .8fr); gap: 18px; align-items: start; }
-.panel { display: grid; gap: 17px; padding: 22px; background: white; border: 1px solid var(--kk-border); border-radius: 12px; }
-.panel > header { display: flex; align-items: start; justify-content: space-between; color: var(--kk-accent); }
-.panel h3, .panel p { margin: 0; }.panel p { margin-top: 4px; font-size: .82rem; }
 
 /* VSCODE STYLE SPLIT VIEW LAYOUT */
 .suite-split-layout {

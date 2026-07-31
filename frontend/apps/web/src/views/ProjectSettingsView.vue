@@ -121,7 +121,7 @@ async function handleSaveSettings(payload: {
       <SharedViewTabs
         model-value="settings"
         :tabs="[
-          { key: 'settings', label: '列表', icon: List }
+          { key: 'settings', label: '設定', icon: List }
         ]"
       />
 

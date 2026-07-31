@@ -18,6 +18,9 @@ export const common = {
     list: '清單',
     grid: '卡片',
   },
+  search: {
+    clear: '清除搜尋',
+  },
   fields: {
     status: '狀態',
   },

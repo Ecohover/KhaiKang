@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Columns3, List, Plus, Search, X } from '@lucide/vue'
+import { Columns3, List, Plus } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiButton, UiPagination } from '@khaikang/ui'
@@ -13,6 +13,8 @@ import type {
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
+import SharedStateBanner from '../components/SharedStateBanner.vue'
+import SharedSearchField from '../components/SharedSearchField.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { shouldWarnMissingCompletionSummary } from '../issues/issueWorkflow'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -191,11 +193,19 @@ function formatDate(value: string): string {
       :status="project.status"
     />
 
-    <p v-if="loading" class="page-state">{{ t('projects.issues.loading') }}</p>
-    <div v-else-if="error" class="page-state page-state--error" role="alert">
-      <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadPage">{{ t('common.actions.reload') }}</UiButton>
-    </div>
+    <SharedStateBanner
+      v-if="loading"
+      type="loading"
+      :title="t('projects.issues.loading')"
+    />
+    <SharedStateBanner
+      v-else-if="error"
+      type="error"
+      :title="t('projects.detail.loadError')"
+      :description="error"
+      show-reload
+      @reload="loadPage"
+    />
 
     <template v-else-if="project && metadata">
       <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
@@ -231,18 +241,11 @@ function formatDate(value: string): string {
         <!-- TOOLBAR: SEARCH & ACTION AREA (清單上面的查詢區塊與新增任務按鈕) -->
         <div class="list-toolbar">
           <div class="search-filters">
-            <div class="search-box">
-              <Search :size="15" class="search-icon" />
-              <input
-                v-model="searchQuery"
-                type="text"
-                class="search-input"
-                placeholder="搜尋任務編號或標題..."
-              />
-              <button v-if="searchQuery" type="button" class="clear-btn" @click="searchQuery = ''">
-                <X :size="13" />
-              </button>
-            </div>
+            <SharedSearchField
+              v-model="searchQuery"
+              placeholder="搜尋任務編號或標題..."
+              :clear-label="t('common.search.clear')"
+            />
 
             <select v-model="filterStatus" class="status-select">
               <option value="">所有狀態</option>
@@ -362,38 +365,22 @@ function formatDate(value: string): string {
 </template>
 
 <style scoped>
-.issues-page { display: grid; gap: 22px; }
-.page-heading, .issue-toolbar, .view-switcher, .board-column header, .create-panel__heading { display: flex; align-items: center; }
-.page-heading, .issue-toolbar, .create-panel__heading { justify-content: space-between; gap: 16px; }
-.page-heading p, .page-heading h2 { margin: 0; }
-.page-heading p { color: var(--kk-accent); font-size: .75rem; font-weight: 750; letter-spacing: .08em; }
-.page-heading h2 { font-size: 1.8rem; }
-.page-heading span, .issue-toolbar > span { color: var(--kk-text-muted); font-size: .8rem; }
-.create-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 20px; background: var(--kk-surface); border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
-.create-panel__heading, .create-panel__actions, .field--wide { grid-column: 1 / -1; }
-.create-panel__heading div { display: grid; gap: 3px; }
-.create-panel__heading span { color: var(--kk-text-muted); font-size: .78rem; }
-.create-panel__heading button { color: var(--kk-text-muted); background: transparent; border: 0; cursor: pointer; }
-.field { display: grid; align-content: start; gap: 6px; font-size: .8rem; font-weight: 650; }
-.field input, .field select, .field textarea, .issue-row select { width: 100%; padding: 9px 10px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
-.field textarea { resize: vertical; }
-.create-panel__actions { display: flex; justify-content: flex-end; }
+.issues-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.board-column header { display: flex; align-items: center; }
+.issue-row select { width: 100%; padding: 9px 10px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
 .action-error { margin: 0; padding: 10px 14px; color: var(--kk-danger); background: #fff1f0; border: 1px solid #f1c2bd; border-radius: 7px; font-size: .82rem; }
 .action-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: #715514; background: #fff8df; border: 1px solid #e9d48a; border-radius: 7px; font-size: .82rem; }
 .action-warning a { color: inherit; font-weight: 700; }
-.issue-toolbar { min-height: 42px; }
-.view-switcher-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .count-badge { font-size: 0.82rem; color: var(--kk-text-muted); }
 .list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .search-filters { display: flex; align-items: center; gap: 10px; flex: 1; }
-.search-box { display: flex; align-items: center; gap: 8px; background: #f9fafb; border: 1px solid var(--kk-border); border-radius: 6px; padding: 0 10px; height: 34px; flex: 1; max-width: 320px; }
-.search-icon { color: var(--kk-text-muted); }
-.search-input { border: none; background: transparent; outline: none; font-size: 0.85rem; width: 100%; color: var(--kk-text); }
-.clear-btn { border: none; background: transparent; color: var(--kk-text-muted); cursor: pointer; display: flex; align-items: center; padding: 2px; }
-.status-select { height: 34px; padding: 0 10px; font-size: 0.85rem; border: 1px solid var(--kk-border); border-radius: 6px; background: white; color: var(--kk-text); }
-.view-switcher { gap: 3px; padding: 3px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 8px; }
-.view-switcher button { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 6px 12px; color: var(--kk-text-muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-weight: 650; }
-.view-switcher button.is-active { color: var(--kk-text); background: var(--kk-surface); box-shadow: 0 1px 3px rgb(27 46 35 / 9%); }
+.status-select { min-height: 42px; padding: 0 12px; font-size: 0.85rem; border: 1px solid var(--kk-border); border-radius: var(--kk-radius); background: var(--kk-surface); color: var(--kk-text); }
 .issue-list { overflow: hidden; background: var(--kk-surface); border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
 .issue-list__header, .issue-row { display: grid; grid-template-columns: 90px minmax(240px, 1fr) 140px 150px 150px; gap: 12px; align-items: center; padding: 12px 16px; }
 .issue-list__header { color: var(--kk-text-muted); background: var(--kk-surface-subtle); border-bottom: 1px solid var(--kk-border); font-size: .75rem; font-weight: 700; }
@@ -421,8 +408,5 @@ function formatDate(value: string): string {
 .issue-card footer { display: flex; justify-content: space-between; gap: 8px; color: var(--kk-text-muted); font-size: .72rem; }
 .board-status-field { display: grid; gap: 5px; color: var(--kk-text-muted); font-size: .7rem; }
 .board-status-field select { width: 100%; min-height: 34px; padding: 6px 8px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
-.page-state { padding: 42px 24px; text-align: center; background: var(--kk-surface); border: 1px dashed var(--kk-border-strong); border-radius: var(--kk-radius); }
-.page-state--error { color: var(--kk-danger); }
-@media (max-width: 900px) { .create-panel { grid-template-columns: 1fr 1fr; } .field--wide { grid-column: 1 / -1; } }
-@media (max-width: 720px) { .create-panel { grid-template-columns: 1fr; } .field, .create-panel__heading, .create-panel__actions { grid-column: 1; } .action-warning { align-items: flex-start; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
+@media (max-width: 720px) { .action-warning { align-items: flex-start; flex-direction: column; } .list-toolbar, .search-filters { align-items: stretch; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
 </style>

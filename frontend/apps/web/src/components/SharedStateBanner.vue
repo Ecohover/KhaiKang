@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { AlertCircle, FolderOpen, RefreshCw, Loader2 } from '@lucide/vue'
+import { UiButton } from '@khaikang/ui'
 
 const props = withDefaults(
   defineProps<{
@@ -37,14 +38,14 @@ const emit = defineEmits<{ (e: 'reload'): void }>()
       <p v-if="description">{{ description }}</p>
     </div>
 
-    <button
+    <UiButton
       v-if="type === 'error' || showReload"
-      type="button"
-      class="btn-subtle"
+      variant="secondary"
       @click="emit('reload')"
     >
-      <RefreshCw :size="14" /> {{ reloadLabel }}
-    </button>
+      <RefreshCw :size="16" aria-hidden="true" />
+      {{ reloadLabel }}
+    </UiButton>
   </div>
 </template>
 
@@ -122,21 +123,4 @@ const emit = defineEmits<{ (e: 'reload'): void }>()
   color: var(--kk-text-muted);
 }
 
-.btn-subtle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border: 1px solid var(--kk-border);
-  background: #ffffff;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 4px;
-}
-.btn-subtle:hover {
-  background: #f3f4f6;
-}
 </style>

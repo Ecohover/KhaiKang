@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { List, Plus, Search, Trash2, UserCheck, UserPlus, X } from '@lucide/vue'
+import { Plus, Trash2, UserCheck, UserPlus } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
-import { UiPagination } from '@khaikang/ui'
+import { UiButton, UiPagination } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import { useSaveNotice } from '../composables/useSaveNotice'
 import type { TestWorkspaceRole } from '../api/contracts'
+import SharedSearchField from './SharedSearchField.vue'
 
 export interface ResourceMemberItem {
   id: string
@@ -41,7 +42,7 @@ const props = withDefaults(
   },
 )
 
-const { d } = useI18n()
+const { d, t } = useI18n()
 const { showCreated, showUpdated } = useSaveNotice()
 
 const members = ref<ResourceMemberItem[]>([])
@@ -281,27 +282,19 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
 
     <!-- TOOLBAR: SEARCH & ACTION AREA (清單上面的查詢區塊與新增成員按鈕) -->
     <div class="list-toolbar">
-      <div class="search-box">
-        <Search :size="15" class="search-icon" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="search-input"
-          placeholder="搜尋成員名稱或角色..."
-        />
-        <button v-if="searchQuery" type="button" class="clear-btn" @click="searchQuery = ''">
-          <X :size="13" />
-        </button>
-      </div>
+      <SharedSearchField
+        v-model="searchQuery"
+        placeholder="搜尋成員名稱或角色..."
+        :clear-label="t('common.search.clear')"
+      />
 
-      <button
+      <UiButton
         v-if="canAdd"
-        type="button"
-        class="btn-primary"
         @click="isAddingMember = !isAddingMember"
       >
-        <Plus :size="15" /> {{ isAddingMember ? '取消新增' : '新增成員' }}
-      </button>
+        <Plus :size="16" aria-hidden="true" />
+        {{ isAddingMember ? '取消新增' : '新增成員' }}
+      </UiButton>
     </div>
 
     <!-- EXPANDABLE ADD MEMBER FORM PANEL -->
@@ -320,14 +313,13 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
             {{ r.label }}
           </option>
         </select>
-        <button
-          type="button"
-          class="btn-primary"
+        <UiButton
           :disabled="saving || !newUsername.trim()"
           @click="handleAddMember"
         >
-          <Plus :size="14" /> {{ saving ? '處理中...' : '確定新增' }}
-        </button>
+          <Plus :size="16" aria-hidden="true" />
+          {{ saving ? '處理中...' : '確定新增' }}
+        </UiButton>
       </div>
     </div>
 
@@ -445,82 +437,11 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
   border: 1px solid #fecaca;
 }
 
-.view-switcher-bar {
-  display: flex;
-  align-items: center;
-}
-
-.view-switcher {
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  background: var(--kk-surface-subtle);
-  border: 1px solid var(--kk-border);
-  border-radius: 8px;
-}
-
-.view-switcher button {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  color: var(--kk-text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 650;
-  font-size: 0.85rem;
-}
-
-.view-switcher button.is-active {
-  color: var(--kk-text);
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(27, 46, 35, 0.09);
-}
-
 .list-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f9fafb;
-  border: 1px solid var(--kk-border);
-  border-radius: 6px;
-  padding: 0 10px;
-  height: 34px;
-  flex: 1;
-  max-width: 320px;
-}
-
-.search-icon {
-  color: var(--kk-text-muted);
-}
-
-.search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.85rem;
-  width: 100%;
-  color: var(--kk-text);
-}
-
-.clear-btn {
-  border: none;
-  background: transparent;
-  color: var(--kk-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 2px;
 }
 
 .add-member-card {
@@ -657,7 +578,6 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
 }
 
 .btn-subtle,
-.btn-primary,
 .btn-danger-subtle {
   display: inline-flex;
   align-items: center;
@@ -679,12 +599,6 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
   color: var(--kk-text);
 }
 
-.btn-primary {
-  border: 1px solid #059669;
-  background: #059669;
-  color: #ffffff;
-}
-
 .btn-danger-subtle {
   border: 1px solid #fecaca;
   background: #ffffff;
@@ -697,5 +611,12 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .list-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>
