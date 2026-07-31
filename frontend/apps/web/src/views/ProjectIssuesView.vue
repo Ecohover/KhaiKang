@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { Columns3, List, Plus } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiButton, UiPagination, UiSaveToast, UiSaveToastStack } from '@khaikang/ui'
+import { useI18n } from 'vue-i18n'
+import { UiButton, UiPagination } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
@@ -16,6 +17,7 @@ type IssueView = 'list' | 'board'
 
 const route = useRoute()
 const router = useRouter()
+const { t, d } = useI18n()
 const projectId = computed(() => String(route.params.projectId))
 const project = ref<ProjectResponse>()
 const issues = ref<IssueResponse[]>([])
@@ -31,7 +33,7 @@ const completionWarning = ref<{ issueId: string; key: string }>()
 const activeView = ref<IssueView>('list')
 const updatingIssueId = ref<string>()
 const draggedIssueId = ref<string>()
-const { saveNotices, showCreated, showUpdated, clearSaveNotice } = useSaveNotice()
+const { showCreated, showUpdated } = useSaveNotice()
 
 const canCreate = computed(
   () => project.value?.status === 'active'
@@ -45,7 +47,7 @@ const canChangeStatus = computed(
 onMounted(async () => {
   await loadPage()
   if (route.query.savedMode === 'created' && typeof route.query.savedKey === 'string') {
-    showCreated(route.query.savedKey)
+    showCreated(t('projects.issues.record'), route.query.savedKey)
     await router.replace({ query: {} })
   }
 })
@@ -63,7 +65,7 @@ async function loadPage(): Promise<void> {
     if (!projectResult.data || !issueResult.data || !metadataResult.data) {
       error.value = problemMessage(
         projectResult.error ?? issueResult.error ?? metadataResult.error,
-        '找不到專案，或你沒有檢視任務的權限。',
+        t('projects.issues.loadFailed'),
       )
       return
     }
@@ -76,7 +78,7 @@ async function loadPage(): Promise<void> {
     totalPages.value = issueResult.data.totalPages
     metadata.value = metadataResult.data
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.issues.connectionFailed')
   } finally {
     loading.value = false
   }
@@ -113,18 +115,18 @@ async function changeStatus(issue: IssueResponse, statusCode: string): Promise<v
     )
 
     if (!result.data) {
-      actionError.value = problemMessage(result.error, '更新任務狀態失敗，請重新整理後再試。')
+      actionError.value = problemMessage(result.error, t('projects.issues.statusUpdateFailed'))
       return
     }
 
     const index = issues.value.findIndex((item) => item.id === issue.id)
     if (index >= 0) issues.value[index] = result.data
-    showUpdated(result.data.key)
+    showUpdated(t('projects.issues.record'), result.data.key)
     if (shouldWarnAboutResult) {
       completionWarning.value = { issueId: result.data.id, key: result.data.key }
     }
   } catch {
-    actionError.value = '無法連線到伺服器，請稍後再試。'
+    actionError.value = t('projects.issues.connectionFailed')
   } finally {
     updatingIssueId.value = undefined
     draggedIssueId.value = undefined
@@ -145,12 +147,7 @@ function issuesForStatus(statusCode: string): IssueResponse[] {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-TW', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
+  return d(new Date(value), 'dateTime')
 }
 </script>
 
@@ -159,7 +156,7 @@ function formatDate(value: string): string {
     <header class="page-heading">
       <div>
         <p>{{ project?.code }}</p>
-        <h2>任務管理</h2>
+        <h2>{{ t('projects.issues.title') }}</h2>
         <span>{{ project?.name }}</span>
       </div>
       <UiButton
@@ -167,45 +164,45 @@ function formatDate(value: string): string {
         @click="router.push({ name: 'project-issue-new', params: { projectId } })"
       >
         <Plus :size="17" aria-hidden="true" />
-        新增任務
+        {{ t('projects.issues.create') }}
       </UiButton>
     </header>
 
-    <p v-if="loading" class="page-state">正在載入任務…</p>
+    <p v-if="loading" class="page-state">{{ t('projects.issues.loading') }}</p>
     <div v-else-if="error" class="page-state page-state--error" role="alert">
       <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadPage">重新載入</UiButton>
+      <UiButton variant="secondary" @click="loadPage">{{ t('common.actions.reload') }}</UiButton>
     </div>
 
     <template v-else-if="project && metadata">
       <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
       <div v-if="completionWarning" class="action-warning" role="status">
-        <span>{{ completionWarning.key }} 已標示完成，但尚未填寫處理結果。</span>
+        <span>{{ t('projects.issues.completionWarning', { key: completionWarning.key }) }}</span>
         <RouterLink
           :to="{
             name: 'project-issue-edit',
             params: { projectId, issueId: completionWarning.issueId },
           }"
         >
-          補寫處理結果
+          {{ t('projects.issues.addCompletion') }}
         </RouterLink>
       </div>
 
       <div class="issue-toolbar">
-        <div class="view-switcher" role="group" aria-label="任務顯示方式">
+        <div class="view-switcher" role="group" :aria-label="t('projects.issues.viewMode')">
           <button type="button" :class="{ 'is-active': activeView === 'list' }" @click="activeView = 'list'">
-            <List :size="16" aria-hidden="true" />列表
+            <List :size="16" aria-hidden="true" />{{ t('projects.issues.listView') }}
           </button>
           <button type="button" :class="{ 'is-active': activeView === 'board' }" @click="activeView = 'board'">
-            <Columns3 :size="16" aria-hidden="true" />拖拉面板
+            <Columns3 :size="16" aria-hidden="true" />{{ t('projects.issues.boardView') }}
           </button>
         </div>
-        <span>共 {{ totalCount }} 個任務</span>
+        <span>{{ t('projects.issues.count', { count: totalCount }, totalCount) }}</span>
       </div>
 
       <div v-if="activeView === 'list'" class="issue-list">
         <div class="issue-list__header">
-          <span>編號</span><span>標題</span><span>狀態</span><span>處理人</span><span>更新時間</span>
+          <span>{{ t('projects.issues.columns.key') }}</span><span>{{ t('projects.issues.columns.title') }}</span><span>{{ t('projects.issues.columns.status') }}</span><span>{{ t('projects.issues.columns.assignee') }}</span><span>{{ t('projects.issues.columns.updatedAt') }}</span>
         </div>
         <div v-for="issue in issues" :key="issue.id" class="issue-row">
           <strong>{{ issue.key }}</strong>
@@ -217,7 +214,7 @@ function formatDate(value: string): string {
           <select
             v-if="canChangeStatus"
             :value="issue.statusCode"
-            :aria-label="`變更 ${issue.key} 狀態`"
+            :aria-label="t('projects.issues.changeStatus', { key: issue.key })"
             :disabled="updatingIssueId === issue.id"
             @change="changeStatus(issue, ($event.target as HTMLSelectElement).value)"
           >
@@ -226,11 +223,11 @@ function formatDate(value: string): string {
             </option>
           </select>
           <span v-else>{{ issue.statusName }}</span>
-          <span>{{ issue.assigneeUsername ?? '未指派' }}</span>
+          <span>{{ issue.assigneeUsername ?? t('projects.issues.unassigned') }}</span>
           <span>{{ formatDate(issue.updatedAt) }}</span>
         </div>
         <div v-if="issues.length === 0" class="empty-state">
-          <List :size="28" aria-hidden="true" /><strong>目前沒有任務</strong><span>建立第一個任務開始追蹤工作。</span>
+          <List :size="28" aria-hidden="true" /><strong>{{ t('projects.issues.emptyTitle') }}</strong><span>{{ t('projects.issues.emptyDescription') }}</span>
         </div>
       </div>
 
@@ -259,9 +256,9 @@ function formatDate(value: string): string {
               >
                 {{ issue.title }}
               </RouterLink>
-              <footer><span>{{ issue.priorityName }}</span><span>{{ issue.assigneeUsername ?? '未指派' }}</span></footer>
+              <footer><span>{{ issue.priorityName }}</span><span>{{ issue.assigneeUsername ?? t('projects.issues.unassigned') }}</span></footer>
               <label v-if="canChangeStatus" class="board-status-field">
-                <span>狀態</span>
+                <span>{{ t('projects.issues.columns.status') }}</span>
                 <select
                   :value="issue.statusCode"
                   :disabled="updatingIssueId === issue.id"
@@ -277,7 +274,7 @@ function formatDate(value: string): string {
                 </select>
               </label>
             </article>
-            <span v-if="issuesForStatus(status.code).length === 0" class="board-empty">尚無任務</span>
+            <span v-if="issuesForStatus(status.code).length === 0" class="board-empty">{{ t('projects.issues.emptyStatus') }}</span>
           </div>
         </section>
       </div>
@@ -288,22 +285,17 @@ function formatDate(value: string): string {
         :total-count="totalCount"
         :total-pages="totalPages"
         :disabled="loading"
+        :navigation-label="t('common.pagination.navigation')"
+        :summary-label="t('common.pagination.summary', { count: totalCount })"
+        :page-size-label="t('common.pagination.pageSize')"
+        :previous-label="t('common.pagination.previous')"
+        :next-label="t('common.pagination.next')"
+        :page-label="t('common.pagination.page', { page: totalPages === 0 ? 0 : page, total: totalPages })"
         @page-change="changePage"
         @page-size-change="changePageSize"
       />
     </template>
 
-    <UiSaveToastStack>
-      <UiSaveToast
-        v-for="notice in saveNotices"
-        :key="notice.id"
-        inline
-        :mode="notice.mode"
-        record-label="任務編號"
-        :record-key="notice.recordKey"
-        @close="clearSaveNotice(notice.id)"
-      />
-    </UiSaveToastStack>
   </section>
 </template>
 

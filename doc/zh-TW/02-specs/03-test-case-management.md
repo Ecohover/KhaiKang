@@ -24,6 +24,7 @@
 
 目前規格涵蓋以下功能：
 
+- 測試工作區建立、停用、成員與固定角色管理
 - 測試案例建立、修改、停用與查詢
 - 樹狀測試套件建立與案例分類
 - 測試標籤建立與案例標記
@@ -49,6 +50,19 @@
 
 ## 核心模型
 
+### Test Workspace
+
+`Test Workspace` 是測試資產與存取權限的根容器，MVP 中獨立於 Project。
+
+建立 Test Workspace 的帳號自動成為 `owner`。MVP 使用固定角色：
+
+- `owner`：管理 Workspace、成員及全部測試資產；每個 Workspace 至少保留一位 owner。
+- `manager`：管理成員、Suite、Case、Plan 與 Run，但不能停用 Workspace 或移除最後一位 owner。
+- `tester`：讀取測試資產、建立及執行 Test Run，不能管理成員或修改案例目錄。
+- `viewer`：只能讀取測試資產與既有執行結果。
+
+同一帳號在一個 Workspace 中只能有一個有效成員關係及一個固定角色。自訂角色與 Project 關聯不屬於 MVP。
+
 ### Test Case
 
 `Test Case` 是可重複使用的測試規格，必須屬於一個 Test Workspace。
@@ -56,7 +70,7 @@
 一份測試案例至少應描述：
 
 - 測試目標
-- 前置準備
+- 前置準備（可選）
 - 多個可排序的測試步驟
 - 每個測試步驟的預期結果
 - 整體預期結果（可選）
@@ -135,7 +149,7 @@ Test Workspace
 
 ### 測試案例維護
 
-具備 Test Workspace 存取權的成員建立測試案例時，必須指定一個測試套件、前置準備與至少一個測試步驟；每個步驟都填寫預期結果。案例可加入零個或多個測試標籤。
+具備 Test Workspace 存取權的成員建立測試案例時，必須指定一個測試套件與至少一個測試步驟；每個步驟都填寫預期結果。前置準備可省略，案例可加入零個或多個測試標籤。
 
 已不再使用的案例應停用，而非直接刪除；既有測試執行紀錄不得因此失去可追溯性。
 
@@ -183,8 +197,10 @@ MVP 建議每個 `Test Run Item` 支援：
 
 - `Test Case`、`Test Suite`、`Test Plan` 與 `Test Run` 都必須屬於同一個 Test Workspace。
 - 每個 `Test Case` 在 MVP 中必須且只能屬於一個 `Test Suite`。
-- `Test Suite` 可以形成樹狀結構；移動套件或案例不得改變既有 Test Plan 的項目範圍。
+- `Test Suite` 可以形成最多五層的樹狀結構；移動套件或案例不得改變既有 Test Plan 的項目範圍。
 - 只有具備該 Test Workspace 存取權的成員可以查看或操作測試管理資料。
+- Test Workspace 在 MVP 中不直接關聯 Project；Project 關聯留待後續規格。
+- Test Case 在 MVP 中以 UUID 作為穩定識別，不另建立對外案例流水號。
 - `Test Run` 必須來自一份 `Test Plan`；MVP 不先提供無計畫的臨時執行流程。
 - `Test Run` 只能由使用者從測試管理頁面手動觸發；不支援 Issue、CI 或 AI 觸發。
 - 每個 Test Run Item 都可由使用者手動填寫結果。
@@ -193,7 +209,8 @@ MVP 建議每個 `Test Run Item` 支援：
 - Test Suite、Tag 與搜尋只用於找出和批次加入案例，不提供 AND、OR、NOT 或巢狀條件編輯。
 - `Test Plan` 建立後的案例清單應固定，後續套件異動不應自動改變既有計畫。
 - `Test Run Item` 建立時必須保存案例內容快照。
-- 已完成的 `Test Run` 不應直接覆寫結果；需要重測時應建立新的 `Test Run`。
+- `Test Plan` 在 MVP 中只要求名稱與測試目的，不先加入目標版本、環境或負責人欄位。
+- `completed` 或 `cancelled` 的 `Test Run` 與其結果完全唯讀；需要重測時應建立新的 `Test Run`。
 
 ## 安全與稽核
 
@@ -212,21 +229,18 @@ MVP 建議每個 `Test Run Item` 支援：
 
 - 使用者可在已授權的 Test Workspace 內建立與查詢測試案例。
 - 使用者可建立樹狀測試套件，並將案例放入指定套件。
-- 每個測試案例包含前置準備、可排序步驟與每個步驟的預期結果，並可套用多個測試標籤。
+- 每個測試案例可包含前置準備，並包含可排序步驟與每個步驟的預期結果，且可套用多個測試標籤。
 - 使用者可建立測試計畫，從 Suite、Tag 或搜尋結果手動加入、移除及排序案例。
 - 使用者可先批次加入一個 Suite 的全部案例，再手動移除部分案例。
 - 使用者可依測試計畫建立多次測試執行。
 - 使用者可從測試管理頁面手動開始、持續執行與完成一份手動測試執行。
-- 使用者可在既有 Test Run 手動觸發已綁定案例的 Playwright API 或 Browser E2E 測試，並查看自動匯入的結果。
-- Test Run 可作為完整測試報告，顯示結果統計與自動化診斷資料連結。
+- Test Run 可作為完整手動測試報告，顯示結果統計、執行時間與執行人。
 - 每次測試執行都可記錄每個案例的獨立結果。
 - 案例更新後，既有測試執行仍可檢視當次案例內容快照。
 - 測試結果可區分未執行、通過、失敗、阻塞與略過。
 
 ## 未決問題
 
-- 測試計畫是否需要支援目標版本、環境或負責人欄位。
-- 初期是否限制 Test Suite 樹狀層級深度。
 - 初期是否只允許一個預設 Test Environment、Test Repository 與 Test Execution Agent。
 - 測試案例是否需要直接關聯一張或多張 Issue。
 - 未來是否支援由 Test Issue 觸發 Test Run，並回寫測試摘要到 Issue。

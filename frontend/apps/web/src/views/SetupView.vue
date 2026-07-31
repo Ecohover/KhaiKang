@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Copy, Check } from '@lucide/vue'
 import { UiButton } from '@khaikang/ui'
@@ -7,6 +8,7 @@ import AuthLayout from '../components/AuthLayout.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const { t } = useI18n()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
@@ -18,7 +20,7 @@ async function initialize(): Promise<void> {
   try {
     await auth.initialize()
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '系統初始化失敗。'
+    error.value = reason instanceof Error ? reason.message : t('system.auth.setup.failed')
   } finally {
     loading.value = false
   }
@@ -41,7 +43,7 @@ async function continueToAccount(): Promise<void> {
     await auth.completeInitialization()
     await router.push({ name: 'change-password' })
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '無法登入初始管理員帳號。'
+    error.value = reason instanceof Error ? reason.message : t('system.auth.setup.loginFailed')
   } finally {
     loading.value = false
   }
@@ -50,27 +52,27 @@ async function continueToAccount(): Promise<void> {
 
 <template>
   <AuthLayout>
-    <h1>初始化管理員</h1>
-    <p class="auth-panel__lead">建立此安裝環境的第一個系統管理員帳號。</p>
+    <h1>{{ t('system.auth.setup.title') }}</h1>
+    <p class="auth-panel__lead">{{ t('system.auth.setup.description') }}</p>
 
     <p v-if="error" class="form-error" role="alert">{{ error }}</p>
 
     <template v-if="auth.initialCredentials">
       <div class="credential-block" aria-live="polite">
         <div class="credential-row">
-          <span>帳號</span>
+          <span>{{ t('system.auth.setup.username') }}</span>
           <code>{{ auth.initialCredentials.username }}</code>
         </div>
         <div class="credential-row credential-row--password">
           <div>
-            <span>一次性初始密碼</span>
+            <span>{{ t('system.auth.setup.initialPassword') }}</span>
             <code>{{ auth.initialCredentials.initialPassword }}</code>
           </div>
           <button
             class="icon-button"
             type="button"
-            :title="copied ? '已複製' : '複製初始密碼'"
-            :aria-label="copied ? '已複製' : '複製初始密碼'"
+            :title="t(copied ? 'system.auth.setup.copied' : 'system.auth.setup.copyPassword')"
+            :aria-label="t(copied ? 'system.auth.setup.copied' : 'system.auth.setup.copyPassword')"
             @click="copyPassword"
           >
             <Check v-if="copied" :size="18" />
@@ -78,14 +80,14 @@ async function continueToAccount(): Promise<void> {
           </button>
         </div>
       </div>
-      <p class="security-note">此密碼只顯示一次，繼續後必須立即設定新密碼。</p>
+      <p class="security-note">{{ t('system.auth.setup.securityNote') }}</p>
       <div class="auth-form__actions">
-        <UiButton :loading="loading" @click="continueToAccount">繼續</UiButton>
+        <UiButton :loading="loading" @click="continueToAccount">{{ t('system.auth.setup.continue') }}</UiButton>
       </div>
     </template>
 
     <div v-else class="auth-form__actions">
-      <UiButton :loading="loading" @click="initialize">建立管理員</UiButton>
+      <UiButton :loading="loading" @click="initialize">{{ t('system.auth.setup.create') }}</UiButton>
     </div>
   </AuthLayout>
 </template>

@@ -1,6 +1,7 @@
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Infrastructure;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
+using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -59,6 +60,12 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<ProjectManagementDbContext>(options => options
                 .UseSqlite(_connection)
                 .UseInternalServiceProvider(_sqliteServices));
+            services.RemoveAll<DbContextOptions<TestManagementDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<TestManagementDbContext>>();
+            services.RemoveAll<TestManagementDbContext>();
+            services.AddDbContext<TestManagementDbContext>(options => options
+                .UseSqlite(_connection)
+                .UseInternalServiceProvider(_sqliteServices));
         });
     }
 
@@ -70,6 +77,8 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         dbContext.Database.EnsureCreated();
         var projectDbContext = scope.ServiceProvider.GetRequiredService<ProjectManagementDbContext>();
         projectDbContext.Database.GetService<IRelationalDatabaseCreator>().CreateTables();
+        var testManagementDbContext = scope.ServiceProvider.GetRequiredService<TestManagementDbContext>();
+        testManagementDbContext.Database.GetService<IRelationalDatabaseCreator>().CreateTables();
 
         return host;
     }

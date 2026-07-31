@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { Save, Trash2, UserPlus, Users } from '@lucide/vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { UiButton, UiField } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { ProjectMemberResponse, ProjectResponse, ProjectRoleResponse } from '../api/contracts'
@@ -10,8 +11,10 @@ import {
   PROJECT_MEMBER_REMOVE_PERMISSION,
   PROJECT_ROLE_ASSIGN_PERMISSION,
 } from '../navigation'
+import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
+const { t, d } = useI18n()
 const projectId = computed(() => String(route.params.projectId))
 const project = ref<ProjectResponse>()
 const members = ref<ProjectMemberResponse[]>([])
@@ -24,6 +27,7 @@ const newMemberRoleCodes = ref<string[]>(['contributor'])
 const addingMember = ref(false)
 const savingMemberId = ref('')
 const removingMemberId = ref('')
+const { showCreated, showUpdated } = useSaveNotice()
 
 const canAddMember = computed(() =>
   project.value?.currentUserPermissions.includes(PROJECT_MEMBER_ADD_PERMISSION) === true &&
@@ -50,7 +54,7 @@ async function loadPage(): Promise<void> {
     if (!projectResult.data || !memberResult.data || !roleResult.data) {
       error.value = problemMessage(
         projectResult.error ?? memberResult.error ?? roleResult.error,
-        '無法載入專案成員。',
+        t('projects.members.loadFailed'),
       )
       return
     }
@@ -62,7 +66,7 @@ async function loadPage(): Promise<void> {
       members.value.map((member) => [member.id, [...member.roleCodes]]),
     )
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.members.connectionFailed')
   } finally {
     loading.value = false
   }
@@ -80,14 +84,15 @@ async function addMember(): Promise<void> {
       await secureHeaders(),
     )
     if (!result.data) {
-      error.value = problemMessage(result.error, '加入成員失敗。')
+      error.value = problemMessage(result.error, t('projects.members.addFailed'))
       return
     }
     username.value = ''
     newMemberRoleCodes.value = ['contributor']
+    showCreated(t('projects.members.record'), result.data.username)
     await loadPage()
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.members.connectionFailed')
   } finally {
     addingMember.value = false
   }
@@ -96,7 +101,7 @@ async function addMember(): Promise<void> {
 async function saveMemberRoles(member: ProjectMemberResponse): Promise<void> {
   const roleCodes = memberRoles.value[member.id] ?? []
   if (roleCodes.length === 0) {
-    error.value = '每位專案成員至少需要一個角色。'
+    error.value = t('projects.members.atLeastOneRole')
     return
   }
 
@@ -110,19 +115,20 @@ async function saveMemberRoles(member: ProjectMemberResponse): Promise<void> {
       await secureHeaders(),
     )
     if (!result.data) {
-      error.value = problemMessage(result.error, '角色更新失敗。')
+      error.value = problemMessage(result.error, t('projects.members.updateFailed'))
       return
     }
+    showUpdated(t('projects.members.record'), result.data.username)
     await loadPage()
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.members.connectionFailed')
   } finally {
     savingMemberId.value = ''
   }
 }
 
 async function removeMember(member: ProjectMemberResponse): Promise<void> {
-  if (!window.confirm(`確定要將 ${member.username} 移出專案嗎？`)) return
+  if (!window.confirm(t('projects.members.removeConfirm', { username: member.username }))) return
 
   removingMemberId.value = member.id
   error.value = ''
@@ -134,22 +140,19 @@ async function removeMember(member: ProjectMemberResponse): Promise<void> {
       await secureHeaders(),
     )
     if (result.error) {
-      error.value = problemMessage(result.error, '移除成員失敗。')
+      error.value = problemMessage(result.error, t('projects.members.removeFailed'))
       return
     }
     await loadPage()
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.members.connectionFailed')
   } finally {
     removingMemberId.value = ''
   }
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-TW', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return d(new Date(value), 'dateTime')
 }
 </script>
 
@@ -158,24 +161,24 @@ function formatDate(value: string): string {
     <header class="page-heading">
       <div>
         <p>{{ project?.code }}</p>
-        <h2>成員管理</h2>
+        <h2>{{ t('projects.members.title') }}</h2>
         <span>{{ project?.name }}</span>
       </div>
-      <strong v-if="!loading">{{ members.length }} 位成員</strong>
+      <strong v-if="!loading">{{ t('projects.members.count', { count: members.length }, members.length) }}</strong>
     </header>
 
-    <p v-if="loading" class="page-state">正在載入成員…</p>
+    <p v-if="loading" class="page-state">{{ t('projects.members.loading') }}</p>
     <template v-else>
       <form v-if="canAddMember" class="member-add" @submit.prevent="addMember">
         <UiField
           id="new-member-username"
           v-model="username"
-          label="帳號名稱"
-          placeholder="輸入既有使用者帳號"
+          :label="t('projects.members.username')"
+          :placeholder="t('projects.members.usernamePlaceholder')"
           :disabled="addingMember"
         />
         <fieldset class="role-options">
-          <legend>專案角色</legend>
+          <legend>{{ t('projects.members.roles') }}</legend>
           <label v-for="role in roles" :key="role.code">
             <input
               v-model="newMemberRoleCodes"
@@ -192,7 +195,7 @@ function formatDate(value: string): string {
           :disabled="!username.trim() || newMemberRoleCodes.length === 0"
         >
           <UserPlus :size="17" aria-hidden="true" />
-          加入專案
+          {{ t('projects.members.add') }}
         </UiButton>
       </form>
 
@@ -201,14 +204,14 @@ function formatDate(value: string): string {
       <div class="member-panel">
         <div class="member-panel__title">
           <Users :size="18" aria-hidden="true" />
-          <h3>專案成員</h3>
+          <h3>{{ t('projects.members.record') }}</h3>
         </div>
         <article v-for="member in members" :key="member.id" class="member-card">
           <div class="member-card__identity">
             <span>{{ member.username.slice(0, 1).toUpperCase() }}</span>
             <div>
               <strong>{{ member.username }}</strong>
-              <small>加入於 {{ formatDate(member.joinedAt) }}</small>
+              <small>{{ t('projects.members.joinedAt', { date: formatDate(member.joinedAt) }) }}</small>
             </div>
           </div>
           <div class="member-card__roles">
@@ -231,7 +234,7 @@ function formatDate(value: string): string {
               @click="saveMemberRoles(member)"
             >
               <Save :size="16" aria-hidden="true" />
-              儲存角色
+              {{ t('projects.members.saveRoles') }}
             </UiButton>
             <UiButton
               v-if="canRemoveMember"
@@ -240,7 +243,7 @@ function formatDate(value: string): string {
               @click="removeMember(member)"
             >
               <Trash2 :size="16" aria-hidden="true" />
-              移除
+              {{ t('projects.members.remove') }}
             </UiButton>
           </div>
         </article>

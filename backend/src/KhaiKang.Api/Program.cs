@@ -2,6 +2,7 @@ using KhaiKang.Api.Contracts;
 using KhaiKang.CommonUtils.Web.DependencyInjection;
 using KhaiKang.Modules.Identity.DependencyInjection;
 using KhaiKang.Modules.ProjectManagement.DependencyInjection;
+using KhaiKang.Modules.TestManagement.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -16,6 +17,7 @@ if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Te
 builder.Services.AddKhaiKangCommonWeb();
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddProjectManagementModule(builder.Configuration);
+builder.Services.AddTestManagementModule(builder.Configuration);
 if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.Replace(ServiceDescriptor.Singleton<IDataProtectionProvider>(
@@ -33,6 +35,7 @@ app.UseAntiforgery();
 app.MapControllers();
 app.MapIdentityModule();
 app.MapProjectManagementModule();
+app.MapTestManagementModule();
 
 app.MapGet("/openapi/v1.yaml", () => Results.File(
     Path.Combine(AppContext.BaseDirectory, "OpenApi", "khaikang.v1.yaml"),

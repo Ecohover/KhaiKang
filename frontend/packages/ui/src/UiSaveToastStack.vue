@@ -1,10 +1,16 @@
+<script setup lang="ts">
+withDefaults(defineProps<{ label?: string }>(), {
+  label: 'Operation result notifications',
+})
+</script>
+
 <template>
   <Teleport to="body">
     <TransitionGroup
       name="ui-save-toast-stack"
       tag="section"
       class="ui-save-toast-stack"
-      aria-label="操作結果通知"
+      :aria-label="label"
     >
       <slot />
     </TransitionGroup>

@@ -3,10 +3,12 @@ import { onMounted, ref } from 'vue'
 import { ArrowLeft } from '@lucide/vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { UiButton } from '@khaikang/ui'
+import { useI18n } from 'vue-i18n'
 import { apiClient, problemMessage } from '../api/client'
 import type { ProjectResponse } from '../api/contracts'
 
 const route = useRoute()
+const { t } = useI18n()
 const project = ref<ProjectResponse>()
 const loading = ref(true)
 const error = ref('')
@@ -19,12 +21,12 @@ async function loadProject(): Promise<void> {
   try {
     const result = await apiClient.getProject(String(route.params.projectId))
     if (!result.data) {
-      error.value = problemMessage(result.error, '找不到專案，或你沒有檢視權限。')
+      error.value = problemMessage(result.error, t('projects.detail.loadError'))
       return
     }
     project.value = result.data
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.detail.connectionError')
   } finally {
     loading.value = false
   }
@@ -35,13 +37,13 @@ async function loadProject(): Promise<void> {
   <section class="project-home">
     <RouterLink :to="{ name: 'projects' }" class="back-link">
       <ArrowLeft :size="17" aria-hidden="true" />
-      返回專案列表
+      {{ t('projects.detail.back') }}
     </RouterLink>
 
-    <p v-if="loading" class="page-state">正在載入專案…</p>
+    <p v-if="loading" class="page-state">{{ t('projects.detail.loading') }}</p>
     <div v-else-if="error" class="page-state page-state--error" role="alert">
       <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadProject">重新載入</UiButton>
+      <UiButton variant="secondary" @click="loadProject">{{ t('projects.detail.reload') }}</UiButton>
     </div>
 
     <template v-else-if="project">
@@ -50,14 +52,14 @@ async function loadProject(): Promise<void> {
           <p>{{ project.code }}</p>
           <h2>{{ project.name }}</h2>
           <span :class="`status-badge status-badge--${project.status}`">
-            {{ project.status === 'active' ? '啟用中' : '已停用' }}
+            {{ t(`projects.detail.status.${project.status}`) }}
           </span>
         </div>
       </header>
 
-      <div class="home-canvas" aria-label="專案首頁內容">
-        <p>專案首頁</p>
-        <span>看板與專案摘要將在後續功能中加入。</span>
+      <div class="home-canvas" :aria-label="t('projects.detail.contentLabel')">
+        <p>{{ t('projects.detail.placeholderTitle') }}</p>
+        <span>{{ t('projects.detail.placeholderDescription') }}</span>
       </div>
     </template>
   </section>

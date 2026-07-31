@@ -30,6 +30,7 @@
 | data-model | Audit Metadata | Draft | [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md) |
 | planning | 任務管理 MVP 實作計畫 | Active | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
 | planning | AI Agent Orchestration 設計方向 | Direction | [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) |
+| planning | 測試管理 MVP 實作計畫 | Active | [測試管理 MVP 實作計畫](./05-test-management-implementation-plan.md) |
 
 ## 近期範圍
 

@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { i18n } from '../i18n/index'
 import { apiClient, clearCsrfToken, problemMessage, secureHeaders } from '../api/client'
 import type { AuthenticatedUserResponse } from '../api/contracts'
 
@@ -24,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const setup = await apiClient.getSetupStatus()
     if (!setup.data) {
-      throw new Error('無法取得系統初始化狀態。')
+      throw new Error(i18n.global.t('system.errors.initializationStatus'))
     }
 
     requiresInitialization.value = setup.data.requiresInitialization
@@ -57,7 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function initialize(): Promise<void> {
     const response = await apiClient.initializeAdmin(await secureHeaders())
     if (response.error || !response.data) {
-      throw new Error(problemMessage(response.error, '系統初始化失敗。'))
+      throw new Error(problemMessage(response.error, i18n.global.t('system.errors.initializationFailed')))
     }
 
     initialCredentials.value = response.data
@@ -66,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function completeInitialization(): Promise<void> {
     if (!initialCredentials.value) {
-      throw new Error('初始帳號資訊已失效，請重新開啟初始化畫面。')
+      throw new Error(i18n.global.t('system.auth.setup.expired'))
     }
 
     await login(
@@ -82,7 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
       await secureHeaders(),
     )
     if (response.error || !response.data) {
-      throw new Error(problemMessage(response.error, '登入失敗，請確認帳號與密碼。'))
+      throw new Error(problemMessage(response.error, i18n.global.t('system.auth.login.failedDetail')))
     }
 
     user.value = response.data
@@ -95,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
       await secureHeaders(),
     )
     if (response.error) {
-      throw new Error(problemMessage(response.error, '密碼變更失敗。'))
+      throw new Error(problemMessage(response.error, i18n.global.t('system.auth.password.failed')))
     }
 
     if (user.value) {

@@ -2,7 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ArrowLeft, CheckCircle2, ClipboardList, FileText, RefreshCw, Target } from '@lucide/vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { UiButton, UiSaveToast, UiSaveToastStack } from '@khaikang/ui'
+import { useI18n } from 'vue-i18n'
+import { UiButton, UiCreateActions } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
@@ -15,6 +16,7 @@ import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
 const router = useRouter()
+const { t, d } = useI18n()
 const projectId = computed(() => String(route.params.projectId))
 const issueId = computed(() => route.params.issueId ? String(route.params.issueId) : undefined)
 const isEditing = computed(() => Boolean(issueId.value))
@@ -39,7 +41,7 @@ const form = reactive({
   definitionOfDone: '',
   completionSummary: '',
 })
-const { saveNotices, showCreated, showUpdated, clearSaveNotice } = useSaveNotice()
+const { showCreated, showUpdated } = useSaveNotice()
 const { isDirty, markClean } = useFormDirtyState(() => ({ ...form }))
 
 const isActiveProject = computed(() => project.value?.status === 'active')
@@ -71,7 +73,7 @@ onBeforeRouteLeave(() => {
     return true
   }
 
-  return window.confirm('尚有未儲存的任務內容，確定要離開嗎？')
+  return window.confirm(t('projects.issues.unsavedConfirm'))
 })
 
 function handleBeforeUnload(event: BeforeUnloadEvent): void {
@@ -96,7 +98,7 @@ async function loadPage(): Promise<void> {
     if (!projectResult.data || !metadataResult.data || (isEditing.value && !issueResult?.data)) {
       error.value = problemMessage(
         projectResult.error ?? metadataResult.error ?? issueResult?.error,
-        '找不到任務，或你沒有檢視權限。',
+        t('projects.issues.issueNotFound'),
       )
       return
     }
@@ -117,7 +119,7 @@ async function loadPage(): Promise<void> {
     await nextTick()
     markClean()
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.issues.connectionFailed')
   } finally {
     loading.value = false
   }
@@ -192,7 +194,7 @@ async function save(continueAfterCreate = false): Promise<void> {
         )
 
     if (!result.data) {
-      error.value = problemMessage(result.error, '儲存任務失敗，請稍後再試。')
+      error.value = problemMessage(result.error, t('projects.issues.saveFailed'))
       versionConflict.value = result.error?.code === 'issue_version_conflict'
       return
     }
@@ -200,12 +202,12 @@ async function save(continueAfterCreate = false): Promise<void> {
     if (wasEditing) {
       applyIssue(result.data)
       markClean()
-      showUpdated(result.data.key)
+      showUpdated(t('projects.issues.record'), result.data.key)
     } else if (continueAfterCreate) {
       resetCreateForm()
       await nextTick()
       markClean()
-      showCreated(result.data.key)
+      showCreated(t('projects.issues.record'), result.data.key)
       document.getElementById('issue-title')?.focus()
     } else {
       markClean()
@@ -220,7 +222,7 @@ async function save(continueAfterCreate = false): Promise<void> {
       })
     }
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.issues.connectionFailed')
   } finally {
     saving.value = false
   }
@@ -243,17 +245,17 @@ async function changeAssignee(assigneeAccountId: string | null): Promise<void> {
     )
     if (!result.data) {
       form.assigneeAccountId = previousAssigneeAccountId
-      error.value = problemMessage(result.error, '更新處理人失敗，請重新載入後再試。')
+      error.value = problemMessage(result.error, t('projects.issues.assigneeUpdateFailed'))
       versionConflict.value = result.error?.code === 'issue_version_conflict'
       return
     }
 
     applyIssue(result.data)
     markClean()
-    showUpdated(result.data.key)
+    showUpdated(t('projects.issues.record'), result.data.key)
   } catch {
     form.assigneeAccountId = previousAssigneeAccountId
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.issues.connectionFailed')
   } finally {
     savingAssignee.value = false
   }
@@ -266,11 +268,8 @@ async function reloadIssue(): Promise<void> {
 }
 
 function formatDateTime(value: string | null): string {
-  if (!value) return '尚未完成'
-  return new Intl.DateTimeFormat('zh-TW', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  if (!value) return t('projects.issues.notCompleted')
+  return d(new Date(value), 'dateTime')
 }
 </script>
 
@@ -282,45 +281,48 @@ function formatDateTime(value: string | null): string {
         class="back-link"
         @click="router.push({ name: 'project-issues', params: { projectId } })"
       >
-        <ArrowLeft :size="16" aria-hidden="true" />返回任務列表
+        <ArrowLeft :size="16" aria-hidden="true" />{{ t('projects.issues.back') }}
       </button>
       <div class="heading-row">
         <div>
           <p>{{ project?.code }}</p>
-          <h2>{{ isEditing ? issue?.key ?? '編輯任務' : '新增任務' }}</h2>
-          <span>{{ isEditing ? '編輯任務內容與處理紀錄' : '建立新的專案任務' }}</span>
+          <h2>{{ isEditing ? issue?.key ?? t('projects.issues.edit') : t('projects.issues.create') }}</h2>
+          <span>{{ t(isEditing ? 'projects.issues.editDescription' : 'projects.issues.createDescription') }}</span>
         </div>
-        <div class="heading-actions">
+        <div v-if="isEditing" class="heading-actions">
           <UiButton :disabled="!canSave || saving" @click="save()">
-            {{ saving ? '儲存中…' : isEditing ? '儲存變更' : '建立任務' }}
-          </UiButton>
-          <UiButton
-            v-if="!isEditing"
-            variant="secondary"
-            :disabled="!canSave || saving"
-            @click="save(true)"
-          >
-            建立任務並繼續
+            {{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}
           </UiButton>
         </div>
+        <UiCreateActions
+          v-else
+          :show-cancel="false"
+          :loading="saving"
+          :disabled="!canSave"
+          :cancel-label="t('common.actions.cancel')"
+          :create-label="t('projects.issues.create')"
+          :continue-label="t('projects.issues.createAndContinue')"
+          @create="save(false)"
+          @create-continue="save(true)"
+        />
       </div>
     </header>
 
-    <p v-if="loading" class="page-state">正在載入任務資料…</p>
+    <p v-if="loading" class="page-state">{{ t('projects.issues.loadingDetail') }}</p>
     <div
       v-else-if="error && (!metadata || (isEditing && !issue))"
       class="page-state page-state--error"
       role="alert"
     >
       <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadPage">重新載入</UiButton>
+      <UiButton variant="secondary" @click="loadPage">{{ t('common.actions.reload') }}</UiButton>
     </div>
 
     <dl v-if="issue && isEditing" class="record-info">
-      <div><dt>建立人</dt><dd>{{ issue.reporterUsername }}</dd></div>
-      <div><dt>建立時間</dt><dd>{{ formatDateTime(issue.createdAt) }}</dd></div>
-      <div><dt>更新時間</dt><dd>{{ formatDateTime(issue.updatedAt) }}</dd></div>
-      <div><dt>完成時間</dt><dd>{{ formatDateTime(issue.completedAt) }}</dd></div>
+      <div><dt>{{ t('projects.issues.metadata.reporter') }}</dt><dd>{{ issue.reporterUsername }}</dd></div>
+      <div><dt>{{ t('projects.issues.metadata.createdAt') }}</dt><dd>{{ formatDateTime(issue.createdAt) }}</dd></div>
+      <div><dt>{{ t('projects.issues.metadata.updatedAt') }}</dt><dd>{{ formatDateTime(issue.updatedAt) }}</dd></div>
+      <div><dt>{{ t('projects.issues.metadata.completedAt') }}</dt><dd>{{ formatDateTime(issue.completedAt) }}</dd></div>
     </dl>
 
     <form
@@ -332,70 +334,63 @@ function formatDateTime(value: string | null): string {
         <span>{{ error }}</span>
         <UiButton v-if="versionConflict" variant="secondary" type="button" @click="reloadIssue">
           <RefreshCw :size="16" aria-hidden="true" />
-          重新載入最新內容
+          {{ t('projects.issues.reloadLatest') }}
         </UiButton>
       </div>
       <p v-if="!isActiveProject" class="readonly-notice">
-        此專案已停用，任務目前為唯讀狀態。
+        {{ t('projects.issues.inactiveProject') }}
       </p>
 
       <section class="form-section">
-        <header><ClipboardList :size="19" aria-hidden="true" /><div><h3>基本資料</h3><p>任務識別、分類、負責人與背景說明。</p></div></header>
+        <header><ClipboardList :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.basic.title') }}</h3><p>{{ t('projects.issues.basic.description') }}</p></div></header>
         <div class="field-grid">
-          <label class="field field--full" for="issue-title"><span>標題 *</span><input id="issue-title" v-model="form.title" required maxlength="200" placeholder="輸入任務標題" :disabled="contentReadOnly || !isActiveProject" /></label>
-          <label class="field"><span>類型 *</span><select v-model="form.typeCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.types" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
-          <label class="field"><span>優先順序 *</span><select v-model="form.priorityCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.priorities" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
-          <label class="field"><span>處理人</span><select
+          <label class="field field--full" for="issue-title"><span>{{ t('projects.issues.fields.title') }}</span><input id="issue-title" v-model="form.title" required maxlength="200" :placeholder="t('projects.issues.fields.titlePlaceholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
+          <label class="field"><span>{{ t('projects.issues.fields.type') }}</span><select v-model="form.typeCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.types" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
+          <label class="field"><span>{{ t('projects.issues.fields.priority') }}</span><select v-model="form.priorityCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.priorities" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
+          <label class="field"><span>{{ t('projects.issues.fields.assignee') }}</span><select
             v-model="form.assigneeAccountId"
             :disabled="!canAssign || !isActiveProject || savingAssignee"
             @change="isEditing && changeAssignee(($event.target as HTMLSelectElement).value || null)"
-          ><option :value="null">未指派</option><option v-for="member in members" :key="member.id" :value="member.accountId">{{ member.username }}</option></select></label>
-          <div v-if="issue" class="field"><span>目前狀態</span><div class="read-value">{{ issue.statusName }}</div></div>
-          <label class="field field--full"><span>說明</span><textarea v-model="form.description" rows="5" maxlength="20000" placeholder="補充任務背景、範圍或實作說明" :disabled="contentReadOnly || !isActiveProject" /></label>
+          ><option :value="null">{{ t('projects.issues.unassigned') }}</option><option v-for="member in members" :key="member.id" :value="member.accountId">{{ member.username }}</option></select></label>
+          <div v-if="issue" class="field"><span>{{ t('projects.issues.fields.currentStatus') }}</span><div class="read-value">{{ issue.statusName }}</div></div>
+          <label class="field field--full"><span>{{ t('projects.issues.fields.description') }}</span><textarea v-model="form.description" rows="5" maxlength="20000" :placeholder="t('projects.issues.fields.descriptionPlaceholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
         </div>
       </section>
 
       <section class="form-section">
-        <header><FileText :size="19" aria-hidden="true" /><div><h3>User Story</h3><p>描述使用者、需求與預期價值。</p></div></header>
+        <header><FileText :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.userStory.title') }}</h3><p>{{ t('projects.issues.userStory.description') }}</p></div></header>
         <label class="field"><textarea v-model="form.userStory" rows="8" maxlength="20000" placeholder="As a... I want... So that..." :disabled="contentReadOnly || !isActiveProject" /></label>
       </section>
 
       <section class="form-section">
-        <header><Target :size="19" aria-hidden="true" /><div><h3>完成定義</h3><p>列出可驗證的完成條件與品質標準。</p></div></header>
-        <label class="field"><textarea v-model="form.definitionOfDone" rows="8" maxlength="20000" placeholder="逐項列出完成條件" :disabled="contentReadOnly || !isActiveProject" /></label>
+        <header><Target :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.definition.title') }}</h3><p>{{ t('projects.issues.definition.description') }}</p></div></header>
+        <label class="field"><textarea v-model="form.definitionOfDone" rows="8" maxlength="20000" :placeholder="t('projects.issues.definition.placeholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
       </section>
 
       <section class="form-section">
-        <header><CheckCircle2 :size="19" aria-hidden="true" /><div><h3>處理結果</h3><p>記錄實際完成內容、差異與後續事項。</p></div></header>
-        <label class="field"><textarea v-model="form.completionSummary" rows="8" maxlength="20000" :disabled="!isEditing || contentReadOnly || !isActiveProject" :placeholder="isEditing ? '填寫處理結果與交付內容' : '建立任務後即可填寫處理結果'" /></label>
+        <header><CheckCircle2 :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.completion.title') }}</h3><p>{{ t('projects.issues.completion.description') }}</p></div></header>
+        <label class="field"><textarea v-model="form.completionSummary" rows="8" maxlength="20000" :disabled="!isEditing || contentReadOnly || !isActiveProject" :placeholder="t(isEditing ? 'projects.issues.completion.editPlaceholder' : 'projects.issues.completion.createPlaceholder')" /></label>
       </section>
 
       <footer class="form-actions">
-        <UiButton variant="secondary" type="button" @click="router.push({ name: 'project-issues', params: { projectId } })">取消</UiButton>
-        <UiButton type="submit" :disabled="!canSave || saving">{{ saving ? '儲存中…' : isEditing ? '儲存變更' : '建立任務' }}</UiButton>
-        <UiButton
-          v-if="!isEditing"
-          variant="secondary"
-          type="button"
-          :disabled="!canSave || saving"
-          @click="save(true)"
-        >
-          建立任務並繼續
-        </UiButton>
+        <template v-if="isEditing">
+          <UiButton variant="secondary" type="button" @click="router.push({ name: 'project-issues', params: { projectId } })">{{ t('common.actions.cancel') }}</UiButton>
+          <UiButton type="submit" :disabled="!canSave || saving">{{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}</UiButton>
+        </template>
+        <UiCreateActions
+          v-else
+          :loading="saving"
+          :disabled="!canSave"
+          :cancel-label="t('common.actions.cancel')"
+          :create-label="t('projects.issues.create')"
+          :continue-label="t('projects.issues.createAndContinue')"
+          @cancel="router.push({ name: 'project-issues', params: { projectId } })"
+          @create="save(false)"
+          @create-continue="save(true)"
+        />
       </footer>
     </form>
 
-    <UiSaveToastStack>
-      <UiSaveToast
-        v-for="notice in saveNotices"
-        :key="notice.id"
-        inline
-        :mode="notice.mode"
-        record-label="任務編號"
-        :record-key="notice.recordKey"
-        @close="clearSaveNotice(notice.id)"
-      />
-    </UiSaveToastStack>
   </section>
 </template>
 

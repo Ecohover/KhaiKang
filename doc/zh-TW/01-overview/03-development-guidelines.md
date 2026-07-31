@@ -170,6 +170,21 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 
 ## 前端規則
 
+### i18n 邊界
+
+- i18n 只處理產品與系統提供的介面文字，例如頁面標題、導覽、欄位名稱、按鈕、狀態名稱、說明、placeholder、驗證、錯誤與通知。
+- 使用者或外部資料寫入的實際內容不得翻譯，例如專案名稱與代號、Issue 標題與描述、使用者名稱、留言、測試案例內容及自由輸入欄位。
+- 動態內容可以作為翻譯訊息的參數插入，但參數值必須保持原文。
+
+### 寫入操作回饋
+
+- 所有成功的新增與修改操作，都必須呼叫共用 `useSaveNotice`，由應用程式層唯一的 `SaveNoticeHost` 在右下角顯示通知；通知預設五秒後消失，且允許使用者提前關閉。
+- 一般成功通知不得直接寫在頁面內容流中，也不得由各頁自行複製 Toast 樣式。
+- 當新增或修改後有一次性資訊、重要指示、不可忽略的後續步驟或需要使用者確認的內容時，除右下成功通知外，應使用共用 `UiActionDialog`。Dialog 內容使用 slot 擴充，不為單一功能複製 modal。
+- Dialog 必須有遮罩、鍵盤焦點、`Esc` 關閉、明確關閉按鈕與 `aria-modal`；是否允許點擊遮罩關閉由使用情境設定。
+- 支援連續新增的表單，必須使用共用 `UiCreateActions`，提供「建立」與「建立並繼續」。前者完成既定導向或關閉表單；後者清空成功建立的資料、保留新增畫面並將焦點移回第一個欄位。
+- 一次性敏感資訊不可放入五秒通知；通知只顯示成功與識別資訊，敏感或需保存內容放在 `UiActionDialog`。
+
 - 使用 Vue 3、TypeScript strict mode、Composition API 與 `<script setup lang="ts">`。
 - Component 使用 PascalCase，composable 使用 `use` 前綴，資料夾依 feature 組織。
 - 不使用 `any` 或未檢查的強制轉型。TypeScript API model 必須能逐項對應 canonical OpenAPI，不得在 feature 內建立另一份重複 wire type。

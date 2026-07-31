@@ -2,13 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { Save } from '@lucide/vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { UiButton, UiField } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { ProjectResponse } from '../api/contracts'
 import { PROJECT_DEACTIVATE_PERMISSION, PROJECT_UPDATE_PERMISSION } from '../navigation'
 import { useAuthStore } from '../stores/auth'
+import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
+const { t } = useI18n()
 const auth = useAuthStore()
 const project = ref<ProjectResponse>()
 const loading = ref(true)
@@ -18,6 +21,7 @@ const saved = ref(false)
 const name = ref('')
 const description = ref('')
 const status = ref<'active' | 'inactive'>('active')
+const { showUpdated } = useSaveNotice()
 
 const canEdit = computed(() =>
   project.value?.currentUserPermissions.includes(PROJECT_UPDATE_PERMISSION) ?? false,
@@ -34,7 +38,7 @@ async function loadProject(): Promise<void> {
   try {
     const result = await apiClient.getProject(String(route.params.projectId))
     if (!result.data) {
-      error.value = problemMessage(result.error, '找不到專案，或你沒有檢視權限。')
+      error.value = problemMessage(result.error, t('projects.detail.loadError'))
       return
     }
     project.value = result.data
@@ -42,7 +46,7 @@ async function loadProject(): Promise<void> {
     description.value = result.data.description ?? ''
     status.value = result.data.status
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.detail.connectionError')
   } finally {
     loading.value = false
   }
@@ -66,13 +70,14 @@ async function saveProject(): Promise<void> {
       await secureHeaders(),
     )
     if (!result.data) {
-      error.value = problemMessage(result.error, '儲存失敗，請重新載入後再試。')
+      error.value = problemMessage(result.error, t('projects.settings.saveFailed'))
       return
     }
     project.value = result.data
     saved.value = true
+    showUpdated(t('projects.record'), result.data.code)
   } catch {
-    error.value = '無法連線到伺服器，請稍後再試。'
+    error.value = t('projects.detail.connectionError')
   } finally {
     saving.value = false
   }
@@ -83,33 +88,33 @@ async function saveProject(): Promise<void> {
   <section class="settings-page">
     <header class="page-heading">
       <p>{{ project?.code }}</p>
-      <h2>專案設定</h2>
+      <h2>{{ t('projects.settings.title') }}</h2>
       <span>{{ project?.name }}</span>
     </header>
 
-    <p v-if="loading" class="page-state">正在載入專案設定…</p>
+    <p v-if="loading" class="page-state">{{ t('projects.settings.loading') }}</p>
     <form v-else-if="project" class="settings-form" @submit.prevent="saveProject">
       <div class="settings-form__heading">
         <div>
-          <h3>基本資料</h3>
-          <p>調整專案名稱、說明與目前狀態。</p>
+          <h3>{{ t('projects.settings.sectionTitle') }}</h3>
+          <p>{{ t('projects.settings.sectionDescription') }}</p>
         </div>
-        <span>版本 {{ project.version }}</span>
+        <span>{{ t('projects.settings.version', { version: project.version }) }}</span>
       </div>
 
       <UiField
         id="project-settings-name"
         v-model="name"
-        label="專案名稱"
+        :label="t('projects.settings.name')"
         :disabled="saving || !canEdit"
       />
       <label class="form-field">
-        <span>專案代號</span>
+        <span>{{ t('projects.settings.code') }}</span>
         <input :value="project.code" disabled />
-        <small>專案代號建立後不可修改。</small>
+        <small>{{ t('projects.settings.codeImmutable') }}</small>
       </label>
       <label class="form-field">
-        <span>專案說明</span>
+        <span>{{ t('projects.settings.description') }}</span>
         <textarea
           v-model="description"
           rows="7"
@@ -118,18 +123,18 @@ async function saveProject(): Promise<void> {
         />
       </label>
       <label class="form-field">
-        <span>專案狀態</span>
+        <span>{{ t('projects.settings.status') }}</span>
         <select v-model="status" :disabled="saving || !canEdit || !canChangeStatus">
-          <option value="active">啟用中</option>
-          <option value="inactive">已停用</option>
+          <option value="active">{{ t('projects.detail.status.active') }}</option>
+          <option value="inactive">{{ t('projects.detail.status.inactive') }}</option>
         </select>
-        <small v-if="!canChangeStatus">需要 project.deactivate 系統權限才能變更狀態。</small>
+        <small v-if="!canChangeStatus">{{ t('projects.settings.statusPermission') }}</small>
       </label>
 
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <p v-if="saved" class="form-success" role="status">專案設定已儲存。</p>
+      <p v-if="saved" class="form-success" role="status">{{ t('projects.settings.saved') }}</p>
       <div class="settings-form__actions">
-        <span v-if="!canEdit">你沒有修改專案設定的權限。</span>
+        <span v-if="!canEdit">{{ t('projects.settings.noEditPermission') }}</span>
         <UiButton
           v-if="canEdit"
           type="submit"
@@ -137,13 +142,13 @@ async function saveProject(): Promise<void> {
           :disabled="!name.trim()"
         >
           <Save :size="17" aria-hidden="true" />
-          儲存設定
+          {{ t('projects.settings.save') }}
         </UiButton>
       </div>
     </form>
     <div v-else class="page-state page-state--error" role="alert">
       <p>{{ error }}</p>
-      <UiButton variant="secondary" @click="loadProject">重新載入</UiButton>
+      <UiButton variant="secondary" @click="loadProject">{{ t('common.actions.reload') }}</UiButton>
     </div>
   </section>
 </template>

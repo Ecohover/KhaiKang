@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Check, Clipboard, Pencil, Plus, RefreshCw, Save, UserRound, X } from '@lucide/vue'
-import { UiButton, UiField, UiSaveToast, UiSaveToastStack } from '@khaikang/ui'
+import { UiActionDialog, UiButton, UiCreateActions, UiField } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { AccountResponse, AccountStatus } from '../api/contracts'
 import {
@@ -9,10 +10,11 @@ import {
   ACCOUNT_SUSPEND_PERMISSION,
   ACCOUNT_UPDATE_PERMISSION,
 } from '../navigation'
-import { useSaveNotice, type SaveNotice } from '../composables/useSaveNotice'
+import { useSaveNotice } from '../composables/useSaveNotice'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const { t, d } = useI18n()
 const accounts = ref<AccountResponse[]>([])
 const loading = ref(true)
 const loadingError = ref('')
@@ -21,12 +23,14 @@ const username = ref('')
 const creating = ref(false)
 const createError = ref('')
 const copied = ref(false)
+const continueAfterCreate = ref(false)
 const updatingAccountId = ref<string>()
 const statusError = ref('')
 const editingAccountId = ref<string>()
 const editingUsername = ref('')
 const editError = ref('')
-const { saveNotice, saveNotices, showCreated, showUpdated, clearSaveNotice } = useSaveNotice()
+const credentialPrompt = ref<{ username: string; initialPassword: string }>()
+const { showCreated, showUpdated } = useSaveNotice()
 
 const canCreate = computed(() =>
   auth.user?.systemPermissions.includes(ACCOUNT_CREATE_PERMISSION) ?? false,
@@ -41,7 +45,7 @@ const usernameError = computed(() => {
   if (!username.value) return ''
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(username.value)
     ? ''
-    : '請以英文字母或數字開頭，並只使用英文、數字、句點、底線或連字號。'
+    : t('system.users.usernameInvalid')
 })
 const editingUsernameError = computed(() => validateUsername(editingUsername.value))
 
@@ -53,13 +57,13 @@ async function loadAccounts(): Promise<void> {
   try {
     const result = await apiClient.listAccounts()
     if (result.error) {
-      loadingError.value = problemMessage(result.error, '無法載入使用者，請稍後再試。')
+      loadingError.value = problemMessage(result.error, t('system.users.loadFailed'))
       return
     }
 
     accounts.value = result.data ?? []
   } catch {
-    loadingError.value = '無法連線到伺服器，請稍後再試。'
+    loadingError.value = t('system.users.connectionFailed')
   } finally {
     loading.value = false
   }
@@ -69,12 +73,9 @@ function closeCreateForm(): void {
   showCreateForm.value = false
   username.value = ''
   createError.value = ''
-  if (saveNotice.value?.mode === 'created') {
-    clearSaveNotice()
-  }
 }
 
-async function createAccount(): Promise<void> {
+async function createAccount(continueCreating = false): Promise<void> {
   if (!username.value.trim() || usernameError.value) return
 
   creating.value = true
@@ -85,25 +86,33 @@ async function createAccount(): Promise<void> {
       await secureHeaders(),
     )
     if (!result.data) {
-      createError.value = problemMessage(result.error, '建立使用者失敗，請稍後再試。')
+      createError.value = problemMessage(result.error, t('system.users.createFailed'))
       return
     }
 
     accounts.value = [...accounts.value, result.data.account]
       .sort((left, right) => left.username.localeCompare(right.username))
-    showCreated(result.data.account.username, result.data.initialPassword)
+    continueAfterCreate.value = continueCreating
+    showCreated(t('system.users.record'), result.data.account.username)
+    credentialPrompt.value = {
+      username: result.data.account.username,
+      initialPassword: result.data.initialPassword,
+    }
   } catch {
-    createError.value = '無法連線到伺服器，請稍後再試。'
+    createError.value = t('system.users.connectionFailed')
   } finally {
     creating.value = false
   }
 }
 
-async function copyCredentials(notice: SaveNotice): Promise<void> {
-  if (!notice.initialPassword) return
+async function copyCredentials(): Promise<void> {
+  if (!credentialPrompt.value) return
 
   await navigator.clipboard.writeText(
-    `帳號：${notice.recordKey}\n初始密碼：${notice.initialPassword}`,
+    t('system.users.credentialText', {
+      username: credentialPrompt.value.username,
+      password: credentialPrompt.value.initialPassword,
+    }),
   )
   copied.value = true
   window.setTimeout(() => {
@@ -111,22 +120,22 @@ async function copyCredentials(notice: SaveNotice): Promise<void> {
   }, 1600)
 }
 
-async function continueCreating(noticeId: number): Promise<void> {
-  clearSaveNotice(noticeId)
+async function closeCredentialDialog(): Promise<void> {
+  if (!credentialPrompt.value) return
+  credentialPrompt.value = undefined
   copied.value = false
-  username.value = ''
-  createError.value = ''
-  showCreateForm.value = true
-  await nextTick()
-  document.getElementById('account-username')?.focus()
-}
-
-async function finishCreating(noticeId: number): Promise<void> {
-  clearSaveNotice(noticeId)
-  copied.value = false
-  closeCreateForm()
-  await nextTick()
-  document.querySelector('.account-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  if (continueAfterCreate.value) {
+    username.value = ''
+    createError.value = ''
+    showCreateForm.value = true
+    await nextTick()
+    document.getElementById('account-username')?.focus()
+  } else {
+    closeCreateForm()
+    await nextTick()
+    document.querySelector('.account-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  continueAfterCreate.value = false
 }
 
 function startEditing(account: AccountResponse): void {
@@ -153,17 +162,17 @@ async function saveAccount(account: AccountResponse): Promise<void> {
       await secureHeaders(),
     )
     if (!result.data) {
-      editError.value = problemMessage(result.error, '修改使用者失敗，請重新載入後再試。')
+      editError.value = problemMessage(result.error, t('system.users.updateFailed'))
       return
     }
 
     accounts.value = accounts.value
       .map((item) => item.id === result.data?.id ? result.data : item)
       .sort((left, right) => left.username.localeCompare(right.username))
-    showUpdated(result.data.username)
+    showUpdated(t('system.users.record'), result.data.username)
     cancelEditing()
   } catch {
-    editError.value = '無法連線到伺服器，請稍後再試。'
+    editError.value = t('system.users.connectionFailed')
   } finally {
     updatingAccountId.value = undefined
   }
@@ -181,16 +190,16 @@ async function changeStatus(account: AccountResponse, status: AccountStatus): Pr
       await secureHeaders(),
     )
     if (!result.data) {
-      statusError.value = problemMessage(result.error, '更新帳號狀態失敗，請重新載入後再試。')
+      statusError.value = problemMessage(result.error, t('system.users.statusFailed'))
       return
     }
 
     accounts.value = accounts.value.map((item) =>
       item.id === result.data?.id ? result.data : item,
     )
-    showUpdated(result.data.username)
+    showUpdated(t('system.users.record'), result.data.username)
   } catch {
-    statusError.value = '無法連線到伺服器，請稍後再試。'
+    statusError.value = t('system.users.connectionFailed')
   } finally {
     updatingAccountId.value = undefined
   }
@@ -200,23 +209,16 @@ function validateUsername(value: string): string {
   if (!value) return ''
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(value)
     ? ''
-    : '請以英文字母或數字開頭，並只使用英文、數字、句點、底線或連字號。'
+    : t('system.users.usernameInvalid')
 }
 
 function statusLabel(status: AccountStatus): string {
-  return {
-    active: '啟用',
-    suspended: '停權',
-    disabled: '停用',
-  }[status]
+  return t(`system.users.statuses.${status}`)
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return '尚未登入'
-  return new Intl.DateTimeFormat('zh-TW', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  if (!value) return t('system.users.neverLoggedIn')
+  return d(new Date(value), 'dateTime')
 }
 </script>
 
@@ -225,58 +227,56 @@ function formatDate(value: string | null): string {
     <header class="page-heading">
       <div>
         <p class="eyebrow">System administration</p>
-        <h2>使用者管理</h2>
-        <p>建立本機帳號並管理登入狀態。專案角色仍在各專案的成員管理中設定。</p>
+        <h2>{{ t('system.users.title') }}</h2>
+        <p>{{ t('system.users.description') }}</p>
       </div>
       <UiButton v-if="canCreate" @click="showCreateForm = true">
         <Plus :size="18" aria-hidden="true" />
-        建立使用者
+        {{ t('system.users.create') }}
       </UiButton>
     </header>
 
-    <form v-if="showCreateForm" class="create-panel" @submit.prevent="createAccount">
+    <form v-if="showCreateForm" class="create-panel" @submit.prevent="createAccount(false)">
       <div class="create-panel__header">
         <div>
-          <h3>建立一般使用者</h3>
-          <p>帳號預設套用 User 角色，初始密碼只會顯示一次。</p>
+          <h3>{{ t('system.users.createTitle') }}</h3>
+          <p>{{ t('system.users.createDescription') }}</p>
         </div>
-        <button type="button" aria-label="關閉建立表單" @click="closeCreateForm">
+        <button type="button" :aria-label="t('system.users.closeCreate')" @click="closeCreateForm">
           <X :size="20" aria-hidden="true" />
         </button>
       </div>
       <UiField
         id="account-username"
         v-model="username"
-        label="帳號名稱"
+        :label="t('system.users.username')"
         autocomplete="off"
         :disabled="creating"
         :error="usernameError"
       />
       <p v-if="createError" class="form-error" role="alert">{{ createError }}</p>
-      <div class="create-panel__actions">
-        <UiButton type="button" variant="secondary" :disabled="creating" @click="closeCreateForm">
-          取消
-        </UiButton>
-        <UiButton
-          type="submit"
-          :loading="creating"
-          :disabled="!username.trim() || Boolean(usernameError)"
-        >
-          建立帳號
-        </UiButton>
-      </div>
+      <UiCreateActions
+        :loading="creating"
+        :disabled="!username.trim() || Boolean(usernameError)"
+        :cancel-label="t('common.actions.cancel')"
+        :create-label="t('system.users.create')"
+        :continue-label="t('system.users.createAndContinue')"
+        @cancel="closeCreateForm"
+        @create="createAccount(false)"
+        @create-continue="createAccount(true)"
+      />
     </form>
 
     <p v-if="statusError || editError" class="page-error" role="alert">
       {{ statusError || editError }}
     </p>
 
-    <p v-if="loading" class="state-panel" aria-live="polite">正在載入使用者…</p>
+    <p v-if="loading" class="state-panel" aria-live="polite">{{ t('system.users.loading') }}</p>
     <div v-else-if="loadingError" class="state-panel state-panel--error" role="alert">
       <p>{{ loadingError }}</p>
       <UiButton variant="secondary" @click="loadAccounts">
         <RefreshCw :size="17" aria-hidden="true" />
-        重新載入
+        {{ t('common.actions.reload') }}
       </UiButton>
     </div>
     <div v-else class="account-list">
@@ -285,7 +285,7 @@ function formatDate(value: string | null): string {
           <span class="avatar" aria-hidden="true">{{ account.username.slice(0, 1).toUpperCase() }}</span>
           <div class="account-card__identity-body">
             <div v-if="editingAccountId === account.id" class="inline-editor">
-              <label :for="`username-${account.id}`">帳號名稱</label>
+              <label :for="`username-${account.id}`">{{ t('system.users.username') }}</label>
               <div>
                 <input
                   :id="`username-${account.id}`"
@@ -298,7 +298,7 @@ function formatDate(value: string | null): string {
                 />
                 <button
                   type="button"
-                  title="儲存帳號名稱"
+                  :title="t('system.users.saveUsername')"
                   :disabled="
                     updatingAccountId === account.id ||
                     !editingUsername.trim() ||
@@ -307,42 +307,42 @@ function formatDate(value: string | null): string {
                   @click="saveAccount(account)"
                 >
                   <Save :size="17" aria-hidden="true" />
-                  <span>儲存</span>
+                  <span>{{ t('common.actions.save') }}</span>
                 </button>
                 <button
                   type="button"
-                  title="取消編輯"
+                  :title="t('system.users.cancelEdit')"
                   :disabled="updatingAccountId === account.id"
                   @click="cancelEditing"
                 >
                   <X :size="17" aria-hidden="true" />
-                  <span>取消</span>
+                  <span>{{ t('common.actions.cancel') }}</span>
                 </button>
               </div>
               <small v-if="editingUsernameError">{{ editingUsernameError }}</small>
             </div>
             <div v-else class="account-card__name">
               <h3>{{ account.username }}</h3>
-              <span v-if="account.id === auth.user?.id">目前帳號</span>
+              <span v-if="account.id === auth.user?.id">{{ t('system.users.currentAccount') }}</span>
               <button
                 v-if="canUpdate && account.id !== auth.user?.id"
                 type="button"
-                title="編輯使用者"
+                :title="t('system.users.editUser')"
                 @click="startEditing(account)"
               >
                 <Pencil :size="15" aria-hidden="true" />
-                <span>編輯</span>
+                <span>{{ t('system.users.edit') }}</span>
               </button>
             </div>
-            <p>{{ account.systemRoles.join(' · ') || '無系統角色' }}</p>
+            <p>{{ account.systemRoles.join(' · ') || t('system.users.noSystemRole') }}</p>
           </div>
         </div>
         <dl class="account-card__meta">
-          <div><dt>首次改密碼</dt><dd>{{ account.mustChangePassword ? '需要' : '已完成' }}</dd></div>
-          <div><dt>最後登入</dt><dd>{{ formatDate(account.lastLoginAt) }}</dd></div>
+          <div><dt>{{ t('system.users.passwordChange') }}</dt><dd>{{ t(account.mustChangePassword ? 'system.users.required' : 'system.users.completed') }}</dd></div>
+          <div><dt>{{ t('system.users.lastLogin') }}</dt><dd>{{ formatDate(account.lastLoginAt) }}</dd></div>
         </dl>
         <label class="status-field">
-          <span>帳號狀態</span>
+          <span>{{ t('system.users.status') }}</span>
           <select
             :value="account.status"
             :disabled="
@@ -360,36 +360,28 @@ function formatDate(value: string | null): string {
       </article>
       <div v-if="accounts.length === 0" class="state-panel">
         <UserRound :size="28" aria-hidden="true" />
-        <p>目前沒有使用者。</p>
+        <p>{{ t('system.users.empty') }}</p>
       </div>
     </div>
 
-    <UiSaveToastStack>
-      <UiSaveToast
-        v-for="notice in saveNotices"
-        :key="notice.id"
-        inline
-        :mode="notice.mode"
-        record-label="使用者帳號"
-        :record-key="notice.recordKey"
-        :auto-close="notice.mode !== 'created'"
-        :allow-continue="notice.mode === 'created'"
-        @continue="continueCreating(notice.id)"
-        @finish="finishCreating(notice.id)"
-        @close="clearSaveNotice(notice.id)"
-      >
-        <template v-if="notice.initialPassword">
-          <p class="credential-hint">初始密碼只顯示一次，請立即保存。</p>
-          <div class="credential-value">
-            <code>{{ notice.initialPassword }}</code>
-            <button type="button" @click="copyCredentials(notice)">
-              <component :is="copied ? Check : Clipboard" :size="16" aria-hidden="true" />
-              {{ copied ? '已複製' : '複製帳密' }}
-            </button>
-          </div>
-        </template>
-      </UiSaveToast>
-    </UiSaveToastStack>
+    <UiActionDialog
+      :open="Boolean(credentialPrompt)"
+      :title="t('system.users.successTitle')"
+      :description="credentialPrompt ? t('system.users.credentialDescription', { username: credentialPrompt.username }) : ''"
+      :close-label="t('common.actions.close')"
+      @close="closeCredentialDialog"
+    >
+      <template v-if="credentialPrompt">
+        <p class="credential-hint">{{ t('system.users.passwordOnce') }}</p>
+        <div class="credential-value">
+          <code>{{ credentialPrompt.initialPassword }}</code>
+          <button type="button" @click="copyCredentials">
+            <component :is="copied ? Check : Clipboard" :size="16" aria-hidden="true" />
+            {{ t(copied ? 'system.users.copied' : 'system.users.copyCredentials') }}
+          </button>
+        </div>
+      </template>
+    </UiActionDialog>
   </section>
 </template>
 

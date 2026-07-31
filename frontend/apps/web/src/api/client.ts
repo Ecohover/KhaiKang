@@ -8,6 +8,10 @@ import type {
   CreateAccountResponse,
   CreateProjectRequest,
   CreateIssueRequest,
+  CreateTestCaseRequest,
+  UpdateTestCaseRequest,
+  CreateTestSuiteRequest,
+  CreateTestWorkspaceRequest,
   CsrfTokenResponse,
   InitializeAdminResponse,
   IssueMetadataResponse,
@@ -18,6 +22,11 @@ import type {
   ProjectMemberResponse,
   ProjectRoleResponse,
   SetupStatusResponse,
+  TestSuiteResponse,
+  TestCaseResponse,
+  TestWorkspaceMemberResponse,
+  TestWorkspaceResponse,
+  AddTestWorkspaceMemberRequest,
   UpdateProjectRequest,
   UpdateProjectMemberRolesRequest,
   UpdateAccountStatusRequest,
@@ -25,7 +34,11 @@ import type {
   UpdateIssueStatusRequest,
   UpdateIssueAssigneeRequest,
   UpdateIssueRequest,
+  UpdateTestSuiteRequest,
+  UpdateTestWorkspaceMemberRequest,
+  UpdateTestWorkspaceRequest,
 } from './contracts'
+import { i18n } from '../i18n/index'
 
 export interface ApiResult<T> {
   data?: T
@@ -79,7 +92,7 @@ export async function getCsrfToken(): Promise<string> {
 
   const response = await request<CsrfTokenResponse>('/api/v1/auth/csrf-token')
   if (!response.data) {
-    throw new Error('無法建立安全請求，請稍後再試。')
+    throw new Error(i18n.global.t('system.errors.secureRequest'))
   }
 
   csrfToken = response.data.token
@@ -285,6 +298,129 @@ export const apiClient = {
       method: 'PUT',
       headers,
       body,
+    })
+  },
+
+  listTestWorkspaces(): Promise<ApiResult<TestWorkspaceResponse[]>> {
+    return request('/api/v1/test-workspaces')
+  },
+
+  getTestWorkspace(workspaceId: string): Promise<ApiResult<TestWorkspaceResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}`)
+  },
+
+  createTestWorkspace(
+    body: CreateTestWorkspaceRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestWorkspaceResponse>> {
+    return request('/api/v1/test-workspaces', { method: 'POST', headers, body })
+  },
+
+  updateTestWorkspace(
+    workspaceId: string,
+    body: UpdateTestWorkspaceRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestWorkspaceResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}`, { method: 'PUT', headers, body })
+  },
+
+  listTestWorkspaceMembers(
+    workspaceId: string,
+  ): Promise<ApiResult<TestWorkspaceMemberResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/members`)
+  },
+
+  addTestWorkspaceMember(
+    workspaceId: string,
+    body: AddTestWorkspaceMemberRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestWorkspaceMemberResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/members`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  updateTestWorkspaceMember(
+    workspaceId: string,
+    memberId: string,
+    body: UpdateTestWorkspaceMemberRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestWorkspaceMemberResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/members/${memberId}`, {
+      method: 'PUT', headers, body,
+    })
+  },
+
+  removeTestWorkspaceMember(
+    workspaceId: string,
+    memberId: string,
+    version: number,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/members/${memberId}?version=${version}`,
+      { method: 'DELETE', headers },
+    )
+  },
+
+  listTestSuites(workspaceId: string): Promise<ApiResult<TestSuiteResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/suites`)
+  },
+
+  createTestSuite(
+    workspaceId: string,
+    body: CreateTestSuiteRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestSuiteResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/suites`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  updateTestSuite(
+    workspaceId: string,
+    suiteId: string,
+    body: UpdateTestSuiteRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestSuiteResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/suites/${suiteId}`, {
+      method: 'PUT', headers, body,
+    })
+  },
+
+  listTestCases(
+    workspaceId: string,
+    suiteId?: string,
+  ): Promise<ApiResult<TestCaseResponse[]>> {
+    const query = suiteId ? `?suiteId=${encodeURIComponent(suiteId)}` : ''
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases${query}`)
+  },
+
+  createTestCase(
+    workspaceId: string,
+    body: CreateTestCaseRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestCaseResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  getTestCase(
+    workspaceId: string,
+    caseId: string,
+  ): Promise<ApiResult<TestCaseResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}`)
+  },
+
+  updateTestCase(
+    workspaceId: string,
+    caseId: string,
+    body: UpdateTestCaseRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestCaseResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}`, {
+      method: 'PUT', headers, body,
     })
   },
 }

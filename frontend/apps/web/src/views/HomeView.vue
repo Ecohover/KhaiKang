@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ClipboardCheck, FolderKanban, ShieldCheck } from '@lucide/vue'
 import { useAuthStore } from '../stores/auth'
+import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -10,30 +12,30 @@ const auth = useAuthStore()
     <section class="dashboard-hero">
       <div>
         <p>Workspace</p>
-        <h2>歡迎回來，{{ auth.user?.username }}</h2>
-        <span>主框架已就緒，可以從下一個垂直切片開始加入實際功能。</span>
+        <h2>{{ t('system.home.welcome', { username: auth.user?.username }) }}</h2>
+        <span>{{ t('system.home.description') }}</span>
       </div>
       <div class="dashboard-status">
         <ShieldCheck :size="19" aria-hidden="true" />
         <div>
-          <strong>已安全登入</strong>
+          <strong>{{ t('system.home.signedIn') }}</strong>
           <span>{{ auth.user?.systemRoles.join(' · ') }}</span>
         </div>
       </div>
     </section>
 
-    <section class="dashboard-grid" aria-label="功能狀態">
+    <section class="dashboard-grid" :aria-label="t('system.home.featureStatus')">
       <article>
         <FolderKanban :size="21" aria-hidden="true" />
-        <h3>專案</h3>
-        <p>尚未建立專案，後續會從專案與成員權限開始。</p>
-        <RouterLink :to="{ name: 'projects' }">查看預留頁</RouterLink>
+        <h3>{{ t('system.home.projects') }}</h3>
+        <p>{{ t('system.home.projectsDescription') }}</p>
+        <RouterLink :to="{ name: 'projects' }">{{ t('system.home.open') }}</RouterLink>
       </article>
       <article>
         <ClipboardCheck :size="21" aria-hidden="true" />
-        <h3>測試案例</h3>
-        <p>測試工作區與案例管理會在專案基礎完成後加入。</p>
-        <RouterLink :to="{ name: 'test-cases' }">查看預留頁</RouterLink>
+        <h3>{{ t('system.home.tests') }}</h3>
+        <p>{{ t('system.home.testsDescription') }}</p>
+        <RouterLink :to="{ name: 'test-workspaces' }">{{ t('system.home.open') }}</RouterLink>
       </article>
     </section>
   </div>

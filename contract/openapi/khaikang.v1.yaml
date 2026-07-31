@@ -845,6 +845,296 @@ paths:
           description: The project or task does not exist or is not visible to the current member.
         '409':
           description: The project is inactive, or the task was updated by another user.
+  /api/v1/test-workspaces:
+    get:
+      tags: [Test Management]
+      operationId: ListTestWorkspaces
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Test workspaces visible to the current member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '401': { description: No valid authenticated session exists. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestWorkspace
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestWorkspaceRequest' }
+      responses:
+        '201':
+          description: Workspace created with the current account as Owner.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '400': { description: Request validation failed. }
+        '409': { description: Workspace name conflict. }
+  /api/v1/test-workspaces/{workspaceId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: GetTestWorkspace
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Workspace details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '404': { description: Workspace is not visible to the current account. }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestWorkspace
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestWorkspaceRequest' }
+      responses:
+        '200':
+          description: Workspace updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '403': { description: Only an Owner can update workspace settings. }
+        '409': { description: Name or version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/members:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestWorkspaceMembers
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active workspace members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+    post:
+      tags: [Test Management]
+      operationId: AddTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTestWorkspaceMemberRequest' }
+      responses:
+        '201':
+          description: Member added.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+        '403': { description: Current role cannot manage members. }
+        '409': { description: Account is already an active member. }
+  /api/v1/test-workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: memberId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestWorkspaceMemberRequest' }
+      responses:
+        '200':
+          description: Member role updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+        '409': { description: Version conflict or last Owner protection. }
+    delete:
+      tags: [Test Management]
+      operationId: RemoveTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Member removed. }
+        '409': { description: Version conflict or last Owner protection. }
+  /api/v1/test-workspaces/{workspaceId}/suites:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestSuites
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Suite tree as a flat parent-linked collection.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestSuiteResponse' }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestSuite
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestSuiteRequest' }
+      responses:
+        '201':
+          description: Suite created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSuiteResponse' }
+        '409': { description: A sibling suite has the same name. }
+  /api/v1/test-workspaces/{workspaceId}/suites/{suiteId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: suiteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestSuite
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestSuiteRequest' }
+      responses:
+        '200':
+          description: Suite updated or moved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSuiteResponse' }
+        '400': { description: Parent would create a cycle or exceed five levels. }
+        '409': { description: Name or version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/cases:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestCases
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - name: suiteId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Test cases visible to the current workspace member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestCaseResponse' }
+        '404': { description: Workspace is not visible to the current account. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestCase
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestCaseRequest' }
+      responses:
+        '201':
+          description: Test case created with its ordered steps.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current role cannot manage test cases. }
+        '404': { description: Workspace or suite does not exist or is not visible. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: caseId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: GetTestCase
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Test case details visible to the current workspace member.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '404': { description: Test case or workspace not found. }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestCase
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestCaseRequest' }
+      responses:
+        '200':
+          description: Test case updated with new properties and steps.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current role cannot manage test cases. }
+        '404': { description: Test case, workspace, or suite does not exist. }
+        '409': { description: Version conflict or invalid suite target. }
 components:
   securitySchemes:
     sessionCookie:
@@ -881,6 +1171,190 @@ components:
       schema:
         type: string
   schemas:
+    TestWorkspaceRole:
+      type: string
+      enum: [owner, manager, tester, viewer]
+    CreateTestWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+    UpdateTestWorkspaceRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestWorkspaceRequest'
+        - type: object
+          required: [status, version]
+          properties:
+            status: { type: string, enum: [active, inactive] }
+            version: { type: integer, minimum: 1 }
+    TestWorkspaceResponse:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, status, currentUserRole, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        currentUserRole: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    AddTestWorkspaceMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [username, role]
+      properties:
+        username: { type: string }
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+    UpdateTestWorkspaceMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [role, version]
+      properties:
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        version: { type: integer, minimum: 1 }
+    TestWorkspaceMemberResponse:
+      type: object
+      additionalProperties: false
+      required: [id, accountId, username, role, status, joinedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        username: { type: string }
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        status: { type: string, enum: [active, removed] }
+        joinedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateTestSuiteRequest:
+      type: object
+      additionalProperties: false
+      required: [parentId, name, description, sortOrder]
+      properties:
+        parentId: { type: [string, 'null'], format: uuid }
+        name: { type: string, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+    UpdateTestSuiteRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestSuiteRequest'
+        - type: object
+          required: [status, version]
+          properties:
+            status: { type: string, enum: [active, inactive] }
+            version: { type: integer, minimum: 1 }
+    TestSuiteResponse:
+      type: object
+      additionalProperties: false
+      required: [id, parentId, name, description, sortOrder, status, depth, version]
+      properties:
+        id: { type: string, format: uuid }
+        parentId: { type: [string, 'null'], format: uuid }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        sortOrder: { type: integer }
+        status: { type: string, enum: [active, inactive] }
+        depth: { type: integer, minimum: 1, maximum: 5 }
+        version: { type: integer }
+    CreateTestCaseStepRequest:
+      type: object
+      additionalProperties: false
+      required: [action, expectedResult]
+      properties:
+        action: { type: string, minLength: 1, maxLength: 4000 }
+        expectedResult: { type: string, minLength: 1, maxLength: 4000 }
+    CreateTestCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - steps
+      properties:
+        suiteId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        preconditions: { type: [string, 'null'], maxLength: 4000 }
+        overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CreateTestCaseStepRequest' }
+    UpdateTestCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - status
+        - version
+        - steps
+      properties:
+        suiteId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        preconditions: { type: [string, 'null'], maxLength: 4000 }
+        overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+        status: { type: string, enum: [active, inactive] }
+        version: { type: integer, minimum: 1 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CreateTestCaseStepRequest' }
+    TestCaseStepResponse:
+      type: object
+      additionalProperties: false
+      required: [id, stepNo, action, expectedResult]
+      properties:
+        id: { type: string, format: uuid }
+        stepNo: { type: integer, minimum: 1 }
+        action: { type: string }
+        expectedResult: { type: string }
+    TestCaseResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - status
+        - steps
+        - createdAt
+        - updatedAt
+        - version
+      properties:
+        id: { type: string, format: uuid }
+        suiteId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        preconditions: { type: [string, 'null'] }
+        overallExpectedResult: { type: [string, 'null'] }
+        sortOrder: { type: integer }
+        status: { type: string, enum: [active, inactive] }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/TestCaseStepResponse' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
     HealthResponse:
       type: object
       additionalProperties: false

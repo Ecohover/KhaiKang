@@ -9,10 +9,22 @@ const props = withDefaults(
     totalPages: number
     disabled?: boolean
     pageSizeOptions?: number[]
+    navigationLabel?: string
+    summaryLabel?: string
+    pageSizeLabel?: string
+    previousLabel?: string
+    nextLabel?: string
+    pageLabel?: string
   }>(),
   {
     disabled: false,
     pageSizeOptions: () => [10, 20, 50, 100],
+    navigationLabel: 'Pagination',
+    summaryLabel: '{count} records',
+    pageSizeLabel: 'Per page',
+    previousLabel: 'Previous',
+    nextLabel: 'Next',
+    pageLabel: 'Page {page} / {total}',
   },
 )
 
@@ -22,13 +34,17 @@ const emit = defineEmits<{
 }>()
 
 const displayPage = computed(() => props.totalPages === 0 ? 0 : props.page)
+const summary = computed(() => props.summaryLabel.replace('{count}', String(props.totalCount)))
+const pageSummary = computed(() => props.pageLabel
+  .replace('{page}', String(displayPage.value))
+  .replace('{total}', String(props.totalPages)))
 </script>
 
 <template>
-  <nav class="ui-pagination" aria-label="分頁導覽">
-    <span class="ui-pagination__summary">共 {{ totalCount }} 筆</span>
+  <nav class="ui-pagination" :aria-label="navigationLabel">
+    <span class="ui-pagination__summary">{{ summary }}</span>
     <label>
-      <span>每頁</span>
+      <span>{{ pageSizeLabel }}</span>
       <select
         :value="pageSize"
         :disabled="disabled"
@@ -45,15 +61,15 @@ const displayPage = computed(() => props.totalPages === 0 ? 0 : props.page)
         :disabled="disabled || page <= 1"
         @click="emit('pageChange', page - 1)"
       >
-        上一頁
+        {{ previousLabel }}
       </button>
-      <span>第 {{ displayPage }} / {{ totalPages }} 頁</span>
+      <span>{{ pageSummary }}</span>
       <button
         type="button"
         :disabled="disabled || totalPages === 0 || page >= totalPages"
         @click="emit('pageChange', page + 1)"
       >
-        下一頁
+        {{ nextLabel }}
       </button>
     </div>
   </nav>

@@ -209,3 +209,122 @@ export interface ApiProblem {
   code?: string | null
   errors?: Record<string, string[]>
 }
+
+export type TestWorkspaceRole = 'owner' | 'manager' | 'tester' | 'viewer'
+
+export interface TestWorkspaceResponse {
+  id: string
+  name: string
+  prefix: string
+  description: string | null
+  status: 'active' | 'inactive'
+  currentUserRole: TestWorkspaceRole
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+export interface CreateTestWorkspaceRequest {
+  name: string
+  prefix?: string | null
+  description: string | null
+}
+
+export interface UpdateTestWorkspaceRequest {
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  version: number
+}
+
+export interface TestWorkspaceMemberResponse {
+  id: string
+  accountId: string
+  username: string
+  role: TestWorkspaceRole
+  status: string
+  joinedAt: string
+  version: number
+}
+
+export interface AddTestWorkspaceMemberRequest {
+  username: string
+  role: TestWorkspaceRole
+}
+
+export interface UpdateTestWorkspaceMemberRequest {
+  role: TestWorkspaceRole
+  version: number
+}
+
+export interface TestSuiteResponse {
+  id: string
+  parentId: string | null
+  name: string
+  description: string | null
+  sortOrder: number
+  status: 'active' | 'inactive'
+  depth: number
+  version: number
+}
+
+export interface CreateTestSuiteRequest {
+  parentId: string | null
+  name: string
+  description: string | null
+  sortOrder: number
+}
+
+export interface UpdateTestSuiteRequest extends CreateTestSuiteRequest {
+  status: 'active' | 'inactive'
+  version: number
+}
+
+export interface CreateTestCaseStepRequest {
+  action: string
+  expectedResult: string
+}
+
+export interface CreateTestCaseRequest {
+  suiteId: string
+  title: string
+  description: string | null
+  preconditions: string | null
+  overallExpectedResult: string | null
+  sortOrder: number
+  steps: CreateTestCaseStepRequest[]
+}
+
+export interface UpdateTestCaseRequest {
+  suiteId: string
+  title: string
+  description: string | null
+  preconditions: string | null
+  overallExpectedResult: string | null
+  sortOrder: number
+  status: 'active' | 'inactive'
+  version: number
+  steps: CreateTestCaseStepRequest[]
+}
+
+export interface TestCaseStepResponse {
+  id: string
+  stepNo: number
+  action: string
+  expectedResult: string
+}
+
+export interface TestCaseResponse {
+  id: string
+  suiteId: string
+  title: string
+  description: string | null
+  preconditions: string | null
+  overallExpectedResult: string | null
+  sortOrder: number
+  status: 'active' | 'inactive'
+  steps: TestCaseStepResponse[]
+  createdAt: string
+  updatedAt: string
+  version: number
+}

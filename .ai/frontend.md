@@ -1,5 +1,17 @@
 # Frontend Context
 
+## Write Interaction Contract
+
+- Every successful create or update must call `useSaveNotice`; the single app-level `SaveNoticeHost` renders a dismissible bottom-right notice that expires after five seconds.
+- Use `UiActionDialog` in addition to the notice when the user must read, preserve, or acknowledge dynamic content. Do not build page-local modal shells.
+- Forms that support repeated creation must use `UiCreateActions` and implement the same create / create-and-continue behavior as Issue creation.
+
+## i18n Boundary
+
+- Translate only product-authored UI copy: navigation, labels, actions, statuses, guidance, validation, errors, notifications, and route titles.
+- Never translate user-authored or external record content such as project names/codes, issue titles/descriptions, usernames, comments, or test case text.
+- User-authored values may be interpolated into translated messages, but the values must remain unchanged.
+
 Read this file only for changes under `frontend/`.
 
 ## Workspace Boundaries

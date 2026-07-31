@@ -13,7 +13,6 @@ export type ApplicationModuleId = 'system' | 'projects' | 'tests'
 
 export interface ApplicationModule {
   id: ApplicationModuleId
-  label: string
   routeName: string
   icon: 'system' | 'projects' | 'tests'
   requiredSystemPermissions?: readonly string[]
@@ -22,21 +21,18 @@ export interface ApplicationModule {
 export const applicationModules: readonly ApplicationModule[] = [
   {
     id: 'system',
-    label: '系統管理',
     routeName: 'home',
     icon: 'system',
     requiredSystemPermissions: [ACCOUNT_READ_PERMISSION],
   },
   {
     id: 'projects',
-    label: '專案管理',
     routeName: 'projects',
     icon: 'projects',
   },
   {
     id: 'tests',
-    label: '測試管理',
-    routeName: 'test-cases',
+    routeName: 'test-workspaces',
     icon: 'tests',
   },
 ]

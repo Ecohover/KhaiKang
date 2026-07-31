@@ -1,9 +1,14 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
+</script>
+
 <template>
   <section class="forbidden-state">
     <p>403</p>
-    <h2>沒有權限開啟這個頁面</h2>
-    <span>目前登入帳號未具備這項系統功能所需的角色。</span>
-    <RouterLink :to="{ name: 'home' }">返回總覽</RouterLink>
+    <h2>{{ t('system.pages.forbiddenTitle') }}</h2>
+    <span>{{ t('system.pages.forbiddenDescription') }}</span>
+    <RouterLink :to="{ name: 'home' }">{{ t('system.pages.backToOverview') }}</RouterLink>
   </section>
 </template>
 

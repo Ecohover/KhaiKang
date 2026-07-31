@@ -9,23 +9,21 @@ const props = withDefaults(
     inline?: boolean
     autoClose?: boolean
     autoCloseDelay?: number
-    allowContinue?: boolean
-    continueLabel?: string
-    finishLabel?: string
+    createdLabel?: string
+    updatedLabel?: string
+    closeLabel?: string
   }>(),
   {
     inline: false,
     autoClose: true,
     autoCloseDelay: 5000,
-    allowContinue: false,
-    continueLabel: '繼續新增',
-    finishLabel: '結束',
+    createdLabel: 'Created',
+    updatedLabel: 'Updated',
+    closeLabel: 'Close success message',
   },
 )
 
 const emit = defineEmits<{
-  continue: []
-  finish: []
   close: []
 }>()
 
@@ -81,24 +79,16 @@ function notifyClosed(): void {
         <div class="ui-save-toast__heading">
           <span class="ui-save-toast__icon" aria-hidden="true">✓</span>
           <div>
-            <strong>{{ mode === 'created' ? '新增成功' : '修改成功' }}</strong>
-            <p>{{ recordLabel }}：<code>{{ recordKey }}</code></p>
+            <strong>{{ mode === 'created' ? createdLabel : updatedLabel }}</strong>
+            <p>{{ recordLabel }}: <code>{{ recordKey }}</code></p>
           </div>
-          <button type="button" aria-label="關閉成功提示" @click="close">×</button>
+          <button type="button" :aria-label="closeLabel" @click="close">×</button>
         </div>
 
         <div v-if="$slots.default" class="ui-save-toast__content">
           <slot />
         </div>
 
-        <div v-if="allowContinue" class="ui-save-toast__actions">
-          <button type="button" class="ui-save-toast__secondary" @click="$emit('finish')">
-            {{ finishLabel }}
-          </button>
-          <button type="button" class="ui-save-toast__primary" @click="$emit('continue')">
-            {{ continueLabel }}
-          </button>
-        </div>
       </aside>
     </Transition>
   </Teleport>
@@ -203,31 +193,6 @@ function notifyClosed(): void {
   border-radius: var(--kk-radius);
 }
 
-.ui-save-toast__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 9px;
-}
-
-.ui-save-toast__actions button {
-  min-height: 38px;
-  padding: 7px 13px;
-  border-radius: var(--kk-radius);
-  cursor: pointer;
-  font-weight: 650;
-}
-
-.ui-save-toast__secondary {
-  color: var(--kk-text);
-  background: var(--kk-surface);
-  border: 1px solid var(--kk-border-strong);
-}
-
-.ui-save-toast__primary {
-  color: white;
-  background: var(--kk-accent);
-  border: 1px solid var(--kk-accent);
-}
 
 @media (prefers-reduced-motion: reduce) {
   .ui-save-toast-enter-active,
@@ -251,9 +216,5 @@ function notifyClosed(): void {
     width: 100%;
   }
 
-  .ui-save-toast__actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
 }
 </style>

@@ -8,11 +8,7 @@
 
 ## 產品功能待處理
 
-- 測試套件
 - Test Workspace 與 Project 關聯
-- 測試計畫
-- 測試執行
-- 測試結果
 - Issue tag
 - Issue parent / sub-task
 - 自訂角色

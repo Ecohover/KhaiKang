@@ -3,29 +3,30 @@ import { computed, ref } from 'vue'
 export interface SaveNotice {
   id: number
   mode: 'created' | 'updated'
+  recordLabel: string
   recordKey: string
-  initialPassword?: string
 }
 
 let nextSaveNoticeId = 1
+const saveNotices = ref<SaveNotice[]>([])
 
 export function useSaveNotice() {
-  const saveNotices = ref<SaveNotice[]>([])
   const saveNotice = computed(() => saveNotices.value.at(-1))
 
-  function showCreated(recordKey: string, initialPassword?: string): void {
+  function showCreated(recordLabel: string, recordKey: string): void {
     saveNotices.value.push({
       id: nextSaveNoticeId++,
       mode: 'created',
+      recordLabel,
       recordKey,
-      ...(initialPassword ? { initialPassword } : {}),
     })
   }
 
-  function showUpdated(recordKey: string): void {
+  function showUpdated(recordLabel: string, recordKey: string): void {
     saveNotices.value.push({
       id: nextSaveNoticeId++,
       mode: 'updated',
+      recordLabel,
       recordKey,
     })
   }

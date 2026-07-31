@@ -27,6 +27,7 @@
 ### 測試工作區
 
 - `test_workspaces`
+- `test_workspace_members`
 
 ### 測試案例目錄
 
@@ -55,6 +56,7 @@
 
 ```text
 test_workspaces
+  |- test_workspace_members -> accounts
   |- test_suites (tree)
   |    `- test_cases
   |         |- test_case_steps
@@ -73,6 +75,7 @@ test_workspaces
 | 資料表 | 類型 | 說明 |
 | --- | --- | --- |
 | `test_workspaces` | Entity | 保存測試資產的根工作區。 |
+| `test_workspace_members` | Entity | 保存帳號在測試工作區中的固定角色與成員生命週期。 |
 | `test_suites` | Entity | 保存測試工作區內可形成樹狀結構的測試套件。 |
 | `test_cases` | Entity | 保存可重複使用的測試案例與前置準備。 |
 | `test_case_steps` | Entity | 保存測試案例中可排序的步驟與每步預期結果。 |
@@ -96,7 +99,7 @@ test_workspaces
 | 說明 | 保存測試資產的根工作區。 |
 | PK | `id` |
 | FK | 無 |
-| 備註 | MVP 中不與 `projects` 直接關聯；Workspace 成員與權限將另行設計。 |
+| 備註 | MVP 中不與 `projects` 直接關聯；存取權由 `test_workspace_members` 管理。 |
 
 #### 欄位規格
 
@@ -129,7 +132,8 @@ test_workspaces
 - `id` 一律使用 UUID。
 - `name` 在系統範圍內唯一。
 - Workspace 停用不代表刪除；既有測試歷程必須可追溯。
-- Project 與 Test Workspace 的關聯、成員與權限不在 MVP 本表處理。
+- Project 與 Test Workspace 的關聯不在 MVP 處理。
+- 建立 Workspace 的帳號必須在同一個 transaction 內建立為第一位 `owner` 成員。
 
 #### Index 建議
 
@@ -138,6 +142,48 @@ test_workspaces
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_test_workspaces_name` 於 `name`。
+
+---
+
+### test_workspace_members
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `test_workspace_members` |
+| 說明 | 保存帳號在 Test Workspace 內的成員關係與固定角色。 |
+| PK | `id` |
+| FK | `test_workspace_id -> test_workspaces.id`, `account_id -> accounts.id` |
+| 備註 | MVP 不建立自訂 Workspace 角色資料表。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | Workspace 成員主鍵 | `uuid` | Y | Y | Entity 主鍵。 |
+| `test_workspace_id` | 測試工作區識別 | `uuid` | Y | N | 對應 `test_workspaces.id`。 |
+| `account_id` | 帳號識別 | `uuid` | Y | N | 對應 `accounts.id`。 |
+| `role` | 固定角色 | `varchar(20)` | Y | N | `owner`、`manager`、`tester`、`viewer`。 |
+| `status` | 成員狀態 | `varchar(20)` | Y | N | `active`、`removed`。 |
+| `joined_at` | 加入時間 | `timestamp with time zone` | Y | N | 首次加入 Workspace 的時間。 |
+| `removed_at` | 移除時間 | `timestamp with time zone` | N | N | 有效成員為空。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
+
+#### 補充規則
+
+- 同一個 `test_workspace_id + account_id` 同時間只能有一筆有效成員關係。
+- 每個 Workspace 至少保留一位有效 `owner`。
+- 移除成員使用 `removed` 狀態保留歷程，不直接刪除資料。
+- 恢復成員時沿用原成員紀錄並更新角色、狀態與 audit metadata。
+- Workspace 建立、成員加入、角色調整與移除必須寫入稽核紀錄。
+
+#### Index 與唯一約束建議
+
+- 建立 `idx_test_workspace_members_account_id` 於 `account_id`。
+- 建立 `idx_test_workspace_members_workspace_status` 於 `test_workspace_id + status`。
+- 建立 partial unique index `uq_test_workspace_members_active_member` 於
+  `test_workspace_id + account_id`，條件為 `status = 'active'`。
 
 ---
 
@@ -189,6 +235,7 @@ test_workspaces
 - 根測試套件的 `parent_id` 必須為空。
 - 子測試套件的 `parent_id` 必須指向同一個 `test_workspace_id` 的測試套件。
 - `parent_id` 不可指向自身，也不可形成樹狀循環；此規則由業務邏輯驗證。
+- Suite 樹從根節點起最多五層；建立或移動時都必須驗證整個子樹不超過限制。
 - 同一個 `test_workspace_id + parent_id` 範圍內，`name` 不得重複。
 - 停用套件不代表刪除；既有 Test Case、Test Plan 與 Test Run 歷程必須可追溯。
 - 移動套件或測試案例只影響未來目錄結構，不得改變既有 Test Plan 或 Test Run 的快照範圍。
@@ -682,7 +729,7 @@ test_workspaces
 | `test_run_item_id` | 測試執行項目識別 | `uuid` | Y | N | 對應 `test_run_items.id`。 |
 | `step_no` | 步驟序號快照 | `integer` | Y | N | 建立 Run 當下複製原始步驟序號。 |
 | `action` | 操作內容快照 | `text` | Y | N | 建立 Run 當下複製原始步驟操作內容。 |
-| `expected_result` | 預期結果快照 | `text` | N | N | 建立 Run 當下複製原始步驟預期結果。 |
+| `expected_result` | 預期結果快照 | `text` | Y | N | 建立 Run 當下複製原始步驟預期結果。 |
 | `result_status` | 步驟執行結果 | `varchar(20)` | Y | N | 使用與 Test Run Item 相同的結果值。 |
 | `actual_result` | 實際結果 | `text` | N | N | 記錄步驟實際觀察、錯誤訊息或阻塞原因。 |
 | `executed_by_account_id` | 執行者識別 | `uuid` | N | N | 對應 `accounts.id`；尚未執行時可為空。 |
