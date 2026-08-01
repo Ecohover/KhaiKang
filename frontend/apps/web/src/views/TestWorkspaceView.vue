@@ -361,7 +361,9 @@ async function saveCaseForm(): Promise<void> {
 const isCreatingCase = ref(false)
 
 function startCreateCase(suiteId?: string | null): void {
-  const targetSuiteId = suiteId ?? selectedSuiteId.value ?? (suites.value[0]?.id || '')
+  const targetSuiteId = suiteId ?? selectedSuiteId.value
+  const targetSuite = suites.value.find((suite) => suite.id === targetSuiteId)
+  if (!targetSuiteId || !targetSuite || targetSuite.status !== 'active') return
   selectedCaseId.value = null
   isCreatingCase.value = true
   caseForm.value = {
@@ -649,15 +651,6 @@ onMounted(load)
             <h3>{{ t('tests.suite.treeTitle') }}</h3>
             <p>{{ t('tests.suite.treeDescription') }}</p>
           </div>
-          <button
-            v-if="canManage"
-            type="button"
-            class="btn-icon-primary"
-            :title="t('tests.suite.createRoot')"
-            @click="router.push({ name: 'test-suite-new', params: { workspaceId } })"
-          >
-            <Plus :size="16" />
-          </button>
         </header>
 
         <!-- ALL CASES SELECTION -->
@@ -751,6 +744,18 @@ onMounted(load)
           <Folder :size="24" />
           <p>{{ t('tests.suite.empty') }}</p>
         </div>
+
+        <footer v-if="canManage" class="tree-create-actions">
+          <button
+            type="button"
+            class="tree-item create-suite-tree-item"
+            @click="router.push({ name: 'test-suite-new', params: { workspaceId } })"
+          >
+            <span class="chevron-spacer"></span>
+            <FolderPlus :size="16" class="tree-item-icon folder" />
+            {{ t('tests.suite.create') }}
+          </button>
+        </footer>
       </aside>
 
       <!-- RIGHT MAIN PANEL: CASE DETAIL VIEW, EDIT FORM, OR SUITE CASES LIST -->
@@ -774,7 +779,16 @@ onMounted(load)
                 </div>
               </div>
               <div class="header-title-row">
-                <input v-model="caseForm.title" class="editable-title-input" placeholder="請輸入案例標題 *" required autofocus />
+                <label class="case-title-field">
+                  <span>{{ t('tests.testCase.title') }} *</span>
+                  <input
+                    v-model="caseForm.title"
+                    class="editable-title-input"
+                    :placeholder="t('tests.testCase.titlePlaceholder')"
+                    required
+                    autofocus
+                  />
+                </label>
                 <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
                   <option value="active">使用中 (Active)</option>
                   <option value="inactive">已停用 (Inactive)</option>
@@ -1040,7 +1054,10 @@ onMounted(load)
             </article>
 
             <!-- INLINE CREATE CASE BUTTON AT LAST ROW OF CASE LIST -->
-            <div v-if="canManage" class="create-case-bottom-row">
+            <div
+              v-if="canManage && selectedSuite?.status === 'active'"
+              class="create-case-bottom-row"
+            >
               <button
                 type="button"
                 class="btn-subtle btn-create-case-bottom"
@@ -1057,7 +1074,7 @@ onMounted(load)
             <h4>此測試套件尚無案例</h4>
             <p>建立第一個測試案例以記錄步驟與驗收條件。</p>
             <button
-              v-if="canManage"
+              v-if="canManage && selectedSuite?.status === 'active'"
               type="button"
               class="btn-primary empty-cta"
               @click="startCreateCase(selectedSuiteId)"
@@ -1172,6 +1189,25 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.tree-create-actions {
+  margin-top: 2px;
+}
+
+.create-suite-tree-item {
+  width: 100%;
+  color: var(--kk-accent);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-suite-tree-item:hover {
+  background: var(--kk-accent-soft);
 }
 
 .tree-item {
@@ -1713,6 +1749,20 @@ input, textarea, select { min-width: 0; padding: 10px 11px; font: inherit; backg
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+}
+
+.case-title-field {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+  color: var(--kk-text-muted);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.case-title-field .editable-title-input {
   width: 100%;
 }
 

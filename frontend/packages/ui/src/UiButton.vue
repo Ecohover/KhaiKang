@@ -34,11 +34,11 @@ withDefaults(
 .ui-button {
   position: relative;
   display: inline-flex;
-  min-height: 42px;
+  min-height: 32px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 16px;
+  padding: 5px 10px;
   border: 1px solid transparent;
   border-radius: var(--kk-radius);
   cursor: pointer;

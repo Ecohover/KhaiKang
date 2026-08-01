@@ -32,6 +32,18 @@ const paginatedRuns = computed(() => {
   return runs.value.slice(start, start + pageSize.value)
 })
 
+function progressPercent(value: number, total: number): number {
+  return total ? Math.round((value / total) * 100) : 0
+}
+
+function failedCount(run: TestRunResponse): number {
+  return run.progress.failed + run.progress.blocked
+}
+
+function pendingCount(run: TestRunResponse): number {
+  return run.progress.total - run.progress.passed - failedCount(run)
+}
+
 async function load(): Promise<void> {
   loading.value = true
   const [workspaceResult, runResult, planResult] = await Promise.all([
@@ -113,7 +125,7 @@ onMounted(load)
       <header><strong>{{ t('tests.run.title') }}</strong><span>{{ t('tests.run.count', { count: runs.length }) }}</span></header>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>{{ t('tests.run.code') }}</th><th>{{ t('tests.run.name') }}</th><th>{{ t('tests.run.statusLabel') }}</th><th>{{ t('tests.run.passed') }}</th><th>{{ t('tests.run.notRun') }}</th><th>{{ t('tests.run.updatedAt') }}</th></tr></thead>
+          <thead><tr><th>{{ t('tests.run.code') }}</th><th>{{ t('tests.run.name') }}</th><th>{{ t('tests.run.statusLabel') }}</th><th>{{ t('tests.run.resultSummary') }}</th><th>{{ t('tests.run.updatedAt') }}</th></tr></thead>
           <tbody>
             <tr
               v-for="run in paginatedRuns"
@@ -125,8 +137,18 @@ onMounted(load)
               <td><code>{{ run.code }}</code></td>
               <td><strong>{{ run.name }}</strong><small>{{ run.summary || t('tests.run.snapshotHint') }}</small></td>
               <td><span class="status-pill" :class="run.status">{{ t(`tests.run.status.${run.status}`) }}</span></td>
-              <td>{{ run.progress.passed }} / {{ run.progress.total }}</td>
-              <td>{{ run.progress.notRun }}</td>
+              <td class="progress-cell">
+                <div class="run-progress" :aria-label="`${run.progress.passed}/${run.progress.total}`">
+                  <span class="passed" :style="{ width: `${progressPercent(run.progress.passed, run.progress.total)}%` }" />
+                  <span class="failed" :style="{ width: `${progressPercent(failedCount(run), run.progress.total)}%` }" />
+                  <span class="pending" :style="{ width: `${progressPercent(pendingCount(run), run.progress.total)}%` }" />
+                </div>
+                <small class="progress-summary">
+                  <span class="passed">{{ run.progress.passed }} {{ t('tests.run.result.passed') }}</span>
+                  <span class="failed">{{ failedCount(run) }} {{ t('tests.run.result.failed') }}</span>
+                  <span class="pending">{{ pendingCount(run) }} {{ t('tests.run.result.not_run') }}</span>
+                </small>
+              </td>
               <td>{{ d(new Date(run.updatedAt), 'medium') }}</td>
             </tr>
           </tbody>
@@ -184,5 +206,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{padding:4px 8px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.in_progress,.status-pill.completed{color:var(--kk-accent);background:var(--kk-accent-soft)}.run-form{display:grid;gap:14px}.run-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.run-form input,.run-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-hint{margin:0;color:var(--kk-text-muted);font-size:.84rem}.plan-hint a{color:var(--kk-accent);font-weight:700}
+.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{display:inline-flex;min-height:28px;align-items:center;padding:3px 9px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.in_progress,.status-pill.completed{color:var(--kk-accent);background:var(--kk-accent-soft)}.run-form{display:grid;gap:14px}.run-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.run-form input,.run-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-hint{margin:0;color:var(--kk-text-muted);font-size:.84rem}.plan-hint a{color:var(--kk-accent);font-weight:700}
+.progress-cell{min-width:190px}.run-progress{display:flex;width:100%;height:8px;overflow:hidden;background:#edf0ee;border-radius:999px}.run-progress span{display:block;min-width:0;height:100%}.run-progress .passed{background:#2d9b62}.run-progress .failed{background:#df6256}.run-progress .pending{background:#c9d0cc}.progress-summary{display:flex!important;gap:9px;margin-top:6px;color:var(--kk-text-muted);font-size:.72rem}.progress-summary .passed{color:#18794e}.progress-summary .failed{color:#b42318}.progress-summary .pending{color:#596560}
 </style>

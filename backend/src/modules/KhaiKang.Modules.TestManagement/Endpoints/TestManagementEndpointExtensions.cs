@@ -330,11 +330,11 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, Guid runId, UpdateTestRunStatusRequest request,
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
         {
-            if (request.Status is not ("completed" or "cancelled") ||
+            if (request.Status is not ("in_progress" or "completed" or "cancelled") ||
                 request.Version < 1 || request.Summary?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["run"] = ["Terminal status, valid version, and summary are required."],
+                    ["run"] = ["A valid run status, version, and summary are required."],
                 });
             if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
             return Map(await service.UpdateRunStatusAsync(

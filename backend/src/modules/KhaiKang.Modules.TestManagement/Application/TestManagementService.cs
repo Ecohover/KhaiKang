@@ -755,7 +755,9 @@ public sealed class TestManagementService(
         if (access is null) return new(TestManagementOutcome.NotFound);
         if (!CanExecute(access.Role)) return new(TestManagementOutcome.Forbidden);
 
-        var run = await dbContext.Runs.Include(x => x.Items).SingleOrDefaultAsync(
+        var run = await dbContext.Runs
+            .Include(x => x.Items).ThenInclude(x => x.Steps)
+            .SingleOrDefaultAsync(
             x => x.Id == runId && dbContext.Plans.Any(
                 plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
             cancellationToken);
@@ -811,16 +813,27 @@ public sealed class TestManagementService(
         if (access is null) return new(TestManagementOutcome.NotFound);
         if (!CanExecute(access.Role)) return new(TestManagementOutcome.Forbidden);
 
-        var run = await dbContext.Runs.Include(x => x.Items).SingleOrDefaultAsync(
+        var run = await dbContext.Runs
+            .Include(x => x.Items).ThenInclude(x => x.Steps)
+            .SingleOrDefaultAsync(
             x => x.Id == runId && dbContext.Plans.Any(
                 plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
             cancellationToken);
         if (run is null) return new(TestManagementOutcome.NotFound);
         if (run.Version != request.Version)
             return new(TestManagementOutcome.Conflict, Code: "run_version_conflict");
-        if (IsTerminal(run.Status))
+        if (IsTerminal(run.Status) && !(run.Status == "cancelled" && request.Status == "in_progress"))
             return new(TestManagementOutcome.Conflict, Code: "run_is_terminal");
-        if (request.Status == "completed" && run.Items.Any(x => x.ResultStatus == "not_run"))
+        if (request.Status == "in_progress")
+        {
+            run.MarkInProgress(accountId, timeProvider.GetUtcNow());
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
+        }
+        if (request.Status == "completed" && run.Items.Any(x =>
+            x.Steps.Count > 0
+                ? x.Steps.Any(step => step.ResultStatus == "not_run")
+                : x.ResultStatus == "not_run"))
             return new(TestManagementOutcome.Conflict, Code: "run_has_unfinished_items");
 
         run.Finish(request.Status, Clean(request.Summary), accountId, timeProvider.GetUtcNow());

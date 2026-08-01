@@ -3,6 +3,7 @@ export const common = {
     list: '列表',
   },
   actions: {
+    confirm: '確認',
     actions: '操作',
     cancel: '取消',
     close: '關閉',

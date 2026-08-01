@@ -115,6 +115,9 @@ export const tests = {
     status: { draft: '草稿', active: '使用中', archived: '已封存' },
   },
   run: {
+    resultSummary: '執行結果',
+    start: '開始執行',
+    restart: '重新開始',
     record: '測試執行',
     title: '測試執行',
     description: '從已啟用計畫建立固定快照並記錄人工測試結果。',
@@ -148,7 +151,7 @@ export const tests = {
     summary: '執行摘要',
     terminalHint: '完成或取消後，這次執行及結果將不可再修改。',
     status: { not_started: '尚未開始', in_progress: '執行中', completed: '已完成', cancelled: '已取消' },
-    result: { not_run: '未執行', passed: '通過', failed: '失敗', blocked: '受阻', skipped: '略過' },
+    result: { not_run: '未執行', passed: '通過', failed: '不通過', blocked: '受阻', skipped: '略過' },
   },
   member: {
     record: '工作區成員',

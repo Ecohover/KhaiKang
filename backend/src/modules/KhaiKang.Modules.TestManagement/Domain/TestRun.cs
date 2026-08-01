@@ -36,8 +36,9 @@ public sealed class TestRun
 
     public void MarkInProgress(Guid actorId, DateTimeOffset now)
     {
-        if (Status != "not_started") return;
+        if (Status is not ("not_started" or "cancelled")) return;
         Status = "in_progress";
+        CompletedAt = null;
         StartedAt = now;
         Touch(actorId, now);
     }

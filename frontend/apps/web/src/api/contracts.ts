@@ -372,7 +372,7 @@ export interface CreateTestRunRequest {
 }
 
 export interface UpdateTestRunStatusRequest {
-  status: 'completed' | 'cancelled'
+  status: 'in_progress' | 'completed' | 'cancelled'
   summary: string | null
   version: number
 }

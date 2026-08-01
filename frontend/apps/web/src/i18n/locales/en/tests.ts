@@ -115,6 +115,9 @@ export const tests = {
     status: { draft: 'Draft', active: 'Active', archived: 'Archived' },
   },
   run: {
+    resultSummary: 'Result summary',
+    start: 'Start run',
+    restart: 'Restart run',
     record: 'Test run',
     title: 'Test runs',
     description: 'Create immutable case snapshots and record manual test results.',

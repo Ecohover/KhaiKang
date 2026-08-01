@@ -95,8 +95,8 @@ const pageSummary = computed(() => props.pageLabel
 
 .ui-pagination select,
 .ui-pagination button {
-  min-height: 34px;
-  padding: 6px 10px;
+  min-height: 28px;
+  padding: 3px 8px;
   color: var(--kk-text);
   background: var(--kk-surface);
   border: 1px solid var(--kk-border-strong);
