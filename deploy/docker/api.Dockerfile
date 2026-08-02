@@ -3,11 +3,10 @@ WORKDIR /src
 
 COPY Directory.Packages.props ./
 COPY backend/NuGet.config backend/
-COPY backend/KhaiKang.Backend.slnx backend/
 COPY backend/src backend/src
 COPY contract contract
 
-RUN dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
+RUN dotnet restore backend/src/KhaiKang.Api/KhaiKang.Api.csproj --configfile backend/NuGet.config
 RUN dotnet publish backend/src/KhaiKang.Api/KhaiKang.Api.csproj \
     --configuration Release \
     --no-restore \

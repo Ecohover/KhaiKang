@@ -47,7 +47,8 @@ Use the Git SHA tag published with each main build for a precise rollback.
 ## Publishing images from GitHub Actions
 
 The publish workflow only runs after a commit reaches `main`. It verifies the
-backend and frontend before logging in to Docker Hub and pushing the images.
+backend and frontend, builds the images, then logs in to Docker Hub and pushes
+the images. Pull requests do not build or publish Docker images.
 
 Repository maintainers must configure these GitHub Actions secrets:
 
