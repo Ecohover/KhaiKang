@@ -49,6 +49,8 @@ const memberRole = ref<TestWorkspaceRole>('tester')
 const { showCreated, showUpdated } = useSaveNotice()
 
 const canManage = computed(() => ['owner', 'manager'].includes(workspace.value?.currentUserRole ?? ''))
+const caseQuery = ref('')
+const caseStatusFilter = ref<'active' | 'inactive' | ''>('')
 
 interface TreeNode {
   type: 'suite' | 'case'
@@ -127,7 +129,11 @@ const visibleTreeNodes = computed(() => {
 
 const casesBySuite = computed(() => {
   const result = new Map<string, TestCaseResponse[]>()
-  for (const testCase of cases.value) {
+  const query = caseQuery.value.trim().toLocaleLowerCase()
+  for (const testCase of cases.value.filter((item) =>
+    (!caseStatusFilter.value || item.status === caseStatusFilter.value) &&
+    (!query || item.title.toLocaleLowerCase().includes(query)),
+  )) {
     const values = result.get(testCase.suiteId) ?? []
     values.push(testCase)
     result.set(testCase.suiteId, values)
@@ -652,6 +658,14 @@ onMounted(load)
             <p>{{ t('tests.suite.treeDescription') }}</p>
           </div>
         </header>
+        <div class="tree-filters">
+          <input v-model="caseQuery" :placeholder="t('tests.workspace.caseSearchPlaceholder')" />
+          <select v-model="caseStatusFilter">
+            <option value="">{{ t('tests.workspace.allCaseStatuses') }}</option>
+            <option value="active">{{ t('common.status.active') }}</option>
+            <option value="inactive">{{ t('common.status.inactive') }}</option>
+          </select>
+        </div>
 
         <!-- ALL CASES SELECTION -->
         <div
@@ -1344,6 +1358,24 @@ onMounted(load)
   border-bottom: 1px solid var(--kk-border);
   border-radius: 7px;
   padding-left: 10px !important;
+}
+
+.tree-filters {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 8px 0 12px;
+}
+
+.tree-filters input,
+.tree-filters select {
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--kk-border);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--kk-text);
+  background: #fff;
 }
 
 .empty-tree {

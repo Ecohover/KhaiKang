@@ -33,6 +33,7 @@ export const tests = {
     homePlaceholderTitle: 'Test workspace home is ready',
     homePlaceholderDescription: 'Add execution progress, case coverage, and recent run records here in a future update.',
     allCases: 'All test cases', caseCount: '{count} test case | {count} test cases', caseNumber: 'Case {code}',
+    caseSearchPlaceholder: 'Search test cases…', allCaseStatuses: 'All statuses',
     notFound: 'This workspace could not be found or you do not have access.',
     settings: 'Workspace settings',
     settingsDescription: 'Only an Owner can update basic information and status.',

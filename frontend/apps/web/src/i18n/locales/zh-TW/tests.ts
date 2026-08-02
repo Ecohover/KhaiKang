@@ -33,6 +33,7 @@ export const tests = {
     homePlaceholderTitle: '測試工作區首頁功能預留區',
     homePlaceholderDescription: '此處已為您完成首頁導覽設定，後續可在此擴充測試執行率圖表、案例涵蓋率統計與最近執行紀錄。',
     allCases: '所有測試案例', caseCount: '共 {count} 個測試案例', caseNumber: '案例編號：{code}',
+    caseSearchPlaceholder: '搜尋測試案例…', allCaseStatuses: '所有狀態',
     notFound: '找不到或無權存取此工作區。',
     settings: '設定',
     settingsDescription: '只有 Owner 可以更新基本資料與狀態。',
