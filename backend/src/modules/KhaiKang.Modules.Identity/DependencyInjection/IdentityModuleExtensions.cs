@@ -48,15 +48,18 @@ public static class IdentityModuleExtensions
 
         services.AddDataProtection()
             .SetApplicationName("KhaiKang");
+        var requireSecureCookies = configuration.GetValue<bool?>(
+            $"{IdentityOptions.SectionName}:RequireSecureCookies")
+            ?? !environment.IsDevelopment();
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-XSRF-TOKEN";
             options.Cookie.Name = "XSRF-TOKEN";
             options.Cookie.HttpOnly = false;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.SecurePolicy = environment.IsDevelopment()
-                ? CookieSecurePolicy.SameAsRequest
-                : CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = requireSecureCookies
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
         });
 
         var ticketMinutes = configuration.GetValue<int>(
@@ -68,9 +71,9 @@ public static class IdentityModuleExtensions
             {
                 options.Cookie.Name = "KhaiKang.Session";
                 options.Cookie.HttpOnly = true;
-                options.Cookie.SecurePolicy = environment.IsDevelopment()
-                    ? CookieSecurePolicy.SameAsRequest
-                    : CookieSecurePolicy.Always;
+                options.Cookie.SecurePolicy = requireSecureCookies
+                    ? CookieSecurePolicy.Always
+                    : CookieSecurePolicy.SameAsRequest;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(ticketMinutes);
                 options.SlidingExpiration = true;

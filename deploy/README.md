@@ -27,6 +27,9 @@ published images through `compose/docker-compose.yml`.
 - `data-protection-keys` encrypts and validates authentication cookies. Keep it with
   the database backup; deleting it signs out every user and invalidates existing
   protected data.
+- `KHAIKANG_REQUIRE_HTTPS` must remain `false` only for localhost or other trusted
+  HTTP testing. Set it to `true` before exposing the service through HTTPS; secure
+  session, refresh, and CSRF cookies will then be required by the browser.
 - The API applies EF Core migrations only because Compose sets
   `Database__ApplyMigrations=true`. Set it to `false` when operating migrations
   through a separate controlled process.

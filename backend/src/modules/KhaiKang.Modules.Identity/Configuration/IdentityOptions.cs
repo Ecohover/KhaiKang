@@ -17,4 +17,6 @@ public sealed class IdentityOptions
 
     [Range(12, 128)]
     public int MinimumPasswordLength { get; init; } = 12;
+
+    public bool? RequireSecureCookies { get; init; }
 }
