@@ -605,8 +605,8 @@ test_workspaces
 | `name` | 測試執行名稱 | `varchar(200)` | Y | N | 建立時可由 Plan 名稱帶入，允許使用者調整以辨識本次執行。 |
 | `status` | 測試執行狀態 | `varchar(20)` | Y | N | 目前支援 `not_started`、`in_progress`、`completed`、`cancelled`。 |
 | `started_by_account_id` | 建立執行者識別 | `uuid` | Y | N | 對應 `accounts.id`，記錄建立本次 Run 的帳號。 |
-| `started_at` | 開始時間 | `timestamp with time zone` | N | N | 首次開始執行時寫入。 |
-| `completed_at` | 完成時間 | `timestamp with time zone` | N | N | Run 完成或取消時寫入。 |
+| `started_at` | 開始時間 | `timestamp with time zone` | N | N | 進入或重新進入 `in_progress` 時寫入本次持續執行的開始時間。 |
+| `completed_at` | 完成時間 | `timestamp with time zone` | N | N | Run 完成或取消時寫入；重新開始時清空。 |
 | `summary` | 執行摘要 | `text` | N | N | 記錄本次執行結論、已知風險或交接資訊。 |
 | `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
 
@@ -617,7 +617,7 @@ test_workspaces
 | `not_started` | 已由 Test Plan 建立，但尚未開始執行。 | 已建立 Item 與步驟快照。 |
 | `in_progress` | 至少一個執行項目正在填寫結果。 | 可持續更新執行結果。 |
 | `completed` | 本次測試已結束。 | 不代表全部通過；整體結論由 Item 結果判斷。 |
-| `cancelled` | 本次測試不再繼續執行。 | 保留已填寫的結果與原因。 |
+| `cancelled` | 本次測試暫停或取消。 | 保留已填寫的結果與原因；可重新開始回到 `in_progress`。 |
 
 #### 欄位分組建議
 
@@ -635,7 +635,7 @@ test_workspaces
 - 只能由 `active` 的 Test Plan 建立新的 Test Run，且建立時 Plan 至少需有一個 Item。
 - 建立 Test Run 時，必須在同一個 transaction 內依 `test_plan_items` 建立 `test_run_items`，再依每個 Test Case 的 Step 建立 `test_run_item_step_results`。
 - Test Run 建立完成後，不可因 Test Plan 或 Test Case 的後續變更而增減其執行項目或修改快照。
-- `completed` 與 `cancelled` 狀態不得再修改執行結果；若需重測，應建立新的 Test Run。
+- `completed` 狀態不得再修改執行結果。`cancelled` 狀態可重新開始回到 `in_progress`，保留既有案例與步驟結果，並清空 `completed_at`；若需新的獨立測試紀錄，應建立新的 Test Run。
 - MVP 僅支援手動執行。未來自動化觸發仍沿用本表，並在第二段資料模型補上執行來源與自動化紀錄關聯。
 
 #### Index 建議

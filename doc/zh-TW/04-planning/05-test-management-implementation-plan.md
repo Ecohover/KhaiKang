@@ -33,9 +33,9 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - Workspace 使用 `owner`、`manager`、`tester`、`viewer` 四種固定角色。
 - 同一帳號在一個 Workspace 中只有一個有效角色。
 - Suite 樹最多五層。
-- Test Case 使用 UUID，不另建立對外流水號。
+- Test Case 目前使用 UUID 作為穩定識別；對外案例編號列為後續功能，需先確認資料遷移策略。
 - Test Plan 第一版只要求名稱與測試目的。
-- `completed` 與 `cancelled` Test Run 完全唯讀；重測建立新 Run。
+- `completed` Test Run 完全唯讀；`cancelled` Run 可重新開始並保留既有結果，另可建立新 Run 作為獨立重測紀錄。
 
 合約邊界：
 
@@ -73,20 +73,21 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第三階段：Test Case、Step 與 Tag
 
-狀態：進行中（2026-07-27）
+狀態：部分完成（2026-08-02）
 
 已完成：
 
 - Test Case 建立與依 Workspace、Suite 查詢。
 - 建立案例時同時保存至少一個有序 Test Step。
 - Suite tree 顯示案例，並可從指定 Suite 進入案例建立頁。
+- Test Case 修改、移動、停用與版本衝突處理。
 
 待完成：
 
-- Test Case 修改、移動、停用與版本衝突處理。
 - Test Tag 建立、查詢與案例多對多關聯。
 - 依標題、Suite、Tag 與狀態搜尋。
 - 步驟重新排序與案例編輯頁未儲存提醒。
+- 對外案例編號與既有資料補齊。
 
 範圍：
 
@@ -104,7 +105,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第四階段：Test Plan
 
-狀態：尚未開始
+狀態：部分完成（2026-08-02）
 
 範圍：
 
@@ -122,7 +123,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第五階段：Test Run 與手動執行
 
-狀態：尚未開始
+狀態：已實作，待補回歸測試與畫面驗收（2026-08-02）
 
 範圍：
 
@@ -131,7 +132,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - Run 狀態與案例、步驟結果維護。
 - `not_run`、`passed`、`failed`、`blocked`、`skipped` 結果。
 - 執行頁、案例切換、快速通過、進度與結果統計。
-- completed/cancelled Run 鎖定。
+- `completed` Run 鎖定；`cancelled` Run 可重新開始並保留既有結果。
 
 驗收：
 

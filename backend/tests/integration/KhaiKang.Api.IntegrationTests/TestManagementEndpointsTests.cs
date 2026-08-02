@@ -239,6 +239,33 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
             new RecordTestResultRequest("failed", "Must not change.", runItem.Version));
         Assert.Equal(HttpStatusCode.Conflict, immutableResponse.StatusCode);
+
+        var retryRunResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs",
+            JsonContent.Create(new CreateTestRunRequest(run.PlanId, "Cancelled run can resume.")),
+            await GetCsrfTokenAsync());
+        retryRunResponse.EnsureSuccessStatusCode();
+        var retryRun = await retryRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(retryRun);
+
+        var cancelledResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{retryRun.Id}/status",
+            new UpdateTestRunStatusRequest("cancelled", "Paused for later.", retryRun.Version));
+        cancelledResponse.EnsureSuccessStatusCode();
+        var cancelledRun = await cancelledResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(cancelledRun);
+        Assert.Equal("cancelled", cancelledRun.Status);
+        Assert.NotNull(cancelledRun.CompletedAt);
+
+        var restartResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{cancelledRun.Id}/status",
+            new UpdateTestRunStatusRequest("in_progress", null, cancelledRun.Version));
+        restartResponse.EnsureSuccessStatusCode();
+        var restartedRun = await restartResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(restartedRun);
+        Assert.Equal("in_progress", restartedRun.Status);
+        Assert.NotNull(restartedRun.StartedAt);
+        Assert.Null(restartedRun.CompletedAt);
     }
 
     private async Task<HttpResponseMessage> CreateWorkspaceAsync(string name, string? prefix)

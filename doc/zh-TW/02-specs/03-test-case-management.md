@@ -212,7 +212,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - `Test Suite` 可以形成最多五層的樹狀結構；移動套件或案例不得改變既有 Test Plan 的項目範圍。
 - 只有具備該 Test Workspace 存取權的成員可以查看或操作測試管理資料。
 - Test Workspace 在 MVP 中不直接關聯 Project；Project 關聯留待後續規格。
-- Test Case 在 MVP 中以 UUID 作為穩定識別，不另建立對外案例流水號。
+- Test Case 在目前 MVP 中以 UUID 作為穩定識別；對外案例編號與 Workspace Prefix 的規則屬於後續功能，確認資料遷移策略後再納入。
 - `Test Run` 必須來自一份 `Test Plan`；MVP 不先提供無計畫的臨時執行流程。
 - `Test Run` 只能由使用者從測試管理頁面手動觸發；不支援 Issue、CI 或 AI 觸發。
 - 每個 Test Run Item 都可由使用者手動填寫結果。
@@ -222,7 +222,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - `Test Plan` 建立後的案例清單應固定，後續套件異動不應自動改變既有計畫。
 - `Test Run Item` 建立時必須保存案例內容快照。
 - `Test Plan` 在 MVP 中只要求名稱與測試目的，不先加入目標版本、環境或負責人欄位。
-- `completed` 或 `cancelled` 的 `Test Run` 與其結果完全唯讀；需要重測時應建立新的 `Test Run`。
+- `completed` 的 `Test Run` 與其結果完全唯讀。`cancelled` 的 Run 可重新開始並回到 `in_progress`，保留既有案例與步驟結果；若需新的獨立測試紀錄，使用者仍可建立新的 `Test Run`。
 
 ## 安全與稽核
 
