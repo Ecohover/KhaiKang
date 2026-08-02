@@ -150,6 +150,9 @@ export const projects = {
     contentLabel: '專案首頁內容',
     placeholderTitle: '專案首頁',
     placeholderDescription: '看板與專案摘要將在後續功能中加入。',
+    defaultDescription: '專案總覽儀表板與狀態管理',
+    homeTab: '首頁',
+    noRecentActivity: '目前尚無任務動態與紀錄。',
     summaryTitle: '專案數據總覽',
     summaryDescription: '目前專案任務、成員與執行完成率概況。',
     metrics: {

@@ -39,10 +39,10 @@ const tab = computed<'home' | 'suites' | 'members' | 'settings'>(() => {
 })
 
 const tabLabel = computed(() => {
-  if (tab.value === 'home') return '首頁'
+  if (tab.value === 'home') return t('projects.detail.homeTab')
   if (tab.value === 'members') return t('tests.member.title')
   if (tab.value === 'settings') return t('tests.workspace.settings')
-  return t('routes.testSuites', '測試管理')
+  return t('routes.testSuites')
 })
 const username = ref('')
 const memberRole = ref<TestWorkspaceRole>('tester')
@@ -613,7 +613,7 @@ onMounted(load)
       v-if="tab === 'home'"
       model-value="home"
       :tabs="[
-        { key: 'home', label: '首頁', icon: LayoutDashboard }
+        { key: 'home', label: t('tests.workspace.homeTitle'), icon: LayoutDashboard }
       ]"
     />
 
@@ -621,15 +621,15 @@ onMounted(load)
     <SharedCardSection
       v-if="tab === 'home'"
       :icon="LayoutDashboard"
-      title="首頁"
-      description="測試工作區總覽與數據儀表板"
+      :title="t('tests.workspace.homeTitle')"
+      :description="t('tests.workspace.homeDescription')"
     >
       <div class="home-placeholder-box">
         <div class="placeholder-icon-wrap">
           <LayoutDashboard :size="36" />
         </div>
-        <h4>測試工作區首頁功能預留區</h4>
-        <p>此處已為您完成首頁導覽設定，後續可在此擴充測試執行率圖表、案例涵蓋率統計與最近執行紀錄。</p>
+        <h4>{{ t('tests.workspace.homePlaceholderTitle') }}</h4>
+        <p>{{ t('tests.workspace.homePlaceholderDescription') }}</p>
       </div>
     </SharedCardSection>
 
@@ -660,7 +660,7 @@ onMounted(load)
           @click="selectSuiteItem(null)"
         >
           <Layers :size="16" class="tree-item-icon" />
-          <span class="tree-label">所有測試案例</span>
+          <span class="tree-label">{{ t('tests.workspace.allCases') }}</span>
           <span class="badge">{{ cases.length }}</span>
         </div>
 
@@ -790,8 +790,8 @@ onMounted(load)
                   />
                 </label>
                 <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
+                  <option value="active">{{ t('common.status.active') }}</option>
+                  <option value="inactive">{{ t('common.status.inactive') }}</option>
                 </select>
               </div>
             </div>
@@ -803,7 +803,7 @@ onMounted(load)
                 :disabled="saving || !caseForm.title.trim() || !caseForm.steps.some(s => s.action.trim() && s.expectedResult.trim())"
                 @click="saveCreatedCase"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '建立案例' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.createAction') }}
               </button>
               <button
                 type="button"
@@ -819,17 +819,17 @@ onMounted(load)
           <div class="case-detail-body">
             <section class="detail-section">
               <h4>{{ t('tests.testCase.description') }}</h4>
-              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" placeholder="測試目標與說明"></textarea>
+              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.descriptionPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.preconditions') }}</h4>
-              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" placeholder="前置準備"></textarea>
+              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.preconditionsPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.overallExpectedResult') }}</h4>
-              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" placeholder="整體預期結果"></textarea>
+              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.expectedPlaceholder')"></textarea>
             </section>
 
             <!-- STEPS SECTION -->
@@ -887,13 +887,13 @@ onMounted(load)
                 </div>
               </div>
               <div class="header-title-row">
-                <input v-model="caseForm.title" class="editable-title-input" placeholder="案例標題" required />
+                <input v-model="caseForm.title" class="editable-title-input" :placeholder="t('tests.testCase.titlePlaceholderShort')" required />
                 <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
+                  <option value="active">{{ t('common.status.active') }}</option>
+                  <option value="inactive">{{ t('common.status.inactive') }}</option>
                 </select>
               </div>
-              <p class="suite-desc">案例編號：{{ workspace.prefix }}-{{ (casesBySuite.get(selectedCase.suiteId)?.findIndex(c => c.id === selectedCase?.id) ?? 0) + 1 }} · {{ t('tests.testCase.stepCount', { count: selectedCase.steps.length }) }}</p>
+              <p class="suite-desc">{{ t('tests.workspace.caseNumber', { code: `${workspace.prefix}-${(casesBySuite.get(selectedCase.suiteId)?.findIndex(c => c.id === selectedCase?.id) ?? 0) + 1}` }) }} · {{ t('tests.testCase.stepCount', { count: selectedCase.steps.length }) }}</p>
             </div>
 
             <div class="header-actions">
@@ -903,7 +903,7 @@ onMounted(load)
                 :disabled="saving || !isCaseDirty || !caseForm.title.trim() || !caseForm.steps.length"
                 @click="saveCaseForm"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '儲存變更' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.saveAction') }}
               </button>
             </div>
           </header>
@@ -912,17 +912,17 @@ onMounted(load)
           <div class="case-detail-body">
             <section class="detail-section">
               <h4>{{ t('tests.testCase.description') }}</h4>
-              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" placeholder="測試目標與說明"></textarea>
+              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.descriptionPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.preconditions') }}</h4>
-              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" placeholder="前置準備"></textarea>
+              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.preconditionsPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.overallExpectedResult') }}</h4>
-              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" placeholder="整體預期結果"></textarea>
+              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.expectedPlaceholder')"></textarea>
             </section>
 
             <!-- EDITABLE STEPS SECTION -->
@@ -985,13 +985,13 @@ onMounted(load)
               <div v-if="selectedSuite" class="header-title-row">
                 <input v-model="suiteForm.name" class="editable-title-input" placeholder="測試套件名稱" required />
                 <select v-model="suiteForm.status" class="status-select-pill" :class="suiteForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
+                  <option value="active">{{ t('common.status.active') }}</option>
+                  <option value="inactive">{{ t('common.status.inactive') }}</option>
                 </select>
               </div>
-              <h2 v-else class="header-static-title">所有測試案例</h2>
+              <h2 v-else class="header-static-title">{{ t('tests.workspace.allCases') }}</h2>
               <textarea v-if="selectedSuite" v-model="suiteForm.description" class="editable-textarea desc-input" placeholder="描述此測試套件的目的..." rows="2"></textarea>
-              <p v-else class="suite-desc">共包含 {{ cases.length }} 個測試案例</p>
+              <p v-else class="suite-desc">{{ t('tests.workspace.caseCount', { count: cases.length }) }}</p>
             </div>
 
             <div class="header-actions">
@@ -1019,7 +1019,7 @@ onMounted(load)
                 :disabled="saving || !isSuiteDirty || !suiteForm.name.trim()"
                 @click="saveSuiteForm"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '儲存變更' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.saveAction') }}
               </button>
             </div>
           </header>
@@ -1071,8 +1071,8 @@ onMounted(load)
           <!-- EMPTY STATE -->
           <div v-else class="empty-cases">
             <FileCheck2 :size="36" />
-            <h4>此測試套件尚無案例</h4>
-            <p>建立第一個測試案例以記錄步驟與驗收條件。</p>
+            <h4>{{ t('tests.testCase.suiteEmptyTitle') }}</h4>
+            <p>{{ t('tests.testCase.suiteEmptyDescription') }}</p>
             <button
               v-if="canManage && selectedSuite?.status === 'active'"
               type="button"

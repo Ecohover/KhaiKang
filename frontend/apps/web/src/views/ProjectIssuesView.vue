@@ -232,7 +232,7 @@ function formatDate(value: string): string {
 
       <SharedCardSection
         :title="t('projects.issues.title')"
-        :description="t('projects.issues.createDescription', '追蹤與處理專案內所有 Issue 與狀態')"
+        :description="t('projects.issues.createDescription')"
       >
         <template #headerRight>
           <span class="count-badge">{{ t('projects.issues.count', { count: filteredIssues.length }, filteredIssues.length) }}</span>

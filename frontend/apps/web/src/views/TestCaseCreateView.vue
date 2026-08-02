@@ -39,11 +39,11 @@ const activeSuites = computed(() =>
 )
 
 const validationHint = computed(() => {
-  if (!suiteId.value) return '請選擇測試套件'
-  if (!title.value.trim()) return '請填寫案例標題'
-  if (!steps.value.length) return '至少需要一個測試步驟'
+  if (!suiteId.value) return t('tests.testCase.suiteRequired')
+  if (!title.value.trim()) return t('tests.testCase.titleRequired')
+  if (!steps.value.length) return t('tests.testCase.stepsRequired')
   if (steps.value.some((step) => !step.action.trim() || !step.expectedResult.trim())) {
-    return '所有步驟的操作說明與預期結果均不得為空'
+    return t('tests.testCase.stepFieldsRequired')
   }
   return ''
 })

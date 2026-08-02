@@ -65,11 +65,11 @@ const activeSuites = computed(() =>
 )
 
 const validationHint = computed(() => {
-  if (!suiteId.value) return '請選擇測試套件'
-  if (!title.value.trim()) return '請填寫案例標題'
-  if (!steps.value.length) return '至少需要一個測試步驟'
+  if (!suiteId.value) return t('tests.testCase.suiteRequired')
+  if (!title.value.trim()) return t('tests.testCase.titleRequired')
+  if (!steps.value.length) return t('tests.testCase.stepsRequired')
   if (steps.value.some((step) => !step.action.trim() || !step.expectedResult.trim())) {
-    return '所有步驟的操作說明與預期結果均不得為空'
+    return t('tests.testCase.stepFieldsRequired')
   }
   return ''
 })
@@ -150,10 +150,10 @@ async function save(): Promise<void> {
           </label>
 
           <label class="form-field">
-            <span>狀態</span>
+            <span>{{ t('common.fields.status') }}</span>
             <select v-model="status">
-              <option value="active">使用中 (Active)</option>
-              <option value="inactive">停用中 (Inactive)</option>
+              <option value="active">{{ t('common.status.active') }}</option>
+              <option value="inactive">{{ t('common.status.inactive') }}</option>
             </select>
           </label>
         </div>
@@ -231,7 +231,7 @@ async function save(): Promise<void> {
               ⚠️ {{ validationHint }}
             </span>
             <span v-else class="hint-text text-emerald-600">
-              ✓ 所有必要欄位與步驟均已完整填寫
+              ✓ {{ t('tests.testCase.completedHint') }}
             </span>
           </div>
           <div class="action-buttons">

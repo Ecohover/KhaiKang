@@ -150,6 +150,9 @@ export const projects = {
     contentLabel: 'Project home content',
     placeholderTitle: 'Project home',
     placeholderDescription: 'The project board and summary will be added in a future update.',
+    defaultDescription: 'Project overview dashboard and status management.',
+    homeTab: 'Home',
+    noRecentActivity: 'There is no recent project activity yet.',
     summaryTitle: 'Project Summary',
     summaryDescription: 'Overview of current project issues, members, and completion rate.',
     metrics: {

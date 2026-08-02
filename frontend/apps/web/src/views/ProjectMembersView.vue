@@ -66,7 +66,7 @@ async function loadPage(): Promise<void> {
     <SharedViewTabs
       model-value="list"
       :tabs="[
-        { key: 'list', label: '列表', icon: List }
+        { key: 'list', label: t('common.views.list'), icon: List }
       ]"
     />
 
@@ -74,7 +74,6 @@ async function loadPage(): Promise<void> {
       resource-type="project"
       :resource-id="projectId"
       :title="t('projects.members.record')"
-      :description="t('projects.members.sectionDescription', '管理本專案之成員權限與角色組')"
       :can-add="canAddMember"
       :can-edit-role="canAssignRoles"
       :can-remove="canRemoveMember"
