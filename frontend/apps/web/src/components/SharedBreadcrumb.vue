@@ -2,6 +2,7 @@
 import type { RouteLocationRaw } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { ChevronRight, ArrowLeft } from '@lucide/vue'
+import { useI18n } from 'vue-i18n'
 
 export interface BreadcrumbItem {
   label: string
@@ -18,16 +19,18 @@ const props = withDefaults(
   }>(),
   {
     showBack: false,
-    backLabel: '返回列表',
+    backLabel: '',
   },
 )
+
+const { t } = useI18n()
 </script>
 
 <template>
-  <nav class="shared-breadcrumb" aria-label="麵包屑導覽">
+  <nav class="shared-breadcrumb" :aria-label="t('common.navigation.breadcrumb')">
     <RouterLink v-if="showBack && backTo" :to="backTo" class="back-btn">
       <ArrowLeft :size="15" />
-      <span>{{ backLabel }}</span>
+      <span>{{ backLabel || t('common.navigation.backToList') }}</span>
     </RouterLink>
 
     <div v-if="showBack && backTo && items.length" class="divider-line" />

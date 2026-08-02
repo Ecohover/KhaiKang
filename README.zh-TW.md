@@ -1,59 +1,47 @@
 # KhaiKang
 
-KhaiKang 是一套為個人開發者及中小型軟體團隊設計的開源、可自架式開發與測試管理平台。
+KhaiKang 是一套開源、可自行部署的開發與測試管理平台，適合個人開發者與中小型軟體團隊。
 
-它將需求、開發規劃、程式實作、測試管理、品質條件與 CI/CD 回饋串成完整流程，同時繼續使用 Jenkins、GitHub Actions、Playwright 等專業外部工具負責實際執行。
+它串連需求、交付規劃、實作、測試管理、品質門檻與 CI/CD 回饋；同時持續使用
+GitHub Actions、Jenkins、Playwright 等專門工具，而非取代它們。
 
-KhaiKang 以 Kanban 持續流動為優先，同時保留 Scrum 相容性。AI 可以在每個流程階段提供協助，各專案也能決定是否需要人工檢核後才能繼續。
-
-> AI 負責提案，需要時由人員核准，自動化工具負責執行，KhaiKang 負責追蹤。
-
-## 產品方向
-
-KhaiKang 的定位是現有工程工具上層的管理與協調中樞，不取代原始碼平台、CI Server、部署引擎或測試框架。
-
-目標交付流程如下：
-
-1. 紀錄需求。
-2. AI 分析需求及相關 Git Repository。
-3. 提出技術方案、開發計畫、驗收條件與測試案例。
-4. 功能程式與測試程式並行開發。
-5. 視專案需要執行單元、整合、API、端對端及人工測試。
-6. 將同一份 Build Artifact 逐步晉級至專案定義的環境。
-7. 每個階段依可設定的品質條件及選擇性人工檢核判斷是否繼續。
-8. 產生需求層級的品質報告並核准正式部署。
-
-MVP 階段採用線性、模板化的環境流程；底層資料模型保留未來修改能力，但第一版不實作完整的視覺化流程設計器。
-
-詳細內容請參閱[產品願景與 MVP 工作流程](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)。
+> AI 提供建議；需要時由人員核准；自動化負責執行；KhaiKang 負責追蹤。
 
 ## 快速開始
 
-前置需求：[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)、
-PostgreSQL、Node.js 22 與 pnpm 10。
+### 透過 Docker 執行（建議先評估使用）
+
+Docker Hub 已提供 Web 與 API image；Compose 會一併啟動 PostgreSQL。只需要安裝
+Docker Engine 與 Docker Compose v2。
+
+```shell
+git clone https://github.com/Ecohover/KhaiKang.git
+cd KhaiKang/deploy/compose
+cp .env.example .env
+# 編輯 .env，將 POSTGRES_PASSWORD 改為足夠長的隨機密碼。
+docker compose pull
+docker compose up -d
+```
+
+開啟 `http://localhost:8080`，建立第一個系統管理員帳號。
+
+升級、備份、HTTPS 與正式環境的做法請見[ Docker 部署說明](./deploy/README.md)。正式環境
+建議使用固定的 `sha-...` image tag，而不是 `latest`。
+
+### 從原始碼執行
+
+需要 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)、PostgreSQL、
+Node.js 22 與 pnpm 10。
 
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet tool restore
-dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<你的本機密碼>"
+dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<your-local-password>"
 dotnet ef database update --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
 dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
-開發設定預設使用 `http://localhost:5220`：
-
-- 健康檢查：`GET /health/live`
-- 系統資訊：`GET /api/v1/system/info`
-- Canonical OpenAPI 合約：`GET /openapi/v1.yaml`
-
-後端驗證指令：
-
-```shell
-dotnet build backend/KhaiKang.Backend.slnx --no-restore --disable-build-servers -m:1
-dotnet test backend/KhaiKang.Backend.slnx --no-build --disable-build-servers -m:1
-```
-
-另開終端機啟動前端：
+開發環境 API 預設使用 `http://localhost:5220`。前端請在另一個終端機執行：
 
 ```shell
 cd frontend
@@ -61,23 +49,16 @@ pnpm install
 pnpm dev
 ```
 
-Frontend workspace 指令請參考 [frontend/README.md](./frontend/README.md)。
-
-## 文件
+## 文件與參與方式
 
 - [English README](./README.md)
-- [產品願景與 MVP 工作流程](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)
-- [英文產品願景與 MVP 工作流程](./doc/en/product-vision-and-mvp-workflow.md)
+- [Docker 部署說明](./deploy/README.md)
+- [安全性政策](./SECURITY.md)
 - [貢獻指南](./CONTRIBUTING.md)
-- [Coding Agent 規範](./AGENTS.md)
-- [文件規範](./doc/documentation-guidelines.md)
-- [開發規範](./doc/zh-TW/01-overview/03-development-guidelines.md)
-- [AI 與 OpenAPI 協作開發流程](./doc/zh-TW/01-overview/06-ai-openapi-development-workflow.md)
-- [Canonical OpenAPI 合約](./contract/openapi/khaikang.v1.yaml)
-- [英文架構總覽](./doc/en/architecture/overview.md)
-- [繁體中文文件導覽](./doc/zh-TW/01-overview/01-documentation-map.md)
-- [繁體中文架構總覽](./doc/zh-TW/01-overview/02-architecture-overview.md)
-- [目前階段規劃](./doc/zh-TW/04-planning/01-phase-overview.md)
+- [社群行為準則](./CODE_OF_CONDUCT.md)
+- [變更紀錄](./CHANGELOG.md)
+- [產品願景與 MVP 工作流程](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)
+- [文件地圖](./doc/zh-TW/01-overview/01-documentation-map.md)
 
 ## 授權
 

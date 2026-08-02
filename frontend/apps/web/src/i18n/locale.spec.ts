@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { en } from './locales/en'
+import { zhTW } from './locales/zh-TW'
 import { defaultLocale, normalizeLocale, resolveInitialLocale } from './locale'
+
+function flattenKeys(value: Record<string, unknown>, prefix = ''): string[] {
+  return Object.entries(value).flatMap(([key, child]) => {
+    const path = prefix ? `${prefix}.${key}` : key
+    return child && typeof child === 'object'
+      ? flattenKeys(child as Record<string, unknown>, path)
+      : [path]
+  })
+}
 
 describe('locale resolution', () => {
   it.each([
@@ -21,5 +32,9 @@ describe('locale resolution', () => {
 
   it('falls back to the product default', () => {
     expect(resolveInitialLocale(null, ['ja-JP'])).toBe(defaultLocale)
+  })
+
+  it('keeps English and Traditional Chinese message keys aligned', () => {
+    expect(flattenKeys(zhTW)).toEqual(flattenKeys(en))
   })
 })

@@ -29,6 +29,14 @@ export const common = {
   fields: {
     status: '狀態',
   },
+  status: {
+    active: '使用中',
+    inactive: '已停用',
+  },
+  navigation: {
+    breadcrumb: '麵包屑導覽',
+    backToList: '返回列表',
+  },
   pagination: {
     navigation: '分頁導覽',
     summary: '共 {count} 筆',

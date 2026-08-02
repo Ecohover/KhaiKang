@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible product defect. Do not report security vulnerabilities here.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "For security issues, use the private process in SECURITY.md instead of this form."
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or image tag
+      placeholder: "sha-... or commit SHA"
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and logs
+      description: Remove passwords, tokens, private URLs, and personal data.

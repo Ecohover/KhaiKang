@@ -8,6 +8,17 @@ KhaiKang is Kanban-first and Scrum-compatible. AI can assist at every workflow s
 
 > AI proposes, humans approve when required, automation executes, and KhaiKang tracks.
 
+## What is included today
+
+- Project workspaces, members, settings, and issue management.
+- Test suites, versioned test cases, test plans, and recorded test runs.
+- A Vue web application, .NET API, PostgreSQL persistence, and OpenAPI contract.
+- Self-hosted Docker Compose deployment using published Docker Hub images.
+
+KhaiKang is under active development. The project is suitable for evaluation and
+self-hosted use; review the deployment and security guidance before exposing an
+instance to the internet.
+
 ## Product direction
 
 KhaiKang is intended to become the management and orchestration layer above existing engineering tools. It does not aim to replace source control, CI servers, deployment engines, or test frameworks.
@@ -28,6 +39,32 @@ For the MVP, environment workflows remain linear and template-based. The data mo
 See [Product Vision and MVP Workflow](./doc/en/product-vision-and-mvp-workflow.md).
 
 ## Quick Start
+
+### Run with Docker (recommended for evaluation)
+
+The published Docker Hub images start the web application, API, and PostgreSQL
+as one Compose stack. Docker Engine with Docker Compose v2 is the only
+prerequisite.
+
+```shell
+git clone https://github.com/Ecohover/KhaiKang.git
+cd KhaiKang/deploy/compose
+cp .env.example .env
+# Edit .env and replace POSTGRES_PASSWORD with a long random value.
+docker compose pull
+docker compose up -d
+```
+
+Open `http://localhost:8080` and create the first system administrator. See
+[Docker deployment](./deploy/README.md) for upgrades, backups, HTTPS, and
+production guidance. Use a fixed `sha-...` image tag rather than `latest` for
+repeatable production deployments.
+
+For an internet-facing installation, use the included Caddy HTTPS override and
+set `KHAIKANG_REQUIRE_HTTPS=true` only after TLS is working. Do not expose the
+API or PostgreSQL service directly.
+
+### Run from source
 
 Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
 PostgreSQL, Node.js 22, and pnpm 10.
@@ -66,6 +103,10 @@ See [frontend/README.md](./frontend/README.md) for its workspace commands.
 ## Documentation
 
 - [Traditional Chinese README](./README.zh-TW.md)
+- [Docker deployment](./deploy/README.md)
+- [Security policy](./SECURITY.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Changelog](./CHANGELOG.md)
 - [Product Vision and MVP Workflow](./doc/en/product-vision-and-mvp-workflow.md)
 - [Traditional Chinese Product Vision and MVP Workflow](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)
 - [Contributing](./CONTRIBUTING.md)
