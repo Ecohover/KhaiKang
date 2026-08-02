@@ -1,0 +1,11 @@
+.git
+.github
+.ai
+.codex-runtime
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.env
+*.log
+TestResults

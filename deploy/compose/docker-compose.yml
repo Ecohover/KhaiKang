@@ -1,0 +1,43 @@
+name: khaikang
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    image: ${KHAIKANG_API_IMAGE}:${KHAIKANG_IMAGE_TAG}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__KhaiKang: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Database__ApplyMigrations: "true"
+      DataProtection__KeysDirectory: /var/lib/khaikang/data-protection
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - data-protection-keys:/var/lib/khaikang/data-protection
+    restart: unless-stopped
+
+  web:
+    image: ${KHAIKANG_WEB_IMAGE}:${KHAIKANG_IMAGE_TAG}
+    depends_on:
+      - api
+    ports:
+      - "${KHAIKANG_HTTP_PORT:-8080}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  data-protection-keys:
