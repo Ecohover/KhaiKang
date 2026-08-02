@@ -1,9 +1,13 @@
 using KhaiKang.Api.Contracts;
 using KhaiKang.CommonUtils.Web.DependencyInjection;
 using KhaiKang.Modules.Identity.DependencyInjection;
+using KhaiKang.Modules.Identity.Infrastructure;
 using KhaiKang.Modules.ProjectManagement.DependencyInjection;
+using KhaiKang.Modules.ProjectManagement.Infrastructure;
 using KhaiKang.Modules.TestManagement.DependencyInjection;
+using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +22,14 @@ builder.Services.AddKhaiKangCommonWeb();
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddProjectManagementModule(builder.Configuration);
 builder.Services.AddTestManagementModule(builder.Configuration);
+var dataProtectionKeysDirectory = builder.Configuration["DataProtection:KeysDirectory"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
+{
+    Directory.CreateDirectory(dataProtectionKeysDirectory);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysDirectory));
+}
+
 if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.Replace(ServiceDescriptor.Singleton<IDataProtectionProvider>(
@@ -25,6 +37,14 @@ if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Te
 }
 
 var app = builder.Build();
+
+if (builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<ProjectManagementDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<TestManagementDbContext>().Database.MigrateAsync();
+}
 
 app.UseKhaiKangProblemDetails();
 app.UseRateLimiter();

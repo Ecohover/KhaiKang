@@ -17,13 +17,19 @@ namespace KhaiKang.Api.IntegrationTests;
 
 public sealed class IdentityApiFactory : WebApplicationFactory<Program>
 {
+    private const string TestConnectionString =
+        "Host=localhost;Database=khaikang_testing;Username=testing;Password=testing";
+
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
+    private readonly string? _previousConnectionString;
     private readonly ServiceProvider _sqliteServices = new ServiceCollection()
         .AddEntityFrameworkSqlite()
         .BuildServiceProvider();
 
     public IdentityApiFactory()
     {
+        _previousConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__KhaiKang");
+        Environment.SetEnvironmentVariable("ConnectionStrings__KhaiKang", TestConnectionString);
         _connection.Open();
     }
 
@@ -43,9 +49,6 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting(
-            "ConnectionStrings:KhaiKang",
-            "Host=localhost;Database=khaikang_testing;Username=testing;Password=testing");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<IdentityDbContext>>();
@@ -90,6 +93,7 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         {
             _connection.Dispose();
             _sqliteServices.Dispose();
+            Environment.SetEnvironmentVariable("ConnectionStrings__KhaiKang", _previousConnectionString);
         }
     }
 }
