@@ -1,15 +1,18 @@
 using System.Security.Cryptography;
 using KhaiKang.Modules.Identity.Application;
+using KhaiKang.Modules.Identity.Configuration;
 using KhaiKang.Modules.Identity.Domain;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace KhaiKang.Modules.Identity.Infrastructure;
 
 public sealed class RefreshCookieService(
     IDataProtectionProvider dataProtectionProvider,
-    IHostEnvironment environment)
+    IHostEnvironment environment,
+    IOptions<IdentityOptions> identityOptions)
 {
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
         "KhaiKang.Identity.RefreshCookie.v1");
@@ -56,7 +59,7 @@ public sealed class RefreshCookieService(
         return new CookieOptions
         {
             HttpOnly = true,
-            Secure = !environment.IsDevelopment(),
+            Secure = identityOptions.Value.RequireSecureCookies ?? !environment.IsDevelopment(),
             SameSite = SameSiteMode.Lax,
             Path = "/api/v1/auth",
         };

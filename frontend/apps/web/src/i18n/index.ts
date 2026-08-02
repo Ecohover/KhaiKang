@@ -7,7 +7,9 @@ import { persistLocale, readInitialLocale, type AppLocale } from './locale'
 export const i18n = createI18n({
   legacy: false,
   locale: readInitialLocale(),
-  fallbackLocale: 'zh-TW',
+  // English is the safe fallback for the English public UI. Locale parity is
+  // verified in tests so a missing key never silently falls back to Chinese.
+  fallbackLocale: 'en',
   messages: {
     'zh-TW': zhTW,
     en,

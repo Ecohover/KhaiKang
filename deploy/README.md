@@ -20,6 +20,9 @@ published images through `compose/docker-compose.yml`.
 
 5. Open `http://localhost:8080` and initialize the first system administrator.
 
+The same example is available in a Docker Hub-ready format at
+[`docker-hub-overview.md`](./docker-hub-overview.md).
+
 ## Secrets and persistent data
 
 - `compose/.env` is intentionally ignored by Git. Keep it only on the deployment host.
@@ -27,11 +30,45 @@ published images through `compose/docker-compose.yml`.
 - `data-protection-keys` encrypts and validates authentication cookies. Keep it with
   the database backup; deleting it signs out every user and invalidates existing
   protected data.
+- `KHAIKANG_REQUIRE_HTTPS` must remain `false` only for localhost or other trusted
+  HTTP testing. Set it to `true` only after users reach KhaiKang through HTTPS;
+  secure session, refresh, and CSRF cookies will then be required by the browser.
 - The API applies EF Core migrations only because Compose sets
   `Database__ApplyMigrations=true`. Set it to `false` when operating migrations
   through a separate controlled process.
-- For internet-facing deployment, put a TLS reverse proxy such as Caddy in front
-  of the `web` service. Do not expose PostgreSQL or the API service directly.
+- For internet-facing deployment, use the included Caddy HTTPS override below.
+  Do not expose PostgreSQL or the API service directly.
+
+## HTTPS with Caddy
+
+The default Compose file is for localhost and trusted HTTP networks. For a
+public domain, point its DNS A/AAAA record to the deployment host, allow inbound
+TCP ports 80 and 443, then configure HTTPS:
+
+```sh
+cd deploy/compose
+cp .env.example .env
+```
+
+Set these values in `.env` before starting the stack:
+
+```dotenv
+KHAIKANG_DOMAIN=khaikang.example.com
+KHAIKANG_REQUIRE_HTTPS=true
+# Keep the direct web port reachable only from the local host.
+KHAIKANG_HTTP_PORT=127.0.0.1:8080
+```
+
+Start the base stack together with the Caddy override:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.https.yml pull
+docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+```
+
+Caddy obtains and renews the TLS certificate automatically. Never set
+`KHAIKANG_REQUIRE_HTTPS=true` while serving the application directly over HTTP:
+the browser will correctly refuse to send secure authentication and CSRF cookies.
 
 ## Upgrade and rollback
 

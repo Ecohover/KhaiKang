@@ -2,6 +2,7 @@
 import type { Component } from 'vue'
 import { AlertCircle, FolderOpen, RefreshCw, Loader2 } from '@lucide/vue'
 import { UiButton } from '@khaikang/ui'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
   defineProps<{
@@ -17,9 +18,11 @@ const props = withDefaults(
     title: '',
     description: '',
     showReload: false,
-    reloadLabel: '重新載入',
+    reloadLabel: '',
   },
 )
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ (e: 'reload'): void }>()
 </script>
@@ -44,7 +47,7 @@ const emit = defineEmits<{ (e: 'reload'): void }>()
       @click="emit('reload')"
     >
       <RefreshCw :size="16" aria-hidden="true" />
-      {{ reloadLabel }}
+      {{ reloadLabel || t('common.actions.reload') }}
     </UiButton>
   </div>
 </template>

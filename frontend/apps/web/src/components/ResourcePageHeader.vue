@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +19,7 @@ const props = withDefaults(
 )
 
 const isStatusActive = computed(() => props.status === 'active')
+const { t } = useI18n()
 </script>
 
 <template>
@@ -30,7 +32,7 @@ const isStatusActive = computed(() => props.status === 'active')
     <div class="header-right">
       <slot />
       <span v-if="status" class="header-status-badge" :class="[status, { active: isStatusActive, inactive: !isStatusActive }]">
-        {{ statusLabel || (isStatusActive ? '使用中' : '已停用') }}
+        {{ statusLabel || t(isStatusActive ? 'common.status.active' : 'common.status.inactive') }}
       </span>
     </div>
   </header>

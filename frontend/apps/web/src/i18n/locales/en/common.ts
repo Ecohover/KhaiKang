@@ -29,6 +29,14 @@ export const common = {
   fields: {
     status: 'Status',
   },
+  status: {
+    active: 'Active',
+    inactive: 'Inactive',
+  },
+  navigation: {
+    breadcrumb: 'Breadcrumb navigation',
+    backToList: 'Back to list',
+  },
   pagination: {
     navigation: 'Pagination',
     summary: '{count} records',

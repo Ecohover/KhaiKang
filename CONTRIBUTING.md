@@ -3,6 +3,10 @@
 Thank you for contributing to KhaiKang. The project is developed as a
 self-hostable modular monolith and favors small, reviewable changes.
 
+Please follow the [Code of Conduct](./CODE_OF_CONDUCT.md). For suspected
+security vulnerabilities, follow [SECURITY.md](./SECURITY.md) rather than
+opening a public issue.
+
 ## Before You Start
 
 - Read `AGENTS.md` for repository boundaries and verification rules.
