@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>KhaiKang.Api-LocalDevelopment</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\contract\openapi\khaikang.v1.yaml"
+             Link="OpenApi\khaikang.v1.yaml"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\common\KhaiKang.CommonUtils\KhaiKang.CommonUtils.csproj" />
+    <ProjectReference Include="..\common\KhaiKang.CommonUtils.Web\KhaiKang.CommonUtils.Web.csproj" />
+    <ProjectReference Include="..\modules\KhaiKang.Modules.Identity\KhaiKang.Modules.Identity.csproj" />
+    <ProjectReference Include="..\modules\KhaiKang.Modules.ProjectManagement\KhaiKang.Modules.ProjectManagement.csproj" />
+    <ProjectReference Include="..\modules\KhaiKang.Modules.TestManagement\KhaiKang.Modules.TestManagement.csproj" />
+  </ItemGroup>
+
+</Project>

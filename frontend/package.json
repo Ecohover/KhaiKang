@@ -1,0 +1,11 @@
+{
+  "name": "khaikang-frontend",
+  "private": true,
+  "packageManager": "pnpm@10.28.1",
+  "scripts": {
+    "dev": "pnpm --filter @khaikang/web dev",
+    "build": "pnpm --recursive build",
+    "type-check": "pnpm --recursive type-check",
+    "test": "pnpm --recursive test"
+  }
+}

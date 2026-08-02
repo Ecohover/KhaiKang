@@ -1,0 +1,2218 @@
+openapi: 3.1.1
+info:
+  title: KhaiKang API
+  version: 1.0.0
+  description: Public HTTP contract for KhaiKang v1.
+paths:
+  /health/live:
+    get:
+      tags: [System]
+      operationId: LiveHealth
+      responses:
+        '200':
+          description: The API process is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/system/info:
+    get:
+      tags: [System]
+      operationId: GetSystemInfo
+      responses:
+        '200':
+          description: Runtime information for the API process.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfoResponse'
+  /api/v1/setup/status:
+    get:
+      tags: [Setup]
+      operationId: GetSetupStatus
+      responses:
+        '200':
+          description: Whether the first administrator must be initialized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusResponse'
+  /api/v1/setup/initialize:
+    post:
+      tags: [Setup]
+      operationId: InitializeAdmin
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: One-time credentials for the initial administrator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitializeAdminResponse'
+        '409':
+          description: The system has already been initialized.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/setup/already-initialized
+                status: 409
+                code: already_initialized
+                detail: KhaiKang has already been initialized.
+  /api/v1/auth/csrf-token:
+    get:
+      tags: [Authentication]
+      operationId: GetCsrfToken
+      responses:
+        '200':
+          description: A CSRF request token and its paired cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfTokenResponse'
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: Login
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: The authenticated user. Session cookies are set by the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: The credentials are invalid or the account cannot sign in.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/auth/invalid-credentials
+                status: 401
+                code: invalid_credentials
+                detail: The username or password is invalid.
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: RefreshSession
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          description: The refreshed authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '401':
+          description: The refresh session is missing, expired, or revoked.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://khaikang.dev/problems/auth/session-expired
+                status: 401
+                code: session_expired
+                detail: The login session has expired.
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: GetCurrentUser
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The current authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedUserResponse'
+        '401':
+          description: No valid authenticated session exists.
+  /api/v1/auth/password:
+    post:
+      tags: [Authentication]
+      operationId: ChangePassword
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: The password was changed.
+        '400':
+          description: The current password is invalid or validation failed.
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProblemDetails'
+                  - $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: Logout
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: The current session was revoked and cookies were cleared.
+  /api/v1/accounts:
+    get:
+      tags: [Accounts]
+      operationId: ListAccounts
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: All local user accounts visible to an account administrator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current user lacks account.read.
+    post:
+      tags: [Accounts]
+      operationId: CreateAccount
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: The local user account was created with a one-time initial password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccountResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current user lacks account.create.
+        '409':
+          description: The username is already in use.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/accounts/{accountId}:
+    put:
+      tags: [Accounts]
+      operationId: UpdateAccount
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: The account username was updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current user lacks account.update.
+        '404':
+          description: The account does not exist.
+        '409':
+          description: The username is already in use, the current account cannot edit itself, or the account version is stale.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/accounts/{accountId}/status:
+    put:
+      tags: [Accounts]
+      operationId: UpdateAccountStatus
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountStatusRequest'
+      responses:
+        '200':
+          description: The account status was changed and non-active account sessions were revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current user lacks account.suspend.
+        '404':
+          description: The account does not exist.
+        '409':
+          description: The administrator attempted to change their own status, or the account version is stale.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/projects:
+    get:
+      tags: [Projects]
+      operationId: ListProjects
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Projects where the current user is an active member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          description: No valid authenticated session exists.
+    post:
+      tags: [Projects]
+      operationId: CreateProject
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: The project was created and the creator was assigned Owner.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current user does not have the project.create system permission.
+        '409':
+          description: The project code is already in use.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/projects/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      operationId: GetProject
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Project details visible to the current project member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '404':
+          description: The project does not exist or is not visible to the current user.
+    put:
+      tags: [Projects]
+      operationId: UpdateProject
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: The project basic information was updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current project member lacks project.update, or the user lacks project.deactivate for a status change.
+        '404':
+          description: The project does not exist or is not visible to the current user.
+        '409':
+          description: The project was updated by another user.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/projects/{projectId}/roles:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      operationId: ListProjectRoles
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: System-provided project roles available for assignment.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectRoleResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '404':
+          description: The project does not exist or is not visible to the current member.
+  /api/v1/projects/{projectId}/members:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      operationId: ListProjectMembers
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Active members of the project.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMemberResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '404':
+          description: The project does not exist or is not visible to the current member.
+    post:
+      tags: [Projects]
+      operationId: AddProjectMember
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProjectMemberRequest'
+      responses:
+        '201':
+          description: The active account was added to the project with the selected roles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMemberResponse'
+        '400':
+          description: Username or role selection is invalid.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks project.member.add or project.role.assign.
+        '404':
+          description: The project or active account was not found.
+        '409':
+          description: The account is already an active member.
+  /api/v1/projects/{projectId}/members/{memberId}/roles:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: memberId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Projects]
+      operationId: UpdateProjectMemberRoles
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectMemberRolesRequest'
+      responses:
+        '200':
+          description: The member roles were replaced by the selected default roles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMemberResponse'
+        '400':
+          description: Role selection or version is invalid.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks project.role.assign.
+        '404':
+          description: The project or active member was not found.
+        '409':
+          description: The change would remove the final Owner, or the member version is stale.
+  /api/v1/projects/{projectId}/members/{memberId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: memberId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Projects]
+      operationId: RemoveProjectMember
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: version
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: The member relationship was marked as removed.
+        '400':
+          description: The member version is invalid.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks project.member.remove.
+        '404':
+          description: The project or active member was not found.
+        '409':
+          description: The removal would remove the final Owner, or the member version is stale.
+  /api/v1/projects/{projectId}/issues:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Issues]
+      operationId: ListIssues
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A page of tasks visible to the current project member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuePageResponse'
+        '400':
+          description: The paging parameters are outside the supported range.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.read.
+        '404':
+          description: The project does not exist or is not visible to the current member.
+    post:
+      tags: [Issues]
+      operationId: CreateIssue
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIssueRequest'
+      responses:
+        '201':
+          description: The task was created in the initial created status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '400':
+          description: Request validation, type, priority, or assignee selection failed.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.create.
+        '404':
+          description: The project does not exist or is not visible to the current member.
+        '409':
+          description: The project is inactive, or a concurrent task creation used the same project task number.
+  /api/v1/projects/{projectId}/issues/metadata:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Issues]
+      operationId: GetIssueMetadata
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Active task types, statuses, and priorities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueMetadataResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.read.
+        '404':
+          description: The project does not exist or is not visible to the current member.
+  /api/v1/projects/{projectId}/issues/{issueId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Issues]
+      operationId: GetIssue
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: A single task visible to the current project member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '401':
+          description: No valid authenticated session exists.
+        '404':
+          description: The project or task does not exist or is not visible.
+    put:
+      tags: [Issues]
+      operationId: UpdateIssue
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueRequest'
+      responses:
+        '200':
+          description: The task details were updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '400':
+          description: Request validation or option selection failed.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.update.
+        '404':
+          description: The project or task does not exist or is not visible.
+        '409':
+          description: The project is inactive, or the task was updated by another user.
+  /api/v1/projects/{projectId}/issues/{issueId}/assignee:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Issues]
+      operationId: UpdateIssueAssignee
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueAssigneeRequest'
+      responses:
+        '200':
+          description: The task assignee was changed or cleared.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '400':
+          description: The assignee is not an active project member, or the version is invalid.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.assignee.change.
+        '404':
+          description: The project or task does not exist or is not visible to the current member.
+        '409':
+          description: The project is inactive, or the task was updated by another user.
+  /api/v1/projects/{projectId}/issues/{issueId}/status:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Issues]
+      operationId: UpdateIssueStatus
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueStatusRequest'
+      responses:
+        '200':
+          description: The task status was updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '400':
+          description: The target status or version is invalid.
+        '401':
+          description: No valid authenticated session exists.
+        '403':
+          description: The current member lacks issue.status.change.
+        '404':
+          description: The project or task does not exist or is not visible to the current member.
+        '409':
+          description: The project is inactive, or the task was updated by another user.
+  /api/v1/test-workspaces:
+    get:
+      tags: [Test Management]
+      operationId: ListTestWorkspaces
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Test workspaces visible to the current member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '401': { description: No valid authenticated session exists. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestWorkspace
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestWorkspaceRequest' }
+      responses:
+        '201':
+          description: Workspace created with the current account as Owner.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '400': { description: Request validation failed. }
+        '409': { description: Workspace name conflict. }
+  /api/v1/test-workspaces/{workspaceId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: GetTestWorkspace
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Workspace details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '404': { description: Workspace is not visible to the current account. }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestWorkspace
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestWorkspaceRequest' }
+      responses:
+        '200':
+          description: Workspace updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
+        '403': { description: Only an Owner can update workspace settings. }
+        '409': { description: Name or version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/members:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestWorkspaceMembers
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active workspace members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+    post:
+      tags: [Test Management]
+      operationId: AddTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTestWorkspaceMemberRequest' }
+      responses:
+        '201':
+          description: Member added.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+        '403': { description: Current role cannot manage members. }
+        '409': { description: Account is already an active member. }
+  /api/v1/test-workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: memberId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestWorkspaceMemberRequest' }
+      responses:
+        '200':
+          description: Member role updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceMemberResponse' }
+        '409': { description: Version conflict or last Owner protection. }
+    delete:
+      tags: [Test Management]
+      operationId: RemoveTestWorkspaceMember
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Member removed. }
+        '409': { description: Version conflict or last Owner protection. }
+  /api/v1/test-workspaces/{workspaceId}/suites:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestSuites
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Suite tree as a flat parent-linked collection.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestSuiteResponse' }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestSuite
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestSuiteRequest' }
+      responses:
+        '201':
+          description: Suite created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSuiteResponse' }
+        '409': { description: A sibling suite has the same name. }
+  /api/v1/test-workspaces/{workspaceId}/suites/{suiteId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: suiteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestSuite
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestSuiteRequest' }
+      responses:
+        '200':
+          description: Suite updated or moved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSuiteResponse' }
+        '400': { description: Parent would create a cycle or exceed five levels. }
+        '409': { description: Name or version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/cases:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestCases
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - name: suiteId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Test cases visible to the current workspace member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestCaseResponse' }
+        '404': { description: Workspace is not visible to the current account. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestCase
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestCaseRequest' }
+      responses:
+        '201':
+          description: Test case created with its ordered steps.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current role cannot manage test cases. }
+        '404': { description: Workspace or suite does not exist or is not visible. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: caseId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: GetTestCase
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Test case details visible to the current workspace member.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '404': { description: Test case or workspace not found. }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestCase
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestCaseRequest' }
+      responses:
+        '200':
+          description: Test case updated with new properties and steps.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current role cannot manage test cases. }
+        '404': { description: Test case, workspace, or suite does not exist. }
+        '409': { description: Version conflict or invalid suite target. }
+  /api/v1/test-workspaces/{workspaceId}/plans:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestPlans
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Plans visible to the current workspace member.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestPlanResponse' } }
+        '404': { description: Workspace is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestPlan
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestPlanRequest' }
+      responses:
+        '201':
+          description: Draft plan created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestPlanResponse' }
+        '400': { description: Scope contains duplicate, inactive, or foreign cases. }
+        '403': { description: Current role cannot manage plans. }
+  /api/v1/test-workspaces/{workspaceId}/plans/{planId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: planId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestPlan
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Plan details and ordered case scope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestPlanResponse' }
+        '404': { description: Plan or workspace not found. }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestPlan
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestPlanRequest' }
+      responses:
+        '200':
+          description: Plan metadata, state, and ordered scope updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestPlanResponse' }
+        '400': { description: Active plan has no cases or scope is invalid. }
+        '409': { description: Plan is archived or version conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/runs:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestRuns
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Runs visible to the current workspace member.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestRunResponse' } }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestRun
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestRunRequest' }
+      responses:
+        '201':
+          description: Run and immutable case and step snapshots created atomically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunResponse' }
+        '409': { description: Plan is not active or contains inactive cases. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestRun
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Run snapshot, results, and progress.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunResponse' }
+        '404': { description: Run or workspace not found. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Test Management]
+      operationId: RecordTestRunItem
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordTestResultRequest' }
+      responses:
+        '200':
+          description: Case result recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunResponse' }
+        '409': { description: Run is terminal or version conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/steps/{stepId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: stepId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Test Management]
+      operationId: RecordTestRunStep
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordTestResultRequest' }
+      responses:
+        '200':
+          description: Step result recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunResponse' }
+        '409': { description: Run is terminal or version conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/status:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestRunStatus
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestRunStatusRequest' }
+      responses:
+        '200':
+          description: Run completed or cancelled and made immutable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunResponse' }
+        '409': { description: Run is terminal, incomplete, or version conflicts. }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: KhaiKang.Session
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      description: One-based page number.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Number of records returned per page.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    CsrfToken:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: Token returned by `getCsrfToken`; its paired cookie is also required.
+      schema:
+        type: string
+  schemas:
+    TestWorkspaceRole:
+      type: string
+      enum: [owner, manager, tester, viewer]
+    CreateTestWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+    UpdateTestWorkspaceRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestWorkspaceRequest'
+        - type: object
+          required: [status, version]
+          properties:
+            status: { type: string, enum: [active, inactive] }
+            version: { type: integer, minimum: 1 }
+    TestWorkspaceResponse:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, status, currentUserRole, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        currentUserRole: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    AddTestWorkspaceMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [username, role]
+      properties:
+        username: { type: string }
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+    UpdateTestWorkspaceMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [role, version]
+      properties:
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        version: { type: integer, minimum: 1 }
+    TestWorkspaceMemberResponse:
+      type: object
+      additionalProperties: false
+      required: [id, accountId, username, role, status, joinedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        username: { type: string }
+        role: { $ref: '#/components/schemas/TestWorkspaceRole' }
+        status: { type: string, enum: [active, removed] }
+        joinedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateTestSuiteRequest:
+      type: object
+      additionalProperties: false
+      required: [parentId, name, description, sortOrder]
+      properties:
+        parentId: { type: [string, 'null'], format: uuid }
+        name: { type: string, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+    UpdateTestSuiteRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestSuiteRequest'
+        - type: object
+          required: [status, version]
+          properties:
+            status: { type: string, enum: [active, inactive] }
+            version: { type: integer, minimum: 1 }
+    TestSuiteResponse:
+      type: object
+      additionalProperties: false
+      required: [id, parentId, name, description, sortOrder, status, depth, version]
+      properties:
+        id: { type: string, format: uuid }
+        parentId: { type: [string, 'null'], format: uuid }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        sortOrder: { type: integer }
+        status: { type: string, enum: [active, inactive] }
+        depth: { type: integer, minimum: 1, maximum: 5 }
+        version: { type: integer }
+    CreateTestCaseStepRequest:
+      type: object
+      additionalProperties: false
+      required: [action, expectedResult]
+      properties:
+        action: { type: string, minLength: 1, maxLength: 4000 }
+        expectedResult: { type: string, minLength: 1, maxLength: 4000 }
+    CreateTestCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - steps
+      properties:
+        suiteId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        preconditions: { type: [string, 'null'], maxLength: 4000 }
+        overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CreateTestCaseStepRequest' }
+    UpdateTestCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - status
+        - version
+        - steps
+      properties:
+        suiteId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        preconditions: { type: [string, 'null'], maxLength: 4000 }
+        overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
+        sortOrder: { type: integer, minimum: 0 }
+        status: { type: string, enum: [active, inactive] }
+        version: { type: integer, minimum: 1 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CreateTestCaseStepRequest' }
+    TestCaseStepResponse:
+      type: object
+      additionalProperties: false
+      required: [id, stepNo, action, expectedResult]
+      properties:
+        id: { type: string, format: uuid }
+        stepNo: { type: integer, minimum: 1 }
+        action: { type: string }
+        expectedResult: { type: string }
+    TestCaseResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - suiteId
+        - title
+        - description
+        - preconditions
+        - overallExpectedResult
+        - sortOrder
+        - status
+        - steps
+        - createdAt
+        - updatedAt
+        - version
+      properties:
+        id: { type: string, format: uuid }
+        suiteId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        preconditions: { type: [string, 'null'] }
+        overallExpectedResult: { type: [string, 'null'] }
+        sortOrder: { type: integer }
+        status: { type: string, enum: [active, inactive] }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/TestCaseStepResponse' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    CreateTestPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [description, caseIds]
+      properties:
+        name:
+          type: [string, 'null']
+          maxLength: 200
+          description: Defaults to TestPlanyyyyMMdd in Asia/Taipei when omitted, null, or blank.
+        description: { type: [string, 'null'], maxLength: 4000 }
+        caseIds:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    UpdateTestPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [description, caseIds, status, version]
+      properties:
+        name:
+          type: [string, 'null']
+          maxLength: 200
+          description: Defaults to TestPlanyyyyMMdd in Asia/Taipei when omitted, null, or blank.
+        description: { type: [string, 'null'], maxLength: 4000 }
+        caseIds:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        status: { type: string, enum: [draft, active, archived] }
+        version: { type: integer, minimum: 1 }
+    TestPlanItemResponse:
+      type: object
+      additionalProperties: false
+      required: [id, caseId, sortOrder, caseTitle]
+      properties:
+        id: { type: string, format: uuid }
+        caseId: { type: string, format: uuid }
+        sortOrder: { type: integer, minimum: 1 }
+        caseTitle: { type: string }
+    TestPlanResponse:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, planNo, code, name, description, status, items, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        planNo: { type: integer, minimum: 1 }
+        code:
+          type: string
+          description: Workspace-scoped display code, for example QA-TP1.
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, active, archived] }
+        items: { type: array, items: { $ref: '#/components/schemas/TestPlanItemResponse' } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    CreateTestRunRequest:
+      type: object
+      additionalProperties: false
+      required: [planId, name]
+      properties:
+        planId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 200 }
+    RecordTestResultRequest:
+      type: object
+      additionalProperties: false
+      required: [status, actualResult, version]
+      properties:
+        status: { type: string, enum: [not_run, passed, failed, blocked, skipped] }
+        actualResult: { type: [string, 'null'], maxLength: 4000 }
+        version: { type: integer, minimum: 1 }
+    UpdateTestRunStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status, summary, version]
+      properties:
+        status: { type: string, enum: [completed, cancelled] }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        version: { type: integer, minimum: 1 }
+    TestRunStepResponse:
+      type: object
+      additionalProperties: false
+      required: [id, stepNo, action, expectedResult, resultStatus, actualResult, executedByAccountId, executedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        stepNo: { type: integer, minimum: 1 }
+        action: { type: string }
+        expectedResult: { type: string }
+        resultStatus: { type: string, enum: [not_run, passed, failed, blocked, skipped] }
+        actualResult: { type: [string, 'null'] }
+        executedByAccountId: { type: [string, 'null'], format: uuid }
+        executedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer, minimum: 1 }
+    TestRunItemResponse:
+      type: object
+      additionalProperties: false
+      required: [id, caseId, sortOrder, caseTitle, caseDescription, preconditions, overallExpectedResult, resultStatus, actualResult, executedByAccountId, executedAt, steps, version]
+      properties:
+        id: { type: string, format: uuid }
+        caseId: { type: string, format: uuid }
+        sortOrder: { type: integer, minimum: 1 }
+        caseTitle: { type: string }
+        caseDescription: { type: [string, 'null'] }
+        preconditions: { type: [string, 'null'] }
+        overallExpectedResult: { type: [string, 'null'] }
+        resultStatus: { type: string, enum: [not_run, passed, failed, blocked, skipped] }
+        actualResult: { type: [string, 'null'] }
+        executedByAccountId: { type: [string, 'null'], format: uuid }
+        executedAt: { type: [string, 'null'], format: date-time }
+        steps: { type: array, items: { $ref: '#/components/schemas/TestRunStepResponse' } }
+        version: { type: integer, minimum: 1 }
+    TestRunProgressResponse:
+      type: object
+      additionalProperties: false
+      required: [total, notRun, passed, failed, blocked, skipped]
+      properties:
+        total: { type: integer, minimum: 0 }
+        notRun: { type: integer, minimum: 0 }
+        passed: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
+        blocked: { type: integer, minimum: 0 }
+        skipped: { type: integer, minimum: 0 }
+    TestRunResponse:
+      type: object
+      additionalProperties: false
+      required: [id, planId, runNo, code, name, status, startedByAccountId, startedAt, completedAt, summary, progress, items, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        planId: { type: string, format: uuid }
+        runNo: { type: integer, minimum: 1 }
+        code:
+          type: string
+          description: Plan-scoped display code, for example QA-TP1-R1.
+        name: { type: string }
+        status: { type: string, enum: [not_started, in_progress, completed, cancelled] }
+        startedByAccountId: { type: string, format: uuid }
+        startedAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        summary: { type: [string, 'null'] }
+        progress: { $ref: '#/components/schemas/TestRunProgressResponse' }
+        items: { type: array, items: { $ref: '#/components/schemas/TestRunItemResponse' } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          examples: [Healthy]
+    SystemInfoResponse:
+      type: object
+      additionalProperties: false
+      required: [serviceName, environment, serverTime]
+      properties:
+        serviceName:
+          type: string
+        environment:
+          type: string
+        serverTime:
+          type: string
+          format: date-time
+    SetupStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [requiresInitialization]
+      properties:
+        requiresInitialization:
+          type: boolean
+    InitializeAdminResponse:
+      type: object
+      additionalProperties: false
+      required: [username, initialPassword]
+      properties:
+        username:
+          type: string
+        initialPassword:
+          type: string
+          format: password
+          writeOnly: true
+    CsrfTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, rememberMe]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          format: password
+          minLength: 1
+        rememberMe:
+          type: boolean
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+    AuthenticatedUserResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, systemRoles, systemPermissions, mustChangePassword]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        systemRoles:
+          type: array
+          items:
+            type: string
+        systemPermissions:
+          type: array
+          items:
+            type: string
+        mustChangePassword:
+          type: boolean
+    CreateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [username]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$'
+    UpdateAccountStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          enum: [active, suspended, disabled]
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    UpdateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [username, version]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$'
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    AccountResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, accountType, status, systemRoles, mustChangePassword, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        accountType:
+          type: string
+          enum: [human, ai_agent]
+        status:
+          type: string
+          enum: [active, suspended, disabled]
+        systemRoles:
+          type: array
+          items:
+            type: string
+        mustChangePassword:
+          type: boolean
+        lastLoginAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int32
+    CreateAccountResponse:
+      type: object
+      additionalProperties: false
+      required: [account, initialPassword]
+      properties:
+        account:
+          $ref: '#/components/schemas/AccountResponse'
+        initialPassword:
+          type: string
+          format: password
+          writeOnly: true
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+    UpdateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name, status, version]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+        status:
+          type: string
+          enum: [active, inactive]
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    ProjectResponse:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, status, currentUserRoles, currentUserPermissions, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [active, inactive]
+        currentUserRoles:
+          type: array
+          items:
+            type: string
+        currentUserPermissions:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int32
+    ProjectRoleResponse:
+      type: object
+      additionalProperties: false
+      required: [code, name, description]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    ProjectMemberResponse:
+      type: object
+      additionalProperties: false
+      required: [id, accountId, username, status, roleCodes, joinedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        status:
+          type: string
+          enum: [active, removed]
+        roleCodes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        joinedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    AddProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [username, roleCodes]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 200
+        roleCodes:
+          type: array
+          minItems: 1
+          maxItems: 4
+          uniqueItems: true
+          items:
+            type: string
+    UpdateProjectMemberRolesRequest:
+      type: object
+      additionalProperties: false
+      required: [roleCodes, version]
+      properties:
+        roleCodes:
+          type: array
+          minItems: 1
+          maxItems: 4
+          uniqueItems: true
+          items:
+            type: string
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    IssueOptionResponse:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        category:
+          type: [string, 'null']
+    IssueMetadataResponse:
+      type: object
+      additionalProperties: false
+      required: [types, statuses, priorities]
+      properties:
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueOptionResponse'
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueOptionResponse'
+        priorities:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueOptionResponse'
+    CreateIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [title, typeCode]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        typeCode:
+          type: string
+        priorityCode:
+          type: [string, 'null']
+        description:
+          type: [string, 'null']
+          maxLength: 20000
+        userStory:
+          type: [string, 'null']
+          maxLength: 20000
+        definitionOfDone:
+          type: [string, 'null']
+          maxLength: 20000
+        assigneeAccountId:
+          type: [string, 'null']
+          format: uuid
+    UpdateIssueStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [statusCode, version]
+      properties:
+        statusCode:
+          type: string
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    UpdateIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [title, typeCode, priorityCode, version]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        typeCode:
+          type: string
+        priorityCode:
+          type: string
+        description:
+          type: [string, 'null']
+          maxLength: 20000
+        userStory:
+          type: [string, 'null']
+          maxLength: 20000
+        definitionOfDone:
+          type: [string, 'null']
+          maxLength: 20000
+        completionSummary:
+          type: [string, 'null']
+          maxLength: 20000
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    UpdateIssueAssigneeRequest:
+      type: object
+      additionalProperties: false
+      required: [assigneeAccountId, version]
+      properties:
+        assigneeAccountId:
+          type: [string, 'null']
+          format: uuid
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+    IssueResponse:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, issueNo, key, title, typeCode, typeName, statusCode, statusName, priorityCode, priorityName, reporterAccountId, reporterUsername, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        issueNo:
+          type: integer
+          format: int32
+        key:
+          type: string
+        title:
+          type: string
+        description:
+          type: [string, 'null']
+        userStory:
+          type: [string, 'null']
+        definitionOfDone:
+          type: [string, 'null']
+        completionSummary:
+          type: [string, 'null']
+        typeCode:
+          type: string
+        typeName:
+          type: string
+        statusCode:
+          type: string
+        statusName:
+          type: string
+        priorityCode:
+          type: string
+        priorityName:
+          type: string
+        reporterAccountId:
+          type: string
+          format: uuid
+        reporterUsername:
+          type: string
+        assigneeAccountId:
+          type: [string, 'null']
+          format: uuid
+        assigneeUsername:
+          type: [string, 'null']
+        completedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int32
+    IssuePageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalCount, totalPages, hasPreviousPage, hasNextPage]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueResponse'
+        page:
+          type: integer
+          format: int32
+          minimum: 1
+        pageSize:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        totalCount:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 0
+        hasPreviousPage:
+          type: boolean
+        hasNextPage:
+          type: boolean
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: [string, 'null']
+        title:
+          type: [string, 'null']
+        status:
+          type: [integer, 'null']
+          format: int32
+        detail:
+          type: [string, 'null']
+        instance:
+          type: [string, 'null']
+        code:
+          type: [string, 'null']
+      additionalProperties: true
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string

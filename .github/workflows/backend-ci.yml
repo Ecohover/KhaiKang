@@ -1,0 +1,32 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
+
+      - name: Build
+        run: dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build

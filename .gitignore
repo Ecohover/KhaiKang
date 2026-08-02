@@ -1,1 +1,24 @@
 README.internal.md
+
+# Vendor-specific AI assistant files
+CLAUDE.md
+GEMINI.md
+.cursor/
+.github/copilot-instructions.md
+.github/instructions/
+.windsurf/
+.windsurfrules
+.aider*
+
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
+TestResults/
+.packages*/
+.nupkgs/
+node_modules/
+dist/
