@@ -57,7 +57,7 @@ jobs:
 
       - name: Extract API image metadata
         id: api-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/khaikang-api
           tags: |
@@ -77,7 +77,7 @@ jobs:
 
       - name: Extract web image metadata
         id: web-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/khaikang-web
           tags: |
