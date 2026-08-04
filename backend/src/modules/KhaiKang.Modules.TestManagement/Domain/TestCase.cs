@@ -6,7 +6,9 @@ public sealed class TestCase
 
     public TestCase(
         Guid id,
+        Guid workspaceId,
         Guid suiteId,
+        int caseNo,
         string title,
         string? description,
         string? preconditions,
@@ -16,7 +18,9 @@ public sealed class TestCase
         DateTimeOffset now)
     {
         Id = id;
+        TestWorkspaceId = workspaceId;
         TestSuiteId = suiteId;
+        CaseNo = caseNo;
         Title = title;
         Description = description;
         Preconditions = preconditions;
@@ -29,7 +33,9 @@ public sealed class TestCase
     }
 
     public Guid Id { get; private set; }
+    public Guid TestWorkspaceId { get; private set; }
     public Guid TestSuiteId { get; private set; }
+    public int CaseNo { get; private set; }
     public string Title { get; private set; } = null!;
     public string? Description { get; private set; }
     public string? Preconditions { get; private set; }
@@ -43,6 +49,7 @@ public sealed class TestCase
     public int Version { get; private set; }
     public TestSuite Suite { get; private set; } = null!;
     public ICollection<TestStep> Steps { get; } = [];
+    public ICollection<TestCaseTag> Tags { get; } = [];
 
     public void AddStep(TestStep step)
     {

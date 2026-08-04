@@ -245,9 +245,15 @@ function formatDate(value: string | null): string {
     <SharedViewTabs
       model-value="list"
       :tabs="[
-        { key: 'list', label: '列表', icon: List }
+        { key: 'list', label: t('common.views.list'), icon: List }
       ]"
     />
+
+    <div v-if="canCreate && !showCreateForm" class="page-actions">
+      <UiButton type="button" @click="showCreateForm = true">
+        <Plus :size="16" />{{ t('system.users.create') }}
+      </UiButton>
+    </div>
 
     <form v-if="showCreateForm" class="create-panel" @submit.prevent="createAccount(false)">
       <div class="create-panel__header">
@@ -416,6 +422,7 @@ function formatDate(value: string | null): string {
 
 .create-panel__header,
 .create-panel__actions,
+.page-actions,
 .account-card,
 .account-card__identity,
 .account-card__name {
@@ -457,6 +464,10 @@ function formatDate(value: string | null): string {
 .create-panel__actions {
   justify-content: flex-end;
   gap: 10px;
+}
+
+.page-actions {
+  justify-content: flex-end;
 }
 
 .account-card__meta > div {

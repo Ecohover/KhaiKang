@@ -159,10 +159,28 @@ export const router = createRouter({
           meta: { titleKey: 'routes.testPlans', module: 'tests' },
         },
         {
+          path: 'test-workspaces/:workspaceId/plans/new',
+          name: 'test-plan-new',
+          component: () => import('./views/TestPlanCreateView.vue'),
+          meta: { titleKey: 'routes.testPlanCreate', module: 'tests' },
+        },
+        {
+          path: 'test-workspaces/:workspaceId/plans/:planId/edit',
+          name: 'test-plan-edit',
+          component: () => import('./views/TestPlanCreateView.vue'),
+          meta: { titleKey: 'routes.testPlanEdit', module: 'tests' },
+        },
+        {
           path: 'test-workspaces/:workspaceId/runs',
           name: 'test-runs',
           component: () => import('./views/TestRunView.vue'),
           meta: { titleKey: 'routes.testRuns', module: 'tests' },
+        },
+        {
+          path: 'test-workspaces/:workspaceId/runs/new',
+          name: 'test-run-new',
+          component: () => import('./views/TestRunCreateView.vue'),
+          meta: { titleKey: 'routes.testRunCreate', module: 'tests' },
         },
         {
           path: 'test-workspaces/:workspaceId/runs/:runId',

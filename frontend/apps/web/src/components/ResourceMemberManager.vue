@@ -31,11 +31,13 @@ const props = withDefaults(
     canEditRole?: boolean
     canRemove?: boolean
     addMemberPlaceholder?: string
+    showAddAction?: boolean
   }>(),
   {
     canAdd: true,
     canEditRole: true,
     canRemove: true,
+    showAddAction: true,
   },
 )
 
@@ -49,7 +51,7 @@ const saving = ref(false)
 const error = ref('')
 
 const searchQuery = ref('')
-const isAddingMember = ref(false)
+const isAddingMember = defineModel<boolean>('adding', { default: false })
 const newUsername = ref('')
 const newRole = ref('')
 
@@ -292,7 +294,7 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
       />
 
       <UiButton
-        v-if="canAdd"
+        v-if="canAdd && showAddAction"
         @click="isAddingMember = !isAddingMember"
       >
         <Plus :size="16" aria-hidden="true" />

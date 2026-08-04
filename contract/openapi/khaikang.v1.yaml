@@ -1066,6 +1066,18 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 200 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [active, inactive] }
+        - name: tagId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: Test cases visible to the current workspace member.
@@ -1135,6 +1147,63 @@ paths:
         '403': { description: Current role cannot manage test cases. }
         '404': { description: Test case, workspace, or suite does not exist. }
         '409': { description: Version conflict or invalid suite target. }
+  /api/v1/test-tags:
+    get:
+      tags: [Test Management]
+      operationId: ListTestTags
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Globally available test tags.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestTagResponse' }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestTag
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestTagRequest' }
+      responses:
+        '201':
+          description: Test tag created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestTagResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current account cannot manage test tags. }
+  /api/v1/test-tags/{tagId}:
+    parameters:
+      - name: tagId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Test Management]
+      operationId: UpdateTestTag
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTestTagRequest' }
+      responses:
+        '200':
+          description: Test tag updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestTagResponse' }
+        '400': { description: Request validation failed. }
+        '403': { description: Current account cannot manage test tags. }
+        '404': { description: Test tag was not found. }
+        '409': { description: Version or name conflict. }
   /api/v1/test-workspaces/{workspaceId}/plans:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1459,6 +1528,10 @@ components:
         preconditions: { type: [string, 'null'], maxLength: 4000 }
         overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
         sortOrder: { type: integer, minimum: 0 }
+        tagIds:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
         steps:
           type: array
           minItems: 1
@@ -1486,6 +1559,10 @@ components:
         sortOrder: { type: integer, minimum: 0 }
         status: { type: string, enum: [active, inactive] }
         version: { type: integer, minimum: 1 }
+        tagIds:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
         steps:
           type: array
           minItems: 1
@@ -1506,6 +1583,8 @@ components:
       required:
         - id
         - suiteId
+        - caseNo
+        - tags
         - title
         - description
         - preconditions
@@ -1519,6 +1598,10 @@ components:
       properties:
         id: { type: string, format: uuid }
         suiteId: { type: string, format: uuid }
+        caseNo: { type: integer, minimum: 1 }
+        tags:
+          type: array
+          items: { $ref: '#/components/schemas/TestTagResponse' }
         title: { type: string }
         description: { type: [string, 'null'] }
         preconditions: { type: [string, 'null'] }
@@ -1531,6 +1614,31 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1 }
+    TestTagResponse:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 50 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        status: { type: string, enum: [active, inactive] }
+        version: { type: integer, minimum: 1 }
+    CreateTestTagRequest:
+      type: object
+      additionalProperties: false
+      required: [name, description]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+    UpdateTestTagRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestTagRequest'
+        - type: object
+          required: [status, version]
+          properties:
+            status: { type: string, enum: [active, inactive] }
+            version: { type: integer, minimum: 1 }
     CreateTestPlanRequest:
       type: object
       additionalProperties: false

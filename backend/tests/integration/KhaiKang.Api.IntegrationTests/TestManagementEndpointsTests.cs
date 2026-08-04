@@ -74,6 +74,14 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         var suite = await suiteResponse.Content.ReadFromJsonAsync<TestSuiteResponse>();
         Assert.NotNull(suite);
 
+        var tagResponse = await PostAsync(
+            "/api/v1/test-tags",
+            JsonContent.Create(new CreateTestTagRequest("smoke", "Critical sign-in coverage.")),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, tagResponse.StatusCode);
+        var tag = await tagResponse.Content.ReadFromJsonAsync<TestTagResponse>();
+        Assert.NotNull(tag);
+
         var createCaseResponse = await PostAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases",
             JsonContent.Create(new CreateTestCaseRequest(
@@ -86,12 +94,15 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
                 [
                     new("Open the sign-in page.", "The sign-in form is displayed."),
                     new("Submit valid credentials.", "The home page is displayed."),
-                ])),
+                ],
+                TagIds: [tag.Id])),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, createCaseResponse.StatusCode);
         var testCase = await createCaseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
         Assert.NotNull(testCase);
         Assert.Equal(suite.Id, testCase.SuiteId);
+        Assert.Equal(1, testCase.CaseNo);
+        Assert.Equal(tag.Id, Assert.Single(testCase.Tags).Id);
         Assert.Collection(
             testCase.Steps,
             step => Assert.Equal(1, step.StepNo),
@@ -127,7 +138,8 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
                 testCase.Version,
                 [
                     new("Updated step 1 action.", "Updated step 1 result."),
-                ])),
+                ],
+                TagIds: [tag.Id])),
         };
         updateCaseRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
         var updateCaseResponse = await _client.SendAsync(updateCaseRequest);
@@ -136,6 +148,7 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.NotNull(updatedCase);
         Assert.Equal("Sign in with valid credentials - Updated", updatedCase.Title);
         Assert.Equal(2, updatedCase.Version);
+        Assert.Equal(tag.Id, Assert.Single(updatedCase.Tags).Id);
         Assert.Single(updatedCase.Steps);
 
         var createPlanResponse = await PostAsync(

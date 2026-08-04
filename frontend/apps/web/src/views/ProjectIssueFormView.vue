@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { ArrowLeft, CheckCircle2, ClipboardList, FileText, RefreshCw, Target } from '@lucide/vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiCreateActions } from '@khaikang/ui'
+import { UiButton, UiCreateActions, UiFormActionBar } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
@@ -289,22 +289,6 @@ function formatDateTime(value: string | null): string {
           <h2>{{ isEditing ? issue?.key ?? t('projects.issues.edit') : t('projects.issues.create') }}</h2>
           <span>{{ t(isEditing ? 'projects.issues.editDescription' : 'projects.issues.createDescription') }}</span>
         </div>
-        <div v-if="isEditing" class="heading-actions">
-          <UiButton :disabled="!canSave || saving" @click="save()">
-            {{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}
-          </UiButton>
-        </div>
-        <UiCreateActions
-          v-else
-          :show-cancel="false"
-          :loading="saving"
-          :disabled="!canSave"
-          :cancel-label="t('common.actions.cancel')"
-          :create-label="t('projects.issues.create')"
-          :continue-label="t('projects.issues.createAndContinue')"
-          @create="save(false)"
-          @create-continue="save(true)"
-        />
       </div>
     </header>
 
@@ -372,7 +356,7 @@ function formatDateTime(value: string | null): string {
         <label class="field"><textarea v-model="form.completionSummary" rows="8" maxlength="20000" :disabled="!isEditing || contentReadOnly || !isActiveProject" :placeholder="t(isEditing ? 'projects.issues.completion.editPlaceholder' : 'projects.issues.completion.createPlaceholder')" /></label>
       </section>
 
-      <footer class="form-actions">
+      <UiFormActionBar mode="floating">
         <template v-if="isEditing">
           <UiButton variant="secondary" type="button" @click="router.push({ name: 'project-issues', params: { projectId } })">{{ t('common.actions.cancel') }}</UiButton>
           <UiButton type="submit" :disabled="!canSave || saving">{{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}</UiButton>
@@ -388,7 +372,7 @@ function formatDateTime(value: string | null): string {
           @create="save(false)"
           @create-continue="save(true)"
         />
-      </footer>
+      </UiFormActionBar>
     </form>
 
   </section>
@@ -399,7 +383,6 @@ function formatDateTime(value: string | null): string {
 .page-heading { display: grid; gap: 14px; }
 .back-link { display: flex; width: fit-content; align-items: center; gap: 6px; padding: 0; color: var(--kk-text-muted); background: transparent; border: 0; cursor: pointer; }
 .heading-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
 .heading-row p, .heading-row h2 { margin: 0; }
 .heading-row p { color: var(--kk-accent); font-size: .75rem; font-weight: 750; letter-spacing: .08em; }
 .heading-row h2 { font-size: 1.8rem; }
@@ -422,7 +405,6 @@ function formatDateTime(value: string | null): string {
 .field textarea { line-height: 1.65; resize: vertical; }
 .field textarea:disabled { color: var(--kk-text-muted); background: var(--kk-surface-subtle); }
 .read-value { min-height: 39px; background: var(--kk-surface-subtle); }
-.form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 4px 0 20px; }
 .action-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: var(--kk-danger); background: #fff1f0; border: 1px solid #f1c2bd; border-radius: 7px; font-size: .82rem; }
 .readonly-notice { margin: 0; padding: 10px 14px; color: var(--kk-text-muted); background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 7px; font-size: .82rem; }
 .page-state { padding: 42px 24px; text-align: center; background: var(--kk-surface); border: 1px dashed var(--kk-border-strong); border-radius: var(--kk-radius); }

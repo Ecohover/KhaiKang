@@ -73,7 +73,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第三階段：Test Case、Step 與 Tag
 
-狀態：部分完成（2026-08-02）
+狀態：已實作，待回歸測試與畫面驗收（2026-08-04）
 
 已完成：
 
@@ -81,13 +81,10 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - 建立案例時同時保存至少一個有序 Test Step。
 - Suite tree 顯示案例，並可從指定 Suite 進入案例建立頁。
 - Test Case 修改、移動、停用與版本衝突處理。
-
-待完成：
-
 - Test Tag 建立、查詢與案例多對多關聯。
 - 依標題、Suite、Tag 與狀態搜尋。
-- 步驟重新排序與案例編輯頁未儲存提醒。
-- 對外案例編號與既有資料補齊。
+- 步驟重新排序、案例編輯頁未儲存提醒，以及對外案例編號與既有資料補齊。
+- 案例建立／編輯採用共用表單模板；建立頁可建立後繼續新增。
 
 範圍：
 
@@ -105,7 +102,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第四階段：Test Plan
 
-狀態：部分完成（2026-08-02）
+狀態：部分完成（2026-08-04）
 
 範圍：
 
@@ -114,6 +111,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - 個別移除、去重與排序。
 - Plan 至少包含一個有效案例。
 - Plan Item 固定範圍，不隨 Suite、Tag 或 Case 移動自動改變。
+- 建立計畫改為獨立表單頁，使用共用表單操作列；由啟用計畫建立 Run 時會預選該計畫。
 
 驗收：
 
@@ -123,7 +121,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第五階段：Test Run 與手動執行
 
-狀態：已實作，待補回歸測試與畫面驗收（2026-08-02）
+狀態：已實作，待補回歸測試與畫面驗收（2026-08-04）
 
 範圍：
 
@@ -139,6 +137,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - Case 修改後，既有 Run 仍顯示建立當時的完整快照。
 - 同一 Plan 可建立多次 Run。
 - 完成的 Run 可作為唯讀手動測試報告。
+- 建立 Run 改為獨立表單頁，避免在清單頁以 dialog 建立。
 
 ## 第六階段：稽核與 MVP 完整驗收
 

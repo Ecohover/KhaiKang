@@ -20,7 +20,7 @@ import { useSaveNotice } from '../composables/useSaveNotice'
 const route = useRoute()
 const router = useRouter()
 const { t, d } = useI18n()
-const { showCreated, showUpdated } = useSaveNotice()
+const { showUpdated } = useSaveNotice()
 const workspaceId = computed(() => String(route.params.workspaceId))
 const plans = ref<TestPlanResponse[]>([])
 const cases = ref<TestCaseResponse[]>([])
@@ -31,6 +31,7 @@ const saving = ref(false)
 const error = ref('')
 const page = ref(1)
 const pageSize = ref(10)
+const statusUpdatingId = ref('')
 const dialogOpen = ref(false)
 const editing = ref<TestPlanResponse>()
 const form = ref({
@@ -48,26 +49,13 @@ const paginatedPlans = computed(() => {
   return plans.value.slice(start, start + pageSize.value)
 })
 
-function openCreate(): void {
-  editing.value = undefined
-  form.value = { name: '', description: '', status: 'draft', caseIds: [] }
-  dialogOpen.value = true
-}
-
 function openEdit(plan: TestPlanResponse): void {
-  editing.value = plan
-  form.value = {
-    name: plan.name,
-    description: plan.description ?? '',
-    status: plan.status,
-    caseIds: plan.items.map((item) => item.caseId),
-  }
-  dialogOpen.value = true
+  void router.push({ name: 'test-plan-edit', params: { workspaceId: workspaceId.value, planId: plan.id } })
 }
 
 function createRunFromPlan(plan: TestPlanResponse): void {
   void router.push({
-    name: 'test-runs',
+    name: 'test-run-new',
     params: { workspaceId: workspaceId.value },
     query: { planId: plan.id },
   })
@@ -141,9 +129,6 @@ async function load(): Promise<void> {
     '',
   )
   loading.value = false
-  const selectedId = typeof route.query.planId === 'string' ? route.query.planId : ''
-  const selected = plans.value.find((item) => item.id === selectedId)
-  if (selected) openEdit(selected)
 }
 
 function changePage(next: number): void {
@@ -155,6 +140,37 @@ function changePageSize(next: number): void {
   page.value = 1
 }
 
+async function updateStatus(plan: TestPlanResponse, event: Event): Promise<void> {
+  const status = (event.target as HTMLSelectElement).value as TestPlanStatus
+  if (status === plan.status || statusUpdatingId.value) return
+  if (status === 'active' && !plan.items.length) {
+    error.value = t('tests.plan.caseRequired')
+    return
+  }
+
+  statusUpdatingId.value = plan.id
+  error.value = ''
+  const result = await apiClient.updateTestPlan(
+    workspaceId.value,
+    plan.id,
+    {
+      name: plan.name,
+      description: plan.description,
+      status,
+      version: plan.version,
+      caseIds: plan.items.map((item) => item.caseId),
+    },
+    await secureHeaders(),
+  )
+  if (result.data) {
+    plans.value = plans.value.map((item) => item.id === result.data!.id ? result.data! : item)
+    showUpdated(t('tests.plan.record'), result.data.name)
+  } else {
+    error.value = problemMessage(result.error, t('tests.plan.saveFailed'))
+  }
+  statusUpdatingId.value = ''
+}
+
 async function save(): Promise<void> {
   if (form.value.status === 'active' && !form.value.caseIds.length) return
   saving.value = true
@@ -164,16 +180,15 @@ async function save(): Promise<void> {
     description: form.value.description.trim() || null,
     caseIds: form.value.caseIds,
   }
-  const result = editing.value
-    ? await apiClient.updateTestPlan(
-        workspaceId.value,
-        editing.value.id,
-        { ...body, status: form.value.status, version: editing.value.version },
-        await secureHeaders(),
-      )
-    : await apiClient.createTestPlan(workspaceId.value, body, await secureHeaders())
+  if (!editing.value) return
+  const result = await apiClient.updateTestPlan(
+    workspaceId.value,
+    editing.value.id,
+    { ...body, status: form.value.status, version: editing.value.version },
+    await secureHeaders(),
+  )
   if (result.data) {
-    editing.value ? showUpdated(t('tests.plan.record'), result.data.name) : showCreated(t('tests.plan.record'), result.data.name)
+    showUpdated(t('tests.plan.record'), result.data.name)
     dialogOpen.value = false
     await router.replace({ name: 'test-plans', params: { workspaceId: workspaceId.value } })
     await load()
@@ -183,17 +198,13 @@ async function save(): Promise<void> {
   saving.value = false
 }
 
-watch(() => route.query.planId, () => {
-  const selected = plans.value.find((item) => item.id === route.query.planId)
-  if (selected) openEdit(selected)
-})
 onMounted(load)
 </script>
 
 <template>
   <TestWorkspaceSectionFrame v-if="workspace" :workspace="workspace" active-section="plans">
     <template #action>
-      <UiButton @click="openCreate"><Plus :size="18" />{{ t('tests.plan.create') }}</UiButton>
+      <UiButton @click="router.push({ name: 'test-plan-new', params: { workspaceId } })"><Plus :size="18" />{{ t('tests.plan.create') }}</UiButton>
     </template>
     <SharedStateBanner v-if="loading" type="loading" :title="t('tests.plan.loading')" />
     <SharedStateBanner
@@ -220,7 +231,20 @@ onMounted(load)
               <td><code>{{ plan.code }}</code></td>
               <td><strong>{{ plan.name }}</strong><small>{{ plan.description || t('tests.plan.noDescription') }}</small></td>
               <td>{{ plan.items.length }}</td>
-              <td><span class="status-pill" :class="plan.status">{{ t(`tests.plan.status.${plan.status}`) }}</span></td>
+              <td @click.stop @keydown.stop>
+                <select
+                  class="status-select"
+                  :class="plan.status"
+                  :value="plan.status"
+                  :disabled="statusUpdatingId === plan.id"
+                  :aria-label="t('tests.plan.statusLabel')"
+                  @change="updateStatus(plan, $event)"
+                >
+                  <option value="draft">{{ t('tests.plan.status.draft') }}</option>
+                  <option value="active">{{ t('tests.plan.status.active') }}</option>
+                  <option value="archived">{{ t('tests.plan.status.archived') }}</option>
+                </select>
+              </td>
               <td>{{ d(new Date(plan.updatedAt), 'medium') }}</td>
               <td @click.stop>
                 <UiButton
@@ -378,5 +402,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{display:inline-flex;min-height:28px;align-items:center;padding:3px 9px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.active{color:var(--kk-accent);background:var(--kk-accent-soft)}.plan-form{display:grid;gap:14px}.plan-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.plan-form small{color:var(--kk-text-muted);font-weight:400}.plan-form input,.plan-form textarea,.plan-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-form textarea{min-height:70px;resize:vertical}.plan-form fieldset{display:grid;max-height:280px;gap:10px;padding:10px;overflow:auto;border:1px solid var(--kk-border);border-radius:6px}.suite-case-group{display:grid;gap:6px}.suite-choice,.case-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:8px}.suite-choice{padding:7px 8px;background:var(--kk-accent-soft);border-radius:5px}.suite-choice small{font-size:.75rem}.suite-choice.disabled{opacity:.55}.expand-suite-button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--kk-text-muted);cursor:pointer}.expand-suite-button:hover{background:white;color:var(--kk-accent)}.suite-cases{display:grid;gap:6px}.case-choice{padding-left:28px}.order-actions{display:flex;gap:4px}.order-actions button{border:1px solid var(--kk-border);background:white;border-radius:4px;cursor:pointer}
+.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-select{min-height:30px;padding:3px 26px 3px 10px;border:0;border-radius:999px;background:var(--kk-surface-subtle);color:var(--kk-text);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}.status-select.active{color:var(--kk-accent);background:var(--kk-accent-soft)}.status-select.archived{color:var(--kk-text-muted);background:#edf0ee}.status-select:disabled{cursor:wait;opacity:.7}.plan-form{display:grid;gap:14px}.plan-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.plan-form small{color:var(--kk-text-muted);font-weight:400}.plan-form input,.plan-form textarea,.plan-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-form textarea{min-height:70px;resize:vertical}.plan-form fieldset{display:grid;max-height:280px;gap:10px;padding:10px;overflow:auto;border:1px solid var(--kk-border);border-radius:6px}.suite-case-group{display:grid;gap:6px}.suite-choice,.case-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:8px}.suite-choice{padding:7px 8px;background:var(--kk-accent-soft);border-radius:5px}.suite-choice small{font-size:.75rem}.suite-choice.disabled{opacity:.55}.expand-suite-button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--kk-text-muted);cursor:pointer}.expand-suite-button:hover{background:white;color:var(--kk-accent)}.suite-cases{display:grid;gap:6px}.case-choice{padding-left:28px}.order-actions{display:flex;gap:4px}.order-actions button{border:1px solid var(--kk-border);background:white;border-radius:4px;cursor:pointer}
 </style>

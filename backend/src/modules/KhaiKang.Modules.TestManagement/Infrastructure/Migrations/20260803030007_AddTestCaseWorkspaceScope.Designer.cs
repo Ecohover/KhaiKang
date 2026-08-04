@@ -3,6 +3,7 @@ using System;
 using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(TestManagementDbContext))]
-    partial class TestManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803030007_AddTestCaseWorkspaceScope")]
+    partial class AddTestCaseWorkspaceScope
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,58 +110,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .HasDatabaseName("uq_test_cases_workspace_case_no");
 
                     b.ToTable("test_cases", (string)null);
-                });
-
-            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedByAccountId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by_account_id");
-
-                    b.Property<Guid>("TestCaseId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("test_case_id");
-
-                    b.Property<Guid>("TestTagId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("test_tag_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedByAccountId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by_account_id");
-
-                    b.Property<int>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_test_case_tags");
-
-                    b.HasIndex("TestCaseId")
-                        .HasDatabaseName("idx_test_case_tags_test_case_id");
-
-                    b.HasIndex("TestTagId")
-                        .HasDatabaseName("idx_test_case_tags_test_tag_id");
-
-                    b.HasIndex("TestCaseId", "TestTagId")
-                        .IsUnique()
-                        .HasDatabaseName("uq_test_case_tags_case_tag");
-
-                    b.ToTable("test_case_tags", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestPlan", b =>
@@ -650,63 +601,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.ToTable("test_suites", (string)null);
                 });
 
-            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestTag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedByAccountId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by_account_id");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedByAccountId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by_account_id");
-
-                    b.Property<int>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_test_tags");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("uq_test_tags_name");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("idx_test_tags_status");
-
-                    b.ToTable("test_tags", (string)null);
-                });
-
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -870,27 +764,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.Navigation("Suite");
                 });
 
-            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>
-                {
-                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestCase", "TestCase")
-                        .WithMany("Tags")
-                        .HasForeignKey("TestCaseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_test_case_tags_case");
-
-                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestTag", "Tag")
-                        .WithMany("Cases")
-                        .HasForeignKey("TestTagId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_test_case_tags_tag");
-
-                    b.Navigation("Tag");
-
-                    b.Navigation("TestCase");
-                });
-
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestPlan", b =>
                 {
                     b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", "Workspace")
@@ -1032,8 +905,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCase", b =>
                 {
                     b.Navigation("Steps");
-
-                    b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestPlan", b =>
@@ -1049,11 +920,6 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItem", b =>
                 {
                     b.Navigation("Steps");
-                });
-
-            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestTag", b =>
-                {
-                    b.Navigation("Cases");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", b =>

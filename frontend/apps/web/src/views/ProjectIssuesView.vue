@@ -15,6 +15,7 @@ import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
 import SharedSearchField from '../components/SharedSearchField.vue'
+import SharedFilterToolbar from '../components/SharedFilterToolbar.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { shouldWarnMissingCompletionSummary } from '../issues/issueWorkflow'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -190,8 +191,15 @@ function formatDate(value: string): string {
       :meta="`${project.code} · PROJECT`"
       :title="project.name"
       :subtitle="t('projects.issues.title')"
-      :status="project.status"
-    />
+    >
+      <UiButton
+        v-if="canCreate"
+        @click="router.push({ name: 'project-issue-new', params: { projectId } })"
+      >
+        <Plus :size="17" aria-hidden="true" />
+        {{ t('projects.issues.create') }}
+      </UiButton>
+    </ResourcePageHeader>
 
     <SharedStateBanner
       v-if="loading"
@@ -238,31 +246,20 @@ function formatDate(value: string): string {
           <span class="count-badge">{{ t('projects.issues.count', { count: filteredIssues.length }, filteredIssues.length) }}</span>
         </template>
 
-        <!-- TOOLBAR: SEARCH & ACTION AREA (清單上面的查詢區塊與新增任務按鈕) -->
-        <div class="list-toolbar">
-          <div class="search-filters">
-            <SharedSearchField
-              v-model="searchQuery"
-              placeholder="搜尋任務編號或標題..."
-              :clear-label="t('common.search.clear')"
-            />
-
-            <select v-model="filterStatus" class="status-select">
-              <option value="">所有狀態</option>
-              <option v-for="s in metadata.statuses" :key="s.code" :value="s.code">
-                {{ s.name }}
-              </option>
-            </select>
-          </div>
-
-          <UiButton
-            v-if="canCreate"
-            @click="router.push({ name: 'project-issue-new', params: { projectId } })"
-          >
-            <Plus :size="17" aria-hidden="true" />
-            {{ t('projects.issues.create') }}
-          </UiButton>
-        </div>
+        <!-- TOOLBAR: SEARCH & FILTER AREA -->
+        <SharedFilterToolbar align="start" class="issue-filter-toolbar">
+          <SharedSearchField
+            v-model="searchQuery"
+            placeholder="搜尋任務編號或標題..."
+            :clear-label="t('common.search.clear')"
+          />
+          <select v-model="filterStatus">
+            <option value="">所有狀態</option>
+            <option v-for="s in metadata.statuses" :key="s.code" :value="s.code">
+              {{ s.name }}
+            </option>
+          </select>
+        </SharedFilterToolbar>
 
       <div v-if="activeView === 'list'" class="issue-list">
         <div class="issue-list__header">
@@ -378,9 +375,7 @@ function formatDate(value: string): string {
 .action-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: #715514; background: #fff8df; border: 1px solid #e9d48a; border-radius: 7px; font-size: .82rem; }
 .action-warning a { color: inherit; font-weight: 700; }
 .count-badge { font-size: 0.82rem; color: var(--kk-text-muted); }
-.list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.search-filters { display: flex; align-items: center; gap: 10px; flex: 1; }
-.status-select { min-height: 42px; padding: 0 12px; font-size: 0.85rem; border: 1px solid var(--kk-border); border-radius: var(--kk-radius); background: var(--kk-surface); color: var(--kk-text); }
+.issue-filter-toolbar { margin-bottom: 16px; }
 .issue-list { overflow: hidden; background: var(--kk-surface); border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
 .issue-list__header, .issue-row { display: grid; grid-template-columns: 90px minmax(240px, 1fr) 140px 150px 150px; gap: 12px; align-items: center; padding: 12px 16px; }
 .issue-list__header { color: var(--kk-text-muted); background: var(--kk-surface-subtle); border-bottom: 1px solid var(--kk-border); font-size: .75rem; font-weight: 700; }
@@ -408,5 +403,5 @@ function formatDate(value: string): string {
 .issue-card footer { display: flex; justify-content: space-between; gap: 8px; color: var(--kk-text-muted); font-size: .72rem; }
 .board-status-field { display: grid; gap: 5px; color: var(--kk-text-muted); font-size: .7rem; }
 .board-status-field select { width: 100%; min-height: 34px; padding: 6px 8px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
-@media (max-width: 720px) { .action-warning { align-items: flex-start; flex-direction: column; } .list-toolbar, .search-filters { align-items: stretch; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
+@media (max-width: 720px) { .action-warning { align-items: flex-start; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
 </style>

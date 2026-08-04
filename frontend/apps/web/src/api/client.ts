@@ -24,6 +24,9 @@ import type {
   SetupStatusResponse,
   TestSuiteResponse,
   TestCaseResponse,
+  TestTagResponse,
+  CreateTestTagRequest,
+  UpdateTestTagRequest,
   TestWorkspaceMemberResponse,
   TestWorkspaceResponse,
   AddTestWorkspaceMemberRequest,
@@ -397,10 +400,27 @@ export const apiClient = {
 
   listTestCases(
     workspaceId: string,
-    suiteId?: string,
+    filters: { suiteId?: string, search?: string, status?: 'active' | 'inactive', tagId?: string } = {},
   ): Promise<ApiResult<TestCaseResponse[]>> {
-    const query = suiteId ? `?suiteId=${encodeURIComponent(suiteId)}` : ''
+    const params = new URLSearchParams()
+    if (filters.suiteId) params.set('suiteId', filters.suiteId)
+    if (filters.search) params.set('search', filters.search)
+    if (filters.status) params.set('status', filters.status)
+    if (filters.tagId) params.set('tagId', filters.tagId)
+    const query = params.size ? `?${params.toString()}` : ''
     return request(`/api/v1/test-workspaces/${workspaceId}/cases${query}`)
+  },
+
+  listTestTags(): Promise<ApiResult<TestTagResponse[]>> {
+    return request('/api/v1/test-tags')
+  },
+
+  createTestTag(body: CreateTestTagRequest, headers: HeadersInit): Promise<ApiResult<TestTagResponse>> {
+    return request('/api/v1/test-tags', { method: 'POST', headers, body })
+  },
+
+  updateTestTag(tagId: string, body: UpdateTestTagRequest, headers: HeadersInit): Promise<ApiResult<TestTagResponse>> {
+    return request(`/api/v1/test-tags/${tagId}`, { method: 'PUT', headers, body })
   },
 
   createTestCase(
@@ -475,6 +495,16 @@ export const apiClient = {
   ): Promise<ApiResult<TestRunResponse>> {
     return request(`/api/v1/test-workspaces/${workspaceId}/runs`, {
       method: 'POST', headers, body,
+    })
+  },
+
+  rerunTestRun(
+    workspaceId: string,
+    runId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}/rerun`, {
+      method: 'POST', headers,
     })
   },
 

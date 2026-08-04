@@ -293,6 +293,7 @@ export interface CreateTestCaseRequest {
   overallExpectedResult: string | null
   sortOrder: number
   steps: CreateTestCaseStepRequest[]
+  tagIds?: string[]
 }
 
 export interface UpdateTestCaseRequest {
@@ -305,6 +306,25 @@ export interface UpdateTestCaseRequest {
   status: 'active' | 'inactive'
   version: number
   steps: CreateTestCaseStepRequest[]
+  tagIds?: string[]
+}
+
+export interface TestTagResponse {
+  id: string
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  version: number
+}
+
+export interface CreateTestTagRequest {
+  name: string
+  description: string | null
+}
+
+export interface UpdateTestTagRequest extends CreateTestTagRequest {
+  status: 'active' | 'inactive'
+  version: number
 }
 
 export interface TestCaseStepResponse {
@@ -317,6 +337,8 @@ export interface TestCaseStepResponse {
 export interface TestCaseResponse {
   id: string
   suiteId: string
+  caseNo: number
+  tags: TestTagResponse[]
   title: string
   description: string | null
   preconditions: string | null

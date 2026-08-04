@@ -11,6 +11,8 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<TestSuite> Suites => Set<TestSuite>();
     public DbSet<TestCase> Cases => Set<TestCase>();
     public DbSet<TestStep> CaseSteps => Set<TestStep>();
+    public DbSet<TestTag> Tags => Set<TestTag>();
+    public DbSet<TestCaseTag> CaseTags => Set<TestCaseTag>();
     public DbSet<TestPlan> Plans => Set<TestPlan>();
     public DbSet<TestPlanItem> PlanItems => Set<TestPlanItem>();
     public DbSet<TestRun> Runs => Set<TestRun>();
@@ -82,7 +84,9 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         testCase.ToTable("test_cases");
         testCase.HasKey(x => x.Id).HasName("pk_test_cases");
         testCase.Property(x => x.Id).HasColumnName("id");
+        testCase.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
         testCase.Property(x => x.TestSuiteId).HasColumnName("test_suite_id");
+        testCase.Property(x => x.CaseNo).HasColumnName("case_no");
         testCase.Property(x => x.Title).HasColumnName("title").HasMaxLength(200);
         testCase.Property(x => x.Description).HasColumnName("description");
         testCase.Property(x => x.Preconditions).HasColumnName("preconditions");
@@ -91,6 +95,8 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         testCase.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
         Audit(testCase);
         testCase.HasIndex(x => x.TestSuiteId).HasDatabaseName("idx_test_cases_test_suite_id");
+        testCase.HasIndex(x => new { x.TestWorkspaceId, x.CaseNo }).IsUnique()
+            .HasDatabaseName("uq_test_cases_workspace_case_no");
         testCase.HasIndex(x => new { x.TestSuiteId, x.Status })
             .HasDatabaseName("idx_test_cases_test_suite_status");
         testCase.HasIndex(x => new { x.TestSuiteId, x.SortOrder })
@@ -114,6 +120,33 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         step.HasOne(x => x.TestCase).WithMany(x => x.Steps)
             .HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("fk_test_case_steps_test_case");
+
+        var tag = modelBuilder.Entity<TestTag>();
+        tag.ToTable("test_tags");
+        tag.HasKey(x => x.Id).HasName("pk_test_tags");
+        tag.Property(x => x.Id).HasColumnName("id");
+        tag.Property(x => x.Name).HasColumnName("name").HasMaxLength(50);
+        tag.Property(x => x.Description).HasColumnName("description");
+        tag.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        Audit(tag);
+        tag.HasIndex(x => x.Status).HasDatabaseName("idx_test_tags_status");
+        tag.HasIndex(x => x.Name).IsUnique().HasDatabaseName("uq_test_tags_name");
+
+        var caseTag = modelBuilder.Entity<TestCaseTag>();
+        caseTag.ToTable("test_case_tags");
+        caseTag.HasKey(x => x.Id).HasName("pk_test_case_tags");
+        caseTag.Property(x => x.Id).HasColumnName("id");
+        caseTag.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        caseTag.Property(x => x.TestTagId).HasColumnName("test_tag_id");
+        Audit(caseTag);
+        caseTag.HasIndex(x => x.TestCaseId).HasDatabaseName("idx_test_case_tags_test_case_id");
+        caseTag.HasIndex(x => x.TestTagId).HasDatabaseName("idx_test_case_tags_test_tag_id");
+        caseTag.HasIndex(x => new { x.TestCaseId, x.TestTagId }).IsUnique()
+            .HasDatabaseName("uq_test_case_tags_case_tag");
+        caseTag.HasOne(x => x.TestCase).WithMany(x => x.Tags).HasForeignKey(x => x.TestCaseId)
+            .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_test_case_tags_case");
+        caseTag.HasOne(x => x.Tag).WithMany(x => x.Cases).HasForeignKey(x => x.TestTagId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_test_case_tags_tag");
 
         var plan = modelBuilder.Entity<TestPlan>();
         plan.ToTable("test_plans");

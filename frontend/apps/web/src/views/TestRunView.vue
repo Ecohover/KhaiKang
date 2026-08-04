@@ -1,35 +1,35 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Play, Plus } from '@lucide/vue'
-import { UiActionDialog, UiButton, UiPagination } from '@khaikang/ui'
+import { ChevronDown, ChevronRight, CornerDownRight, Play, Plus } from '@lucide/vue'
+import { UiButton, UiPagination } from '@khaikang/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
-import type { TestPlanResponse, TestRunResponse, TestWorkspaceResponse } from '../api/contracts'
+import type { TestRunResponse, TestWorkspaceResponse } from '../api/contracts'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
 import TestWorkspaceSectionFrame from '../components/TestWorkspaceSectionFrame.vue'
-import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
 const router = useRouter()
 const { t, d } = useI18n()
-const { showCreated } = useSaveNotice()
 const workspaceId = computed(() => String(route.params.workspaceId))
 const runs = ref<TestRunResponse[]>([])
-const plans = ref<TestPlanResponse[]>([])
 const workspace = ref<TestWorkspaceResponse>()
 const loading = ref(true)
-const saving = ref(false)
 const error = ref('')
 const page = ref(1)
 const pageSize = ref(10)
-const dialogOpen = ref(false)
-const form = ref({ planId: '', name: '' })
-const activePlans = computed(() => plans.value.filter((plan) => plan.status === 'active'))
-const totalPages = computed(() => Math.max(1, Math.ceil(runs.value.length / pageSize.value)))
-const paginatedRuns = computed(() => {
+const rerunningId = ref('')
+const expandedPlanIds = ref<Set<string>>(new Set())
+const runGroups = computed(() => {
+  const grouped = new Map<string, TestRunResponse[]>()
+  for (const run of runs.value) grouped.set(run.planId, [...(grouped.get(run.planId) ?? []), run])
+  return [...grouped.values()].map((items) => ({ latest: items[0]!, history: items.slice(1) }))
+})
+const totalPages = computed(() => Math.max(1, Math.ceil(runGroups.value.length / pageSize.value)))
+const paginatedGroups = computed(() => {
   const start = (page.value - 1) * pageSize.value
-  return runs.value.slice(start, start + pageSize.value)
+  return runGroups.value.slice(start, start + pageSize.value)
 })
 
 function progressPercent(value: number, total: number): number {
@@ -46,17 +46,19 @@ function pendingCount(run: TestRunResponse): number {
 
 async function load(): Promise<void> {
   loading.value = true
-  const [workspaceResult, runResult, planResult] = await Promise.all([
+  const [workspaceResult, runResult] = await Promise.all([
     apiClient.getTestWorkspace(workspaceId.value),
     apiClient.listTestRuns(workspaceId.value),
-    apiClient.listTestPlans(workspaceId.value),
   ])
   workspace.value = workspaceResult.data
   runs.value = runResult.data ?? []
-  plans.value = planResult.data ?? []
-  error.value = problemMessage(workspaceResult.error ?? runResult.error ?? planResult.error, '')
+  error.value = problemMessage(workspaceResult.error ?? runResult.error, '')
   loading.value = false
-  if (typeof route.query.planId === 'string') openCreate(route.query.planId)
+}
+
+function rerunnableRun(group: { latest: TestRunResponse; history: TestRunResponse[] }): TestRunResponse | undefined {
+  return [group.latest, ...group.history].find((run) =>
+    run.status === 'completed' || run.status === 'cancelled')
 }
 
 function changePage(next: number): void {
@@ -68,34 +70,22 @@ function changePageSize(next: number): void {
   page.value = 1
 }
 
-function openCreate(preferredPlanId?: string): void {
-  const preferred = activePlans.value.find((plan) => plan.id === preferredPlanId)
-  const selected = preferred ?? activePlans.value[0]
-  form.value = {
-    planId: selected?.id ?? '',
-    name: selected ? `${selected.name} Run` : '',
-  }
-  dialogOpen.value = true
+function toggleGroup(planId: string): void {
+  const next = new Set(expandedPlanIds.value)
+  next.has(planId) ? next.delete(planId) : next.add(planId)
+  expandedPlanIds.value = next
 }
 
-async function createRun(): Promise<void> {
-  if (!form.value.planId || !form.value.name.trim()) return
-  saving.value = true
-  const result = await apiClient.createTestRun(
-    workspaceId.value,
-    { planId: form.value.planId, name: form.value.name.trim() },
-    await secureHeaders(),
-  )
+async function rerun(run: TestRunResponse): Promise<void> {
+  if (rerunningId.value || !['completed', 'cancelled'].includes(run.status)) return
+  rerunningId.value = run.id
+  const result = await apiClient.rerunTestRun(workspaceId.value, run.id, await secureHeaders())
   if (result.data) {
-    showCreated(t('tests.run.record'), result.data.name)
-    await router.push({
-      name: 'test-run-detail',
-      params: { workspaceId: workspaceId.value, runId: result.data.id },
-    })
+    await router.push({ name: 'test-run-detail', params: { workspaceId: workspaceId.value, runId: result.data.id } })
   } else {
-    error.value = problemMessage(result.error, t('tests.run.createFailed'))
+    error.value = problemMessage(result.error, t('tests.run.rerunFailed'))
   }
-  saving.value = false
+  rerunningId.value = ''
 }
 
 onMounted(load)
@@ -104,7 +94,7 @@ onMounted(load)
 <template>
   <TestWorkspaceSectionFrame v-if="workspace" :workspace="workspace" active-section="runs">
     <template #action>
-      <UiButton @click="openCreate()"><Plus :size="18" />{{ t('tests.run.create') }}</UiButton>
+      <UiButton @click="router.push({ name: 'test-run-new', params: { workspaceId } })"><Plus :size="18" />{{ t('tests.run.create') }}</UiButton>
     </template>
     <SharedStateBanner v-if="loading" type="loading" :title="t('tests.run.loading')" />
     <SharedStateBanner
@@ -125,39 +115,51 @@ onMounted(load)
       <header><strong>{{ t('tests.run.title') }}</strong><span>{{ t('tests.run.count', { count: runs.length }) }}</span></header>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>{{ t('tests.run.code') }}</th><th>{{ t('tests.run.name') }}</th><th>{{ t('tests.run.statusLabel') }}</th><th>{{ t('tests.run.resultSummary') }}</th><th>{{ t('tests.run.updatedAt') }}</th></tr></thead>
+          <thead><tr><th class="group-column"></th><th>{{ t('tests.run.code') }}</th><th>{{ t('tests.run.name') }}</th><th>{{ t('tests.run.statusLabel') }}</th><th>{{ t('tests.run.resultSummary') }}</th><th>{{ t('tests.run.updatedAt') }}</th><th>{{ t('common.actions.actions') }}</th></tr></thead>
           <tbody>
+            <template v-for="group in paginatedGroups" :key="group.latest.planId">
             <tr
-              v-for="run in paginatedRuns"
-              :key="run.id"
               tabindex="0"
-              @click="router.push({ name: 'test-run-detail', params: { workspaceId, runId: run.id } })"
-              @keydown.enter="router.push({ name: 'test-run-detail', params: { workspaceId, runId: run.id } })"
+              @click="router.push({ name: 'test-run-detail', params: { workspaceId, runId: group.latest.id } })"
+              @keydown.enter="router.push({ name: 'test-run-detail', params: { workspaceId, runId: group.latest.id } })"
             >
-              <td><code>{{ run.code }}</code></td>
-              <td><strong>{{ run.name }}</strong><small>{{ run.summary || t('tests.run.snapshotHint') }}</small></td>
-              <td><span class="status-pill" :class="run.status">{{ t(`tests.run.status.${run.status}`) }}</span></td>
+              <td class="group-column" @click.stop><button v-if="group.history.length" type="button" class="history-toggle" @click="toggleGroup(group.latest.planId)"><ChevronDown v-if="expandedPlanIds.has(group.latest.planId)" :size="16" /><ChevronRight v-else :size="16" />{{ group.history.length + 1 }}</button></td>
+              <td><code>{{ group.latest.code }}</code></td>
+              <td><strong>{{ group.latest.name }}</strong><small>{{ group.latest.summary || t('tests.run.snapshotHint') }}</small></td>
+              <td><span class="status-pill" :class="group.latest.status">{{ t(`tests.run.status.${group.latest.status}`) }}</span></td>
               <td class="progress-cell">
-                <div class="run-progress" :aria-label="`${run.progress.passed}/${run.progress.total}`">
-                  <span class="passed" :style="{ width: `${progressPercent(run.progress.passed, run.progress.total)}%` }" />
-                  <span class="failed" :style="{ width: `${progressPercent(failedCount(run), run.progress.total)}%` }" />
-                  <span class="pending" :style="{ width: `${progressPercent(pendingCount(run), run.progress.total)}%` }" />
+                <div class="run-progress" :aria-label="`${group.latest.progress.passed}/${group.latest.progress.total}`">
+                  <span class="passed" :style="{ width: `${progressPercent(group.latest.progress.passed, group.latest.progress.total)}%` }" />
+                  <span class="failed" :style="{ width: `${progressPercent(failedCount(group.latest), group.latest.progress.total)}%` }" />
+                  <span class="pending" :style="{ width: `${progressPercent(pendingCount(group.latest), group.latest.progress.total)}%` }" />
                 </div>
                 <small class="progress-summary">
-                  <span class="passed">{{ run.progress.passed }} {{ t('tests.run.result.passed') }}</span>
-                  <span class="failed">{{ failedCount(run) }} {{ t('tests.run.result.failed') }}</span>
-                  <span class="pending">{{ pendingCount(run) }} {{ t('tests.run.result.not_run') }}</span>
+                  <span class="passed">{{ group.latest.progress.passed }} {{ t('tests.run.result.passed') }}</span>
+                  <span class="failed">{{ failedCount(group.latest) }} {{ t('tests.run.result.failed') }}</span>
+                  <span class="pending">{{ pendingCount(group.latest) }} {{ t('tests.run.result.not_run') }}</span>
                 </small>
               </td>
-              <td>{{ d(new Date(run.updatedAt), 'medium') }}</td>
+              <td>{{ d(new Date(group.latest.updatedAt), 'medium') }}</td>
+              <td @click.stop>
+                <UiButton
+                  v-if="rerunnableRun(group)"
+                  variant="secondary"
+                  :loading="rerunningId === rerunnableRun(group)?.id"
+                  @click="rerun(rerunnableRun(group)!)"
+                >{{ t('tests.run.rerun') }}</UiButton>
+              </td>
             </tr>
+            <tr v-for="(previous, index) in expandedPlanIds.has(group.latest.planId) ? group.history : []" :key="previous.id" class="history-row" :class="{ 'history-row--last': index === group.history.length - 1 }" @click="router.push({ name: 'test-run-detail', params: { workspaceId, runId: previous.id } })">
+              <td class="group-column history-marker"><CornerDownRight :size="16" /></td><td><code>{{ previous.code }}</code></td><td>{{ previous.name }}</td><td><span class="status-pill" :class="previous.status">{{ t(`tests.run.status.${previous.status}`) }}</span></td><td class="progress-cell"><div class="run-progress" :aria-label="`${previous.progress.passed}/${previous.progress.total}`"><span class="passed" :style="{ width: `${progressPercent(previous.progress.passed, previous.progress.total)}%` }" /><span class="failed" :style="{ width: `${progressPercent(failedCount(previous), previous.progress.total)}%` }" /><span class="pending" :style="{ width: `${progressPercent(pendingCount(previous), previous.progress.total)}%` }" /></div><small class="progress-summary"><span class="passed">{{ previous.progress.passed }} {{ t('tests.run.result.passed') }}</span><span class="failed">{{ failedCount(previous) }} {{ t('tests.run.result.failed') }}</span><span class="pending">{{ pendingCount(previous) }} {{ t('tests.run.result.not_run') }}</span></small></td><td>{{ d(new Date(previous.updatedAt), 'medium') }}</td><td></td>
+            </tr>
+            </template>
           </tbody>
         </table>
       </div>
       <UiPagination
         :page="page"
         :page-size="pageSize"
-        :total-count="runs.length"
+        :total-count="runGroups.length"
         :total-pages="totalPages"
         :navigation-label="t('common.pagination.navigation')"
         :summary-label="t('common.pagination.summary', { count: runs.length })"
@@ -171,41 +173,9 @@ onMounted(load)
     </section>
   </TestWorkspaceSectionFrame>
   <SharedStateBanner v-else type="loading" :title="t('tests.run.loading')" />
-
-  <UiActionDialog
-    :open="dialogOpen"
-    :title="t('tests.run.create')"
-    :description="t('tests.run.snapshotHint')"
-    :close-label="t('common.actions.cancel')"
-    @close="dialogOpen = false"
-  >
-    <div class="run-form">
-      <label>{{ t('tests.run.plan') }}<select v-model="form.planId">
-        <option
-          v-for="plan in plans"
-          :key="plan.id"
-          :value="plan.id"
-          :disabled="plan.status !== 'active'"
-        >
-          {{ plan.code }} · {{ plan.name }} · {{ t(`tests.plan.status.${plan.status}`) }}
-        </option>
-      </select></label>
-      <p v-if="!activePlans.length" class="plan-hint">
-        {{ t('tests.run.noActivePlan') }}
-        <RouterLink :to="{ name: 'test-plans', params: { workspaceId } }">
-          {{ t('tests.run.managePlans') }}
-        </RouterLink>
-      </p>
-      <label>{{ t('tests.run.name') }}<input v-model="form.name" maxlength="200" /></label>
-    </div>
-    <template #actions>
-      <UiButton variant="secondary" @click="dialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
-      <UiButton :disabled="saving || !form.planId || !form.name.trim()" @click="createRun">{{ t('tests.run.create') }}</UiButton>
-    </template>
-  </UiActionDialog>
 </template>
 
 <style scoped>
-.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{display:inline-flex;min-height:28px;align-items:center;padding:3px 9px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.in_progress,.status-pill.completed{color:var(--kk-accent);background:var(--kk-accent-soft)}.run-form{display:grid;gap:14px}.run-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.run-form input,.run-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-hint{margin:0;color:var(--kk-text-muted);font-size:.84rem}.plan-hint a{color:var(--kk-accent);font-weight:700}
-.progress-cell{min-width:190px}.run-progress{display:flex;width:100%;height:8px;overflow:hidden;background:#edf0ee;border-radius:999px}.run-progress span{display:block;min-width:0;height:100%}.run-progress .passed{background:#2d9b62}.run-progress .failed{background:#df6256}.run-progress .pending{background:#c9d0cc}.progress-summary{display:flex!important;gap:9px;margin-top:6px;color:var(--kk-text-muted);font-size:.72rem}.progress-summary .passed{color:#18794e}.progress-summary .failed{color:#b42318}.progress-summary .pending{color:#596560}
+.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{display:inline-flex;min-height:28px;align-items:center;padding:3px 9px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.in_progress,.status-pill.completed{color:var(--kk-accent);background:var(--kk-accent-soft)}
+.progress-cell{min-width:190px}.run-progress{display:flex;width:100%;height:8px;overflow:hidden;background:#edf0ee;border-radius:999px}.run-progress span{display:block;min-width:0;height:100%}.run-progress .passed{background:#2d9b62}.run-progress .failed{background:#df6256}.run-progress .pending{background:#c9d0cc}.progress-summary{display:flex!important;gap:9px;margin-top:6px;color:var(--kk-text-muted);font-size:.72rem}.progress-summary .passed{color:#18794e}.progress-summary .failed{color:#b42318}.progress-summary .pending{color:#596560}.group-column{width:56px;padding-right:0!important}.history-row{background:#fbfcfb}.history-row--last{background:#e1eee6}.history-row--last td{border-bottom-color:#9fc2aa}.history-marker{color:var(--kk-text-muted);padding-left:24px!important}.history-toggle{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;color:var(--kk-text-muted);background:transparent;border:0;cursor:pointer}
 </style>

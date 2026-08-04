@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { ArrowLeft, GripVertical, Plus, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Plus, Trash2 } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiField } from '@khaikang/ui'
+import { UiButton, UiCreateActions, UiField, UiFormActionBar } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -60,6 +60,15 @@ function addStep(): void {
 
 function removeStep(index: number): void {
   if (steps.value.length > 1) steps.value.splice(index, 1)
+}
+
+function moveStep(index: number, direction: -1 | 1): void {
+  const target = index + direction
+  if (target < 0 || target >= steps.value.length) return
+  const step = steps.value[index]
+  if (!step) return
+  steps.value.splice(index, 1)
+  steps.value.splice(target, 0, step)
 }
 
 async function load(): Promise<void> {
@@ -197,14 +206,11 @@ onMounted(load)
         <article v-for="(step, index) in steps" :key="step.key" class="step-card">
           <header>
             <span><GripVertical :size="17" />{{ t('tests.testCase.stepNumber', { number: index + 1 }) }}</span>
-            <button
-              type="button"
-              :disabled="creating || steps.length === 1"
-              :aria-label="t('tests.testCase.removeStep')"
-              @click="removeStep(index)"
-            >
-              <Trash2 :size="16" />{{ t('tests.testCase.removeStep') }}
-            </button>
+            <div class="step-actions">
+              <button type="button" :disabled="creating || index === 0" :aria-label="t('tests.testCase.moveStepUp')" @click="moveStep(index, -1)"><ArrowUp :size="16" /></button>
+              <button type="button" :disabled="creating || index === steps.length - 1" :aria-label="t('tests.testCase.moveStepDown')" @click="moveStep(index, 1)"><ArrowDown :size="16" /></button>
+              <button type="button" :disabled="creating || steps.length === 1" :aria-label="t('tests.testCase.removeStep')" @click="removeStep(index)"><Trash2 :size="16" />{{ t('tests.testCase.removeStep') }}</button>
+            </div>
           </header>
           <label>
             <span>{{ t('tests.testCase.action') }}</span>
@@ -223,41 +229,22 @@ onMounted(load)
         </article>
       </section>
 
-      <!-- STICKY ACTION BAR FIXED AT BOTTOM OF SCREEN -->
-      <div class="sticky-action-bar">
-        <div class="sticky-action-content">
-          <div class="validation-status">
-            <p v-if="error" class="error" role="alert">{{ error }}</p>
-            <p v-else-if="!isValid" class="validation-hint">{{ validationHint }}</p>
-          </div>
-          <div class="actions-group">
-            <UiButton
-              type="button"
-              variant="secondary"
-              :disabled="creating"
-              @click="router.push({ name: 'test-suites', params: { workspaceId } })"
-            >
-              {{ t('common.actions.cancel') }}
-            </UiButton>
-            <UiButton
-              type="button"
-              :loading="creating"
-              :disabled="!isValid"
-              @click="create(false)"
-            >
-              {{ t('tests.testCase.create') }}
-            </UiButton>
-            <UiButton
-              type="button"
-              variant="secondary"
-              :disabled="!isValid || creating"
-              @click="create(true)"
-            >
-              {{ t('tests.testCase.createAndContinue') }}
-            </UiButton>
-          </div>
-        </div>
-      </div>
+      <UiFormActionBar mode="floating">
+        <template #status>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+          <p v-else-if="!isValid" class="validation-hint">{{ validationHint }}</p>
+        </template>
+          <UiCreateActions
+            :loading="creating"
+            :disabled="!isValid"
+            :cancel-label="t('common.actions.cancel')"
+            :create-label="t('tests.testCase.create')"
+            :continue-label="t('tests.testCase.createAndContinue')"
+            @cancel="router.push({ name: 'test-suites', params: { workspaceId } })"
+            @create="create(false)"
+            @create-continue="create(true)"
+          />
+      </UiFormActionBar>
     </form>
     <div v-else class="state-panel state-panel--error" role="alert">{{ error }}</div>
   </section>
@@ -384,33 +371,9 @@ onMounted(load)
   opacity: 0.4;
   cursor: not-allowed;
 }
+.step-actions{display:flex;align-items:center;gap:4px}.step-actions button:not(:last-child){display:grid;place-items:center;padding:5px;border:1px solid var(--kk-border);border-radius:4px;background:var(--kk-surface);color:var(--kk-text-muted)}
 
 /* STICKY BOTTOM ACTION BAR */
-.sticky-action-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 100;
-  margin-top: 12px;
-  padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--kk-border-strong);
-  border-radius: var(--kk-radius);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.sticky-action-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.validation-status {
-  display: flex;
-  align-items: center;
-}
-
 .validation-hint {
   margin: 0;
   font-size: 0.84rem;
@@ -449,10 +412,6 @@ onMounted(load)
   .form-section > header {
     align-items: stretch;
     flex-direction: column;
-  }
-  .sticky-action-content {
-    flex-direction: column;
-    align-items: stretch;
   }
   .actions-group {
     justify-content: flex-end;
