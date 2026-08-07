@@ -50,11 +50,11 @@ const emit = defineEmits<{
   display: flex;
   width: 100%;
   max-width: 320px;
-  min-height: 42px;
+  min-height: 32px;
   flex: 1 1 240px;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 5px 12px;
   color: var(--kk-text-muted);
   background: var(--kk-surface-subtle);
   border: 1px solid var(--kk-border);

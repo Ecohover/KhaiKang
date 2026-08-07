@@ -18,6 +18,8 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<TestRun> Runs => Set<TestRun>();
     public DbSet<TestRunItem> RunItems => Set<TestRunItem>();
     public DbSet<TestRunItemStepResult> RunItemStepResults => Set<TestRunItemStepResult>();
+    public DbSet<TestCaseAttachment> CaseAttachments => Set<TestCaseAttachment>();
+    public DbSet<TestRunItemAttachment> RunItemAttachments => Set<TestRunItemAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -258,6 +260,48 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runStep.HasOne<AccountReference>().WithMany()
             .HasForeignKey(x => x.ExecutedByAccountId).OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_test_run_item_steps_executed_by_account");
+
+        var caseAttachment = modelBuilder.Entity<TestCaseAttachment>();
+        caseAttachment.ToTable("test_case_attachments");
+        caseAttachment.HasKey(x => x.Id).HasName("pk_test_case_attachments");
+        caseAttachment.Property(x => x.Id).HasColumnName("id");
+        caseAttachment.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        caseAttachment.Property(x => x.UploadedByAccountId).HasColumnName("uploaded_by_account_id");
+        caseAttachment.Property(x => x.OriginalFileName).HasColumnName("original_file_name").HasMaxLength(255);
+        caseAttachment.Property(x => x.StorageProvider).HasColumnName("storage_provider").HasMaxLength(20);
+        caseAttachment.Property(x => x.StorageKey).HasColumnName("storage_key");
+        caseAttachment.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(200);
+        caseAttachment.Property(x => x.FileSize).HasColumnName("file_size");
+        caseAttachment.Property(x => x.FileHash).HasColumnName("file_hash").HasMaxLength(64);
+        caseAttachment.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+        caseAttachment.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        Audit(caseAttachment);
+        caseAttachment.HasIndex(x => new { x.TestCaseId, x.IsDeleted }).HasDatabaseName("idx_test_case_attachments_case_deleted");
+        caseAttachment.HasOne(x => x.TestCase).WithMany().HasForeignKey(x => x.TestCaseId)
+            .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_test_case_attachments_case");
+        caseAttachment.HasOne<AccountReference>().WithMany().HasForeignKey(x => x.UploadedByAccountId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_test_case_attachments_uploaded_by_account");
+
+        var runAttachment = modelBuilder.Entity<TestRunItemAttachment>();
+        runAttachment.ToTable("test_run_item_attachments");
+        runAttachment.HasKey(x => x.Id).HasName("pk_test_run_item_attachments");
+        runAttachment.Property(x => x.Id).HasColumnName("id");
+        runAttachment.Property(x => x.TestRunItemId).HasColumnName("test_run_item_id");
+        runAttachment.Property(x => x.UploadedByAccountId).HasColumnName("uploaded_by_account_id");
+        runAttachment.Property(x => x.OriginalFileName).HasColumnName("original_file_name").HasMaxLength(255);
+        runAttachment.Property(x => x.StorageProvider).HasColumnName("storage_provider").HasMaxLength(20);
+        runAttachment.Property(x => x.StorageKey).HasColumnName("storage_key");
+        runAttachment.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(200);
+        runAttachment.Property(x => x.FileSize).HasColumnName("file_size");
+        runAttachment.Property(x => x.FileHash).HasColumnName("file_hash").HasMaxLength(64);
+        runAttachment.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+        runAttachment.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        Audit(runAttachment);
+        runAttachment.HasIndex(x => new { x.TestRunItemId, x.IsDeleted }).HasDatabaseName("idx_test_run_item_attachments_item_deleted");
+        runAttachment.HasOne(x => x.TestRunItem).WithMany().HasForeignKey(x => x.TestRunItemId)
+            .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_test_run_item_attachments_item");
+        runAttachment.HasOne<AccountReference>().WithMany().HasForeignKey(x => x.UploadedByAccountId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_test_run_item_attachments_uploaded_by_account");
     }
 
     private static void Audit<TEntity>(

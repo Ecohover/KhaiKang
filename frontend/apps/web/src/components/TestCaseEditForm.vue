@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Plus, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Paperclip, Plus, Trash2, Upload } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiCreateActions, UiField, UiFormActionBar } from '@khaikang/ui'
+import { UiAttachmentLink, UiButton, UiCreateActions, UiField, UiFormActionBar } from '@khaikang/ui'
+import AppMarkdown from './AppMarkdown.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
-import type { TestCaseResponse, TestSuiteResponse } from '../api/contracts'
+import type { TestCaseAttachmentResponse, TestCaseResponse, TestSuiteResponse } from '../api/contracts'
 import type { TestWorkspaceResponse } from '../api/contracts'
 
 interface EditableStep {
@@ -42,6 +43,8 @@ const saving = ref(false)
 const error = ref('')
 const nextStepKey = ref(1)
 const initialState = ref('')
+const attachments = ref<TestCaseAttachmentResponse[]>([])
+const uploadingAttachment = ref(false)
 
 const formState = computed(() => JSON.stringify({
   suiteId: suiteId.value, title: title.value, description: description.value,
@@ -95,6 +98,15 @@ const validationHint = computed(() => {
 })
 
 const isValid = computed(() => validationHint.value === '')
+const canUploadImages = computed(() =>
+  props.workspace?.status === 'active' &&
+  (props.workspace.currentUserRole === 'owner' || props.workspace.currentUserRole === 'manager'),
+)
+const attachmentDialogLabels = computed(() => ({
+  attachmentDialog: t('common.markdown.attachmentDialog'),
+  downloadAttachment: t('common.markdown.downloadAttachment'),
+  close: t('common.actions.close'),
+}))
 
 function addStep(): void {
   steps.value.push({ key: nextStepKey.value++, action: '', expectedResult: '' })
@@ -112,6 +124,102 @@ function moveStep(index: number, direction: -1 | 1): void {
   steps.value.splice(index, 1)
   steps.value.splice(target, 0, step)
 }
+
+async function loadAttachments(): Promise<void> {
+  const result = await apiClient.listTestCaseAttachments(props.workspaceId, props.testCase.id)
+  if (result.data) {
+    attachments.value = result.data
+  } else {
+    error.value = problemMessage(result.error, t('tests.testCase.attachments.loadFailed'))
+  }
+}
+
+async function uploadTestCaseAttachment(file: File): Promise<TestCaseAttachmentResponse> {
+  const result = await apiClient.uploadTestCaseAttachment(
+    props.workspaceId,
+    props.testCase.id,
+    file,
+    await secureHeaders(),
+  )
+  if (!result.data) {
+    error.value = problemMessage(result.error, t('tests.testCase.attachments.uploadFailed'))
+    throw new Error(error.value)
+  }
+  attachments.value = [result.data, ...attachments.value.filter(item => item.id !== result.data!.id)]
+  return result.data
+}
+
+async function uploadTestCaseImage(file: File): Promise<{ src: string, alt?: string }> {
+  if (!file.type.startsWith('image/')) throw new Error(t('tests.testCase.attachments.imageRequired'))
+  const attachment = await uploadTestCaseAttachment(file)
+  return {
+    src: apiClient.testCaseAttachmentContentUrl(
+      props.workspaceId,
+      props.testCase.id,
+      attachment.id,
+      true,
+    ),
+    alt: attachment.originalFileName,
+  }
+}
+
+async function uploadTestCaseFile(file: File): Promise<{ src: string, name: string }> {
+  const attachment = await uploadTestCaseAttachment(file)
+  return {
+    src: apiClient.testCaseAttachmentContentUrl(
+      props.workspaceId,
+      props.testCase.id,
+      attachment.id,
+    ),
+    name: attachment.originalFileName,
+  }
+}
+
+async function selectAttachment(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || uploadingAttachment.value) return
+  uploadingAttachment.value = true
+  error.value = ''
+  try {
+    await uploadTestCaseAttachment(file)
+  } catch (uploadError) {
+    error.value = uploadError instanceof Error
+      ? uploadError.message
+      : t('tests.testCase.attachments.uploadFailed')
+  } finally {
+    uploadingAttachment.value = false
+    input.value = ''
+  }
+}
+
+async function deleteAttachment(attachment: TestCaseAttachmentResponse): Promise<void> {
+  if (!canUploadImages.value || !window.confirm(t('tests.testCase.attachments.deleteConfirm'))) return
+  error.value = ''
+  const result = await apiClient.deleteTestCaseAttachment(
+    props.workspaceId,
+    props.testCase.id,
+    attachment.id,
+    await secureHeaders(),
+  )
+  if (result.error) {
+    error.value = problemMessage(result.error, t('tests.testCase.attachments.deleteFailed'))
+    return
+  }
+  attachments.value = attachments.value.filter(item => item.id !== attachment.id)
+}
+
+function attachmentSize(fileSize: number): string {
+  return t('tests.testCase.attachments.size', {
+    size: Math.max(0.1, fileSize / 1024).toFixed(1),
+  })
+}
+
+watch(
+  () => [props.workspaceId, props.testCase.id],
+  () => void loadAttachments(),
+  { immediate: true },
+)
 
 async function save(): Promise<void> {
   if (!isValid.value || saving.value) return
@@ -189,20 +297,20 @@ async function save(): Promise<void> {
           :disabled="saving"
         />
 
-        <label>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.description') }}</span>
-          <textarea v-model="description" rows="3" maxlength="4000" :disabled="saving" />
-        </label>
+          <AppMarkdown v-model="description" :disabled="saving" :upload-image="canUploadImages ? uploadTestCaseImage : undefined" :upload-attachment="canUploadImages ? uploadTestCaseFile : undefined" />
+        </div>
 
-        <label>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.preconditions') }}</span>
-          <textarea v-model="preconditions" rows="3" maxlength="4000" :disabled="saving" />
-        </label>
+          <AppMarkdown v-model="preconditions" :disabled="saving" :upload-image="canUploadImages ? uploadTestCaseImage : undefined" :upload-attachment="canUploadImages ? uploadTestCaseFile : undefined" />
+        </div>
 
-        <label>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.overallExpectedResult') }}</span>
-          <textarea v-model="overallExpectedResult" rows="3" maxlength="4000" :disabled="saving" />
-        </label>
+          <AppMarkdown v-model="overallExpectedResult" :disabled="saving" :upload-image="canUploadImages ? uploadTestCaseImage : undefined" :upload-attachment="canUploadImages ? uploadTestCaseFile : undefined" />
+        </div>
 
         <label>
           <span>{{ t('common.fields.status') }}</span>
@@ -254,18 +362,51 @@ async function save(): Promise<void> {
             </header>
 
             <div class="step-fields-grid">
-              <label>
+              <div class="markdown-field">
                 <span>{{ t('tests.testCase.action') }} *</span>
-                <textarea v-model="stepItem.action" rows="3" maxlength="4000" required :disabled="saving" />
-              </label>
+                <AppMarkdown v-model="stepItem.action" :disabled="saving" :upload-image="canUploadImages ? uploadTestCaseImage : undefined" :upload-attachment="canUploadImages ? uploadTestCaseFile : undefined" />
+              </div>
 
-              <label>
+              <div class="markdown-field">
                 <span>{{ t('tests.testCase.expectedResult') }} *</span>
-                <textarea v-model="stepItem.expectedResult" rows="3" maxlength="4000" required :disabled="saving" />
-              </label>
+                <AppMarkdown v-model="stepItem.expectedResult" :disabled="saving" :upload-image="canUploadImages ? uploadTestCaseImage : undefined" :upload-attachment="canUploadImages ? uploadTestCaseFile : undefined" />
+              </div>
             </div>
           </article>
         </div>
+      </section>
+
+      <section class="form-section">
+        <header>
+          <div class="section-heading-with-icon">
+            <Paperclip :size="19" aria-hidden="true" />
+            <div>
+              <h3>{{ t('tests.testCase.attachments.title') }}</h3>
+              <p>{{ t('tests.testCase.attachments.description') }}</p>
+            </div>
+          </div>
+        </header>
+        <label v-if="canUploadImages" class="attachment-upload">
+          <Upload :size="16" aria-hidden="true" />
+          <span>{{ t(uploadingAttachment ? 'tests.testCase.attachments.uploading' : 'tests.testCase.attachments.upload') }}</span>
+          <input type="file" :disabled="uploadingAttachment" @change="selectAttachment" />
+        </label>
+        <p v-if="attachments.length === 0" class="attachment-empty">{{ t('tests.testCase.attachments.empty') }}</p>
+        <ul v-else class="attachment-list">
+          <li v-for="attachment in attachments" :key="attachment.id">
+            <div>
+              <UiAttachmentLink
+                :href="apiClient.testCaseAttachmentContentUrl(workspaceId, testCase.id, attachment.id)"
+                :file-name="attachment.originalFileName"
+                :labels="attachmentDialogLabels"
+              />
+              <small>{{ attachmentSize(attachment.fileSize) }} · {{ attachment.uploadedByUsername }}</small>
+            </div>
+            <UiButton v-if="canUploadImages" type="button" variant="secondary" :aria-label="t('tests.testCase.attachments.delete')" @click="deleteAttachment(attachment)">
+              <Trash2 :size="15" aria-hidden="true" />
+            </UiButton>
+          </li>
+        </ul>
       </section>
 
     </form>
@@ -322,7 +463,7 @@ async function save(): Promise<void> {
 .form-section > header, .step-editor-card > header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
 .form-section h3, .form-section p { margin: 0; }
 .form-section p { margin-top: 4px; font-size: 0.84rem; }
-.form-section label { display: grid; gap: 7px; font-size: 0.875rem; font-weight: 650; }
+.form-section label, .form-section .markdown-field { display: grid; min-width: 0; align-content: start; gap: 7px; font-size: 0.875rem; font-weight: 650; }
 .form-section select, .form-section textarea { padding: 11px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: var(--kk-radius); font: inherit; }
 .step-editor-list { display: grid; gap: 14px; }
 
@@ -331,7 +472,7 @@ async function save(): Promise<void> {
 }
 
 .step-editor-card > header span { display: flex; align-items: center; gap: 7px; font-weight: 750; }
-.step-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.step-fields-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 14px; }
 
 .btn-icon-danger {
   display: inline-flex;
@@ -359,6 +500,15 @@ async function save(): Promise<void> {
 }
 
 .validation-hint { margin: 0; color: #c05621; font-size: 0.84rem; font-weight: 600; }
+.section-heading-with-icon { display: flex; align-items: flex-start; gap: 9px; }
+.attachment-upload { position: relative; display: inline-flex!important; width: fit-content; min-height: 34px; align-items: center; gap: 7px; padding: 7px 11px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font-size: .82rem; font-weight: 650; cursor: pointer; }
+.attachment-upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.attachment-empty { margin: 0; color: var(--kk-text-muted); font-size: .82rem; }
+.attachment-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.attachment-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 6px; }
+.attachment-list li > div { display: grid; min-width: 0; gap: 3px; }
+.attachment-list a { overflow: hidden; color: var(--kk-accent); font-size: .86rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-list small { color: var(--kk-text-muted); font-size: .72rem; }
 
 @media (max-width: 720px) { .step-fields-grid { grid-template-columns: 1fr; } .form-section > header { align-items: stretch; flex-direction: column; } }
 </style>

@@ -626,6 +626,32 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
+        - name: search
+          in: query
+          description: Case-insensitive search by task key or title.
+          schema: { type: string, maxLength: 200 }
+        - name: typeCode
+          in: query
+          schema: { type: string }
+        - name: statusCode
+          in: query
+          schema: { type: string }
+        - name: priorityCode
+          in: query
+          schema: { type: string }
+        - name: assigneeAccountId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: unassigned
+          in: query
+          description: When true, returns only tasks without an assignee. Cannot be combined with assigneeAccountId.
+          schema: { type: boolean }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [updatedAt, issueNo], default: updatedAt }
+        - name: sortDirection
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
       responses:
         '200':
           description: A page of tasks visible to the current project member.
@@ -845,6 +871,83 @@ paths:
           description: The project or task does not exist or is not visible to the current member.
         '409':
           description: The project is inactive, or the task was updated by another user.
+  /api/v1/projects/{projectId}/issues/{issueId}/attachments:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Issues]
+      operationId: ListIssueAttachments
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active attachments linked to the issue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IssueAttachmentResponse' }
+        '404': { description: The project or issue is not visible. }
+    post:
+      tags: [Issues]
+      operationId: UploadIssueAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Attachment stored and linked to the issue.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IssueAttachmentResponse' }
+        '400': { description: The file is empty or invalid. }
+        '403': { description: The current member lacks issue.attachment.upload. }
+        '404': { description: The project or issue does not exist. }
+        '409': { description: The project is inactive. }
+        '413': { description: The file exceeds the configured size limit. }
+  /api/v1/projects/{projectId}/issues/{issueId}/attachments/{attachmentId}:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Issues]
+      operationId: DeleteIssueAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '204': { description: The attachment link was soft deleted. }
+        '403': { description: The current member lacks issue.attachment.delete. }
+        '404': { description: The attachment does not exist or was already removed. }
+        '409': { description: The project is inactive. }
+  /api/v1/projects/{projectId}/issues/{issueId}/attachments/{attachmentId}/content:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: inline, in: query, required: false, schema: { type: boolean, default: false } }
+    get:
+      tags: [Issues]
+      operationId: GetIssueAttachmentContent
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Attachment bytes. Images may be rendered inline when requested.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '403': { description: The current member lacks issue.read. }
+        '404': { description: The attachment does not exist or was removed. }
+        '503': { description: The configured storage provider cannot read the file. }
   /api/v1/test-workspaces:
     get:
       tags: [Test Management]
@@ -1147,6 +1250,76 @@ paths:
         '403': { description: Current role cannot manage test cases. }
         '404': { description: Test case, workspace, or suite does not exist. }
         '409': { description: Version conflict or invalid suite target. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/attachments:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestCaseAttachments
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active attachments linked to the test case.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestCaseAttachmentResponse' } }
+        '404': { description: Test case or workspace is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: UploadTestCaseAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Attachment stored and linked to the test case.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseAttachmentResponse' }
+        '403': { description: Current role cannot manage test case attachments. }
+        '404': { description: Test case or workspace not found. }
+        '413': { description: File exceeds the configured size limit. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/attachments/{attachmentId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Test Management]
+      operationId: DeleteTestCaseAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '204': { description: Attachment soft-deleted. }
+        '403': { description: Current role cannot manage test case attachments. }
+        '404': { description: Attachment, test case, or workspace not found. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/attachments/{attachmentId}/content:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: inline, in: query, required: false, schema: { type: boolean, default: false } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestCaseAttachmentContent
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Attachment bytes; images may be rendered inline.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { description: Attachment, test case, or workspace not found. }
+        '503': { description: Attachment storage is unavailable. }
   /api/v1/test-tags:
     get:
       tags: [Test Management]
@@ -1614,6 +1787,20 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1 }
+    TestCaseAttachmentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testCaseId, originalFileName, contentType, fileSize, fileHash, uploadedByAccountId, uploadedByUsername, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        testCaseId: { type: string, format: uuid }
+        originalFileName: { type: string, maxLength: 255 }
+        contentType: { type: string, maxLength: 200 }
+        fileSize: { type: integer, format: int64, minimum: 1 }
+        fileHash: { type: string, minLength: 64, maxLength: 64 }
+        uploadedByAccountId: { type: string, format: uuid }
+        uploadedByUsername: { type: string }
+        createdAt: { type: string, format: date-time }
     TestTagResponse:
       type: object
       additionalProperties: false
@@ -2265,6 +2452,20 @@ components:
         version:
           type: integer
           format: int32
+    IssueAttachmentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, issueId, originalFileName, contentType, fileSize, fileHash, uploadedByAccountId, uploadedByUsername, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        issueId: { type: string, format: uuid }
+        originalFileName: { type: string, maxLength: 255 }
+        contentType: { type: string, maxLength: 200 }
+        fileSize: { type: integer, format: int64, minimum: 1 }
+        fileHash: { type: string, minLength: 64, maxLength: 64 }
+        uploadedByAccountId: { type: string, format: uuid }
+        uploadedByUsername: { type: string }
+        createdAt: { type: string, format: date-time }
     IssuePageResponse:
       type: object
       additionalProperties: false

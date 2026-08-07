@@ -139,6 +139,18 @@ export const projects = {
       editPlaceholder: 'Describe the completed work and deliverables',
       createPlaceholder: 'A completion summary can be added after creating the issue',
     },
+    attachments: {
+      title: 'Attachments',
+      description: 'Upload screenshots, test evidence, or related files. Images can also be pasted directly into an editor above.',
+      upload: 'Upload attachment',
+      uploading: 'Uploading…',
+      empty: 'No attachments yet.',
+      delete: 'Remove attachment',
+      deleteConfirm: 'Remove this attachment?',
+      uploadFailed: 'Unable to upload the attachment. Please try again.',
+      deleteFailed: 'Unable to remove the attachment. Please try again.',
+      size: '{size} KB',
+    },
   },
   detail: {
     back: 'Back to projects',

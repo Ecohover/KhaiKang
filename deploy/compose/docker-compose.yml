@@ -23,12 +23,16 @@ services:
       ConnectionStrings__KhaiKang: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Database__ApplyMigrations: "true"
       DataProtection__KeysDirectory: /var/lib/khaikang/data-protection
+      Attachments__Provider: local
+      Attachments__LocalRoot: /var/lib/khaikang/attachments
+      Attachments__MaxFileSizeBytes: 20971520
       Identity__RequireSecureCookies: ${KHAIKANG_REQUIRE_HTTPS:-false}
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - data-protection-keys:/var/lib/khaikang/data-protection
+      - attachments:/var/lib/khaikang/attachments
     restart: unless-stopped
 
   web:
@@ -42,3 +46,4 @@ services:
 volumes:
   postgres-data:
   data-protection-keys:
+  attachments:

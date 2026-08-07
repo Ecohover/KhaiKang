@@ -1,4 +1,5 @@
 using KhaiKang.Modules.TestManagement.Application;
+using KhaiKang.Modules.TestManagement.Controllers;
 using KhaiKang.Modules.TestManagement.Endpoints;
 using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.AspNetCore.Routing;
@@ -18,6 +19,9 @@ public static class TestManagementModuleExtensions
             ?? throw new InvalidOperationException("Connection string 'KhaiKang' is required.");
         services.AddDbContext<TestManagementDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<TestManagementService>();
+        services.AddScoped<TestCaseAttachmentService>();
+        services.AddControllers()
+            .AddApplicationPart(typeof(TestCaseAttachmentsController).Assembly);
         return services;
     }
 

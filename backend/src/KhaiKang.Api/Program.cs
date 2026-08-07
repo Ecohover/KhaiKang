@@ -30,7 +30,7 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
         .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysDirectory));
 }
 
-if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
+if (builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.Replace(ServiceDescriptor.Singleton<IDataProtectionProvider>(
         new EphemeralDataProtectionProvider()));

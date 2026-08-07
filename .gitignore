@@ -22,3 +22,4 @@ TestResults/
 .nupkgs/
 node_modules/
 dist/
+data/

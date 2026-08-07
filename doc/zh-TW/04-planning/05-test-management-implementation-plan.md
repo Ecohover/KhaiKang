@@ -6,6 +6,8 @@
 
 功能規則以[測試案例管理規格](../02-specs/03-test-case-management.md)為準，資料責任以[測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md)為準。本文件只管理交付順序與完成狀態。
 
+> 2026-08-05 起，跨模組的 MVP 收尾順序改以[收尾與發布準備計畫](./06-mvp-release-closure-plan.md)為準。Test Plan 依 Tag／搜尋批次加入案例與硬刪除不納入 MVP；以目前的案例選取、排序與封存即可。
+
 ## MVP 邊界
 
 MVP 建立以下手動測試閉環：
@@ -102,15 +104,15 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第四階段：Test Plan
 
-狀態：部分完成（2026-08-04）
+狀態：核心功能已完成，待端到端驗收（2026-08-05）
 
 範圍：
 
-- Test Plan 與 Test Plan Item CRUD。
-- 由 Suite 批次加入、由 Tag 或搜尋結果加入案例。
+- Test Plan 與 Test Plan Item 的建立、讀取與更新；封存取代硬刪除。
+- 由 Suite 與樹狀案例選取加入案例。
 - 個別移除、去重與排序。
 - Plan 至少包含一個有效案例。
-- Plan Item 固定範圍，不隨 Suite、Tag 或 Case 移動自動改變。
+- Plan Item 固定範圍，不隨 Suite 或 Case 移動自動改變。
 - 建立計畫改為獨立表單頁，使用共用表單操作列；由啟用計畫建立 Run 時會預選該計畫。
 
 驗收：
@@ -141,17 +143,18 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第六階段：稽核與 MVP 完整驗收
 
-狀態：尚未開始
+狀態：待 MVP 收尾驗收
 
 範圍：
 
-- 補齊 Workspace、Suite、Case、Plan、Run 與 Result audit events。
-- 固定角色權限矩陣與跨 Workspace 測試。
+- 補齊 Workspace、Suite、Case、Plan、Run 與 Result audit events；Workspace 資產由成員共同維護，不建立個人擁有者 ACL。
+- 固定角色權限矩陣、共同維護流程與跨 Workspace 隔離測試。
 - PostgreSQL transaction、migration 與 concurrent update 驗證。
 - OpenAPI、C# 與 TypeScript operation 逐項對照。
 - 後端 restore、build、format、test。
 - 前端 type-check、test、build。
 - 桌面與手機主要流程人工驗收。
+- Test Run 是否需要指派執行人仍待產品決策；MVP 先記錄實際建立者與結果操作者。
 
 ## 後續階段
 

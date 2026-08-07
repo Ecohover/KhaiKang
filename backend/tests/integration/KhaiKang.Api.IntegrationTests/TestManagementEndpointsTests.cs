@@ -130,14 +130,14 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
             Content = JsonContent.Create(new UpdateTestCaseRequest(
                 suite.Id,
                 "Sign in with valid credentials - Updated",
-                "Updated description.",
-                "Updated preconditions.",
-                "Updated expected result.",
+                "## Updated description\n\n- visible to the team",
+                "**Updated** preconditions.",
+                "[Updated expected result](https://example.test/expected).",
                 2,
                 "active",
                 testCase.Version,
                 [
-                    new("Updated step 1 action.", "Updated step 1 result."),
+                    new("1. Enter **valid** credentials.", "The [home page](https://example.test/home) is displayed."),
                 ],
                 TagIds: [tag.Id])),
         };
@@ -148,8 +148,40 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.NotNull(updatedCase);
         Assert.Equal("Sign in with valid credentials - Updated", updatedCase.Title);
         Assert.Equal(2, updatedCase.Version);
+        Assert.Equal("## Updated description\n\n- visible to the team", updatedCase.Description);
+        Assert.Equal("**Updated** preconditions.", updatedCase.Preconditions);
+        Assert.Equal("[Updated expected result](https://example.test/expected).", updatedCase.OverallExpectedResult);
         Assert.Equal(tag.Id, Assert.Single(updatedCase.Tags).Id);
         Assert.Single(updatedCase.Steps);
+
+        var attachmentBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        using var attachmentContent = new MultipartFormDataContent();
+        var attachmentFile = new ByteArrayContent(attachmentBytes);
+        attachmentFile.Headers.ContentType = new("image/png");
+        attachmentContent.Add(attachmentFile, "file", "case-evidence.png");
+        var uploadAttachmentResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments",
+            attachmentContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, uploadAttachmentResponse.StatusCode);
+        var attachment = await uploadAttachmentResponse.Content.ReadFromJsonAsync<TestCaseAttachmentResponse>();
+        Assert.NotNull(attachment);
+        Assert.Equal(updatedCase.Id, attachment.TestCaseId);
+        Assert.Equal("case-evidence.png", attachment.OriginalFileName);
+        Assert.Equal("image/png", attachment.ContentType);
+        Assert.Equal(attachmentBytes.Length, attachment.FileSize);
+        Assert.Equal(64, attachment.FileHash.Length);
+
+        var listedAttachments = await _client.GetFromJsonAsync<TestCaseAttachmentResponse[]>(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments");
+        Assert.NotNull(listedAttachments);
+        Assert.Equal(attachment.Id, Assert.Single(listedAttachments).Id);
+
+        var attachmentDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments/{attachment.Id}/content?inline=true");
+        attachmentDownload.EnsureSuccessStatusCode();
+        Assert.Equal("image/png", attachmentDownload.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(attachmentBytes, await attachmentDownload.Content.ReadAsByteArrayAsync());
 
         var createPlanResponse = await PostAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans",
@@ -193,7 +225,7 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         var runItem = Assert.Single(run.Items);
         var runStep = Assert.Single(runItem.Steps);
         Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
-        Assert.Equal("Updated step 1 action.", runStep.Action);
+        Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
 
         var changeSourceResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
@@ -217,7 +249,7 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         runItem = Assert.Single(fetchedRun.Items);
         runStep = Assert.Single(runItem.Steps);
         Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
-        Assert.Equal("Updated step 1 action.", runStep.Action);
+        Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
 
         var stepResultResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/steps/{runStep.Id}",

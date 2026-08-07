@@ -28,8 +28,15 @@ public sealed class ProjectIssuesController(IssueService issueService) : Control
     public async Task<ActionResult<PagedResult<IssueResponse>>> ListAsync(
         Guid projectId,
         [FromQuery] PageRequest pageRequest,
+        [FromQuery] IssueListQuery query,
         CancellationToken cancellationToken)
     {
+        var validation = ValidateListQuery(query);
+        if (validation is not null)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation));
+        }
+
         if (!TryGetAccountId(out var accountId))
         {
             return Unauthorized();
@@ -40,6 +47,7 @@ public sealed class ProjectIssuesController(IssueService issueService) : Control
             accountId,
             pageRequest.Page,
             pageRequest.PageSize,
+            query,
             cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
@@ -346,6 +354,38 @@ public sealed class ProjectIssuesController(IssueService issueService) : Control
         ValidateText(request.UserStory, "userStory", errors);
         ValidateText(request.DefinitionOfDone, "definitionOfDone", errors);
         return errors.Count == 0 ? null : errors;
+    }
+
+    private static Dictionary<string, string[]>? ValidateListQuery(IssueListQuery query)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (query.Search?.Length > 200)
+        {
+            errors["search"] = ["Search cannot exceed 200 characters."];
+        }
+
+        if (query.AssigneeAccountId.HasValue && query.Unassigned == true)
+        {
+            errors["unassigned"] = ["Assignee and unassigned filters cannot be combined."];
+        }
+
+        if (!IsOneOf(query.SortBy, "updatedAt", "issueNo"))
+        {
+            errors["sortBy"] = ["Sort by must be updatedAt or issueNo."];
+        }
+
+        if (!IsOneOf(query.SortDirection, "asc", "desc"))
+        {
+            errors["sortDirection"] = ["Sort direction must be asc or desc."];
+        }
+
+        return errors.Count == 0 ? null : errors;
+    }
+
+    private static bool IsOneOf(string? value, params string[] allowedValues)
+    {
+        return string.IsNullOrWhiteSpace(value) ||
+            allowedValues.Contains(value, StringComparer.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, string[]>? ValidateUpdateRequest(

@@ -99,7 +99,7 @@ test_workspaces
 | 說明 | 保存測試資產的根工作區。 |
 | PK | `id` |
 | FK | 無 |
-| 備註 | MVP 中不與 `projects` 直接關聯；存取權由 `test_workspace_members` 管理。 |
+| 備註 | 透過 `test_workspace_projects` 關聯多個 `projects`；存取權仍由 `test_workspace_members` 管理。 |
 
 #### 欄位規格
 
@@ -132,7 +132,7 @@ test_workspaces
 - `id` 一律使用 UUID。
 - `name` 在系統範圍內唯一。
 - Workspace 停用不代表刪除；既有測試歷程必須可追溯。
-- Project 與 Test Workspace 的關聯不在 MVP 處理。
+- Project 與 Test Workspace 以多對多關聯表處理，不在 `test_workspaces` 重複保存單一 `project_id`。
 - 建立 Workspace 的帳號必須在同一個 transaction 內建立為第一位 `owner` 成員。
 
 #### Index 建議
@@ -142,6 +142,40 @@ test_workspaces
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_test_workspaces_name` 於 `name`。
+
+---
+
+### test_workspace_projects
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `test_workspace_projects` |
+| 說明 | 保存 Test Workspace 與 Project 的多對多關聯，供導覽與範圍辨識使用。 |
+| PK | `id` |
+| FK | `test_workspace_id -> test_workspaces.id`、`project_id -> projects.id` |
+| 備註 | 不取代 Workspace 成員權限，也不建立 Issue、Test Case、Plan 或 Run 的細部追溯。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 關聯主鍵 | `uuid` | Y | Y | Entity 主鍵。 |
+| `test_workspace_id` | Test Workspace 識別 | `uuid` | Y | N | 對應 `test_workspaces.id`。 |
+| `project_id` | Project 識別 | `uuid` | Y | N | 對應 `projects.id`。 |
+| `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構見 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
+
+#### 補充規則
+
+- 同一個 `test_workspace_id + project_id` 不得重複。
+- 關聯建立或移除不影響既有 Test Plan、Test Run 與快照。
+- Workspace 資產存取仍只依 Workspace 成員與固定角色判斷；Project 成員資格不自動授與 Workspace 存取權。
+
+#### Index 與唯一約束建議
+
+- 建立 `idx_test_workspace_projects_project_id` 於 `project_id`。
+- 建立 unique constraint `uq_test_workspace_projects_workspace_project` 於 `test_workspace_id + project_id`。
 
 ---
 
@@ -381,7 +415,7 @@ test_workspaces
 | 說明 | 保存系統共用、可跨 Test Workspace 與 Test Suite 使用的測試標籤。 |
 | PK | `id` |
 | FK | 無 |
-| 備註 | Tag 用於跨 Workspace 分類、搜尋與批次加入 Test Plan，不取代 Test Suite 的功能分類。 |
+| 備註 | Tag 用於跨 Workspace 分類與搜尋，不取代 Test Suite 的功能分類；MVP 不以 Tag 批次加入 Test Plan。 |
 
 #### 欄位規格
 

@@ -18,15 +18,8 @@ withDefaults(defineProps<{ align?: 'start' | 'end' }>(), { align: 'end' })
 }
 .shared-filter-toolbar--end { justify-content: flex-end; }
 .shared-filter-toolbar--start { justify-content: flex-start; }
-.shared-filter-toolbar :deep(select) {
-  min-height: 42px;
-  padding: 0 12px;
-  color: var(--kk-text);
-  background: var(--kk-surface);
-  border: 1px solid var(--kk-border);
-  border-radius: var(--kk-radius);
-  font: inherit;
-  font-size: .85rem;
+.shared-filter-toolbar :deep(.ui-select) {
+  min-height: 32px;
 }
 @media (max-width: 640px) {
   .shared-filter-toolbar { align-items: stretch; }

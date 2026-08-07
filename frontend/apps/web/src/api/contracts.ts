@@ -309,12 +309,35 @@ export interface UpdateTestCaseRequest {
   tagIds?: string[]
 }
 
+export interface IssueListQuery {
+  search?: string
+  typeCode?: string
+  statusCode?: string
+  priorityCode?: string
+  assigneeAccountId?: string
+  unassigned?: boolean
+  sortBy?: 'updatedAt' | 'issueNo'
+  sortDirection?: 'asc' | 'desc'
+}
+
 export interface TestTagResponse {
   id: string
   name: string
   description: string | null
   status: 'active' | 'inactive'
   version: number
+}
+
+export interface IssueAttachmentResponse {
+  id: string
+  issueId: string
+  originalFileName: string
+  contentType: string
+  fileSize: number
+  fileHash: string
+  uploadedByAccountId: string
+  uploadedByUsername: string
+  createdAt: string
 }
 
 export interface CreateTestTagRequest {
@@ -349,6 +372,18 @@ export interface TestCaseResponse {
   createdAt: string
   updatedAt: string
   version: number
+}
+
+export interface TestCaseAttachmentResponse {
+  id: string
+  testCaseId: string
+  originalFileName: string
+  contentType: string
+  fileSize: number
+  fileHash: string
+  uploadedByAccountId: string
+  uploadedByUsername: string
+  createdAt: string
 }
 
 export type TestPlanStatus = 'draft' | 'active' | 'archived'

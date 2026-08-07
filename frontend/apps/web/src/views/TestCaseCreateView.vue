@@ -3,7 +3,8 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Plus, Trash2 } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiCreateActions, UiField, UiFormActionBar } from '@khaikang/ui'
+import { UiButton, UiCreateActions, UiField, UiFormActionBar, UiFormSection } from '@khaikang/ui'
+import AppMarkdown from '../components/AppMarkdown.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -151,13 +152,13 @@ onMounted(load)
 
     <p v-if="loading" class="state-panel">{{ t('tests.workspace.loading') }}</p>
     <form v-else-if="workspace" class="create-form" @submit.prevent="create(false)">
-      <section class="form-section">
-        <header>
+      <UiFormSection>
+        <template #header>
           <div>
             <h3>{{ t('tests.testCase.basicInformation') }}</h3>
             <p>{{ t('tests.testCase.basicInformationHint') }}</p>
           </div>
-        </header>
+        </template>
         <label>
           <span>{{ t('tests.testCase.suite') }}</span>
           <select v-model="suiteId" required :disabled="creating">
@@ -174,27 +175,22 @@ onMounted(load)
           :placeholder="t('tests.testCase.titlePlaceholder')"
           :disabled="creating"
         />
-        <label>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.description') }}</span>
-          <textarea v-model="description" rows="3" maxlength="4000" :disabled="creating" />
-        </label>
-        <label>
+          <AppMarkdown v-model="description" :disabled="creating" />
+        </div>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.preconditions') }}</span>
-          <textarea v-model="preconditions" rows="3" maxlength="4000" :disabled="creating" />
-        </label>
-        <label>
+          <AppMarkdown v-model="preconditions" :disabled="creating" />
+        </div>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.overallExpectedResult') }}</span>
-          <textarea
-            v-model="overallExpectedResult"
-            rows="3"
-            maxlength="4000"
-            :disabled="creating"
-          />
-        </label>
-      </section>
+          <AppMarkdown v-model="overallExpectedResult" :disabled="creating" />
+        </div>
+      </UiFormSection>
 
-      <section class="form-section">
-        <header>
+      <UiFormSection>
+        <template #header>
           <div>
             <h3>{{ t('tests.testCase.steps') }}</h3>
             <p>{{ t('tests.testCase.stepsHint') }}</p>
@@ -202,7 +198,7 @@ onMounted(load)
           <UiButton type="button" variant="secondary" :disabled="creating" @click="addStep">
             <Plus :size="16" />{{ t('tests.testCase.addStep') }}
           </UiButton>
-        </header>
+        </template>
         <article v-for="(step, index) in steps" :key="step.key" class="step-card">
           <header>
             <span><GripVertical :size="17" />{{ t('tests.testCase.stepNumber', { number: index + 1 }) }}</span>
@@ -212,22 +208,16 @@ onMounted(load)
               <button type="button" :disabled="creating || steps.length === 1" :aria-label="t('tests.testCase.removeStep')" @click="removeStep(index)"><Trash2 :size="16" />{{ t('tests.testCase.removeStep') }}</button>
             </div>
           </header>
-          <label>
+          <div class="markdown-field">
             <span>{{ t('tests.testCase.action') }}</span>
-            <textarea v-model="step.action" rows="3" maxlength="4000" required :disabled="creating" />
-          </label>
-          <label>
+            <AppMarkdown v-model="step.action" :disabled="creating" />
+          </div>
+          <div class="markdown-field">
             <span>{{ t('tests.testCase.expectedResult') }}</span>
-            <textarea
-              v-model="step.expectedResult"
-              rows="3"
-              maxlength="4000"
-              required
-              :disabled="creating"
-            />
-          </label>
+            <AppMarkdown v-model="step.expectedResult" :disabled="creating" />
+          </div>
         </article>
-      </section>
+      </UiFormSection>
 
       <UiFormActionBar mode="floating">
         <template #status>
@@ -322,8 +312,11 @@ onMounted(load)
   font-size: 0.84rem;
 }
 
-.form-section label {
+.form-section label,
+.form-section .markdown-field {
   display: grid;
+  min-width: 0;
+  align-content: start;
   gap: 7px;
   font-size: 0.875rem;
   font-weight: 650;
@@ -341,7 +334,8 @@ onMounted(load)
 
 .step-card {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
   gap: 14px;
   padding: 16px;
   background: var(--kk-surface-subtle);

@@ -15,7 +15,9 @@ import type {
   CsrfTokenResponse,
   InitializeAdminResponse,
   IssueMetadataResponse,
+  IssueListQuery,
   IssueResponse,
+  IssueAttachmentResponse,
   LoginRequest,
   PagedResult,
   ProjectResponse,
@@ -24,6 +26,7 @@ import type {
   SetupStatusResponse,
   TestSuiteResponse,
   TestCaseResponse,
+  TestCaseAttachmentResponse,
   TestTagResponse,
   CreateTestTagRequest,
   UpdateTestTagRequest,
@@ -88,6 +91,24 @@ async function request<TResponse, TBody = never>(
     return { error: (responseBody as ApiProblem | undefined) ?? {} }
   }
 
+  return { data: responseBody as TResponse }
+}
+
+async function requestForm<TResponse>(
+  path: string,
+  formData: FormData,
+  init: Omit<RequestInit, 'body'> = {},
+): Promise<ApiResult<TResponse>> {
+  const response = await fetch(path, {
+    ...init,
+    body: formData,
+    credentials: 'include',
+  })
+  const responseBody = (await response.json().catch(() => undefined)) as
+    | TResponse
+    | ApiProblem
+    | undefined
+  if (!response.ok) return { error: (responseBody as ApiProblem | undefined) ?? {} }
   return { data: responseBody as TResponse }
 }
 
@@ -248,11 +269,20 @@ export const apiClient = {
     projectId: string,
     page = 1,
     pageSize = 20,
+    filters: IssueListQuery = {},
   ): Promise<ApiResult<PagedResult<IssueResponse>>> {
     const query = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),
     })
+    if (filters.search) query.set('search', filters.search)
+    if (filters.typeCode) query.set('typeCode', filters.typeCode)
+    if (filters.statusCode) query.set('statusCode', filters.statusCode)
+    if (filters.priorityCode) query.set('priorityCode', filters.priorityCode)
+    if (filters.assigneeAccountId) query.set('assigneeAccountId', filters.assigneeAccountId)
+    if (filters.unassigned) query.set('unassigned', 'true')
+    if (filters.sortBy) query.set('sortBy', filters.sortBy)
+    if (filters.sortDirection) query.set('sortDirection', filters.sortDirection)
     return request(`/api/v1/projects/${projectId}/issues?${query}`)
   },
 
@@ -309,6 +339,49 @@ export const apiClient = {
       headers,
       body,
     })
+  },
+
+  listIssueAttachments(
+    projectId: string,
+    issueId: string,
+  ): Promise<ApiResult<IssueAttachmentResponse[]>> {
+    return request(`/api/v1/projects/${projectId}/issues/${issueId}/attachments`)
+  },
+
+  uploadIssueAttachment(
+    projectId: string,
+    issueId: string,
+    file: File,
+    headers: HeadersInit,
+  ): Promise<ApiResult<IssueAttachmentResponse>> {
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    return requestForm(`/api/v1/projects/${projectId}/issues/${issueId}/attachments`, formData, {
+      method: 'POST',
+      headers,
+    })
+  },
+
+  deleteIssueAttachment(
+    projectId: string,
+    issueId: string,
+    attachmentId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(`/api/v1/projects/${projectId}/issues/${issueId}/attachments/${attachmentId}`, {
+      method: 'DELETE',
+      headers,
+    })
+  },
+
+  issueAttachmentContentUrl(
+    projectId: string,
+    issueId: string,
+    attachmentId: string,
+    inline = false,
+  ): string {
+    const suffix = inline ? '?inline=true' : ''
+    return `/api/v1/projects/${projectId}/issues/${issueId}/attachments/${attachmentId}/content${suffix}`
   },
 
   listTestWorkspaces(): Promise<ApiResult<TestWorkspaceResponse[]>> {
@@ -449,6 +522,50 @@ export const apiClient = {
     return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}`, {
       method: 'PUT', headers, body,
     })
+  },
+
+  uploadTestCaseAttachment(
+    workspaceId: string,
+    caseId: string,
+    file: File,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestCaseAttachmentResponse>> {
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    return requestForm(
+      `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/attachments`,
+      formData,
+      { method: 'POST', headers },
+    )
+  },
+
+  listTestCaseAttachments(
+    workspaceId: string,
+    caseId: string,
+  ): Promise<ApiResult<TestCaseAttachmentResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/attachments`)
+  },
+
+  deleteTestCaseAttachment(
+    workspaceId: string,
+    caseId: string,
+    attachmentId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/attachments/${attachmentId}`,
+      { method: 'DELETE', headers },
+    )
+  },
+
+  testCaseAttachmentContentUrl(
+    workspaceId: string,
+    caseId: string,
+    attachmentId: string,
+    inline = false,
+  ): string {
+    const suffix = inline ? '?inline=true' : ''
+    return `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/attachments/${attachmentId}/content${suffix}`
   },
 
   listTestPlans(workspaceId: string): Promise<ApiResult<TestPlanResponse[]>> {

@@ -11,6 +11,25 @@ public sealed record IssueMetadataResponse(
     IReadOnlyList<IssueOptionResponse> Statuses,
     IReadOnlyList<IssueOptionResponse> Priorities);
 
+public sealed class IssueListQuery
+{
+    public string? Search { get; init; }
+
+    public string? TypeCode { get; init; }
+
+    public string? StatusCode { get; init; }
+
+    public string? PriorityCode { get; init; }
+
+    public Guid? AssigneeAccountId { get; init; }
+
+    public bool? Unassigned { get; init; }
+
+    public string? SortBy { get; init; }
+
+    public string? SortDirection { get; init; }
+}
+
 public sealed record CreateIssueRequest(
     string Title,
     string TypeCode,

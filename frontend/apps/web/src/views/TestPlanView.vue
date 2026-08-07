@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { ClipboardList, Plus } from '@lucide/vue'
-import { UiActionDialog, UiButton, UiPagination } from '@khaikang/ui'
+import { UiActionDialog, UiButton, UiPagination, UiTable, UiTableContainer } from '@khaikang/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
@@ -221,10 +221,9 @@ onMounted(load)
       :title="t('tests.plan.emptyTitle')"
       :description="t('tests.plan.emptyDescription')"
     />
-    <section v-else class="list-panel">
-      <header><strong>{{ t('tests.plan.title') }}</strong><span>{{ t('tests.plan.count', { count: plans.length }) }}</span></header>
-      <div class="table-wrap">
-        <table>
+    <UiTableContainer v-else>
+      <template #header><strong>{{ t('tests.plan.title') }}</strong><span>{{ t('tests.plan.count', { count: plans.length }) }}</span></template>
+      <UiTable interactive>
           <thead><tr><th>{{ t('tests.plan.code') }}</th><th>{{ t('tests.plan.name') }}</th><th>{{ t('tests.plan.cases') }}</th><th>{{ t('tests.plan.statusLabel') }}</th><th>{{ t('tests.plan.updatedAt') }}</th><th>{{ t('common.actions.actions') }}</th></tr></thead>
           <tbody>
             <tr v-for="plan in paginatedPlans" :key="plan.id" tabindex="0" @click="openEdit(plan)" @keydown.enter="openEdit(plan)">
@@ -258,9 +257,8 @@ onMounted(load)
               </td>
             </tr>
           </tbody>
-        </table>
-      </div>
-      <UiPagination
+      </UiTable>
+      <template #footer><UiPagination
         :page="page"
         :page-size="pageSize"
         :total-count="plans.length"
@@ -273,8 +271,8 @@ onMounted(load)
         :page-label="t('common.pagination.page', { page, total: totalPages })"
         @page-change="changePage"
         @page-size-change="changePageSize"
-      />
-    </section>
+      /></template>
+    </UiTableContainer>
   </TestWorkspaceSectionFrame>
   <SharedStateBanner v-else type="loading" :title="t('tests.plan.loading')" />
 
@@ -402,5 +400,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-select{min-height:30px;padding:3px 26px 3px 10px;border:0;border-radius:999px;background:var(--kk-surface-subtle);color:var(--kk-text);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}.status-select.active{color:var(--kk-accent);background:var(--kk-accent-soft)}.status-select.archived{color:var(--kk-text-muted);background:#edf0ee}.status-select:disabled{cursor:wait;opacity:.7}.plan-form{display:grid;gap:14px}.plan-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.plan-form small{color:var(--kk-text-muted);font-weight:400}.plan-form input,.plan-form textarea,.plan-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-form textarea{min-height:70px;resize:vertical}.plan-form fieldset{display:grid;max-height:280px;gap:10px;padding:10px;overflow:auto;border:1px solid var(--kk-border);border-radius:6px}.suite-case-group{display:grid;gap:6px}.suite-choice,.case-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:8px}.suite-choice{padding:7px 8px;background:var(--kk-accent-soft);border-radius:5px}.suite-choice small{font-size:.75rem}.suite-choice.disabled{opacity:.55}.expand-suite-button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--kk-text-muted);cursor:pointer}.expand-suite-button:hover{background:white;color:var(--kk-accent)}.suite-cases{display:grid;gap:6px}.case-choice{padding-left:28px}.order-actions{display:flex;gap:4px}.order-actions button{border:1px solid var(--kk-border);background:white;border-radius:4px;cursor:pointer}
+.status-select{min-height:30px;padding:3px 26px 3px 10px;border:0;border-radius:999px;background:var(--kk-surface-subtle);color:var(--kk-text);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}.status-select.active{color:var(--kk-accent);background:var(--kk-accent-soft)}.status-select.archived{color:var(--kk-text-muted);background:#edf0ee}.status-select:disabled{cursor:wait;opacity:.7}.plan-form{display:grid;gap:14px}.plan-form label{display:grid;gap:6px;font-size:.85rem;font-weight:650}.plan-form small{color:var(--kk-text-muted);font-weight:400}.plan-form input,.plan-form textarea,.plan-form select{padding:9px;border:1px solid var(--kk-border);border-radius:6px;background:white}.plan-form textarea{min-height:70px;resize:vertical}.plan-form fieldset{display:grid;max-height:280px;gap:10px;padding:10px;overflow:auto;border:1px solid var(--kk-border);border-radius:6px}.suite-case-group{display:grid;gap:6px}.suite-choice,.case-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:8px}.suite-choice{padding:7px 8px;background:var(--kk-accent-soft);border-radius:5px}.suite-choice small{font-size:.75rem}.suite-choice.disabled{opacity:.55}.expand-suite-button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--kk-text-muted);cursor:pointer}.expand-suite-button:hover{background:white;color:var(--kk-accent)}.suite-cases{display:grid;gap:6px}.case-choice{padding-left:28px}.order-actions{display:flex;gap:4px}.order-actions button{border:1px solid var(--kk-border);background:white;border-radius:4px;cursor:pointer}
 </style>

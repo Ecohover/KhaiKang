@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { CheckCircle2, Play, XCircle } from '@lucide/vue'
 import { UiActionDialog, UiButton } from '@khaikang/ui'
+import AppMarkdown from '../components/AppMarkdown.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
@@ -251,23 +252,13 @@ onMounted(load)
           >
             <option v-for="status in resultOptions" :key="status" :value="status">{{ t(`tests.run.result.${status}`) }}</option>
           </select>
-          <textarea
-            v-model="step.actualResult"
-            :disabled="!isExecuting || saving"
-            :placeholder="t('tests.run.actualResult')"
-            @blur="saveStep(item, step)"
-          />
+          <AppMarkdown :model-value="step.actualResult ?? ''" :disabled="!isExecuting || saving" :placeholder="t('tests.run.actualResult')" @update:model-value="step.actualResult = $event" @blur="saveStep(item, step)" />
         </div>
       </section>
-      <label class="item-result">
+      <div class="item-result">
         <span>{{ t('tests.run.caseActualResult') }}</span>
-        <textarea
-          v-model="item.actualResult"
-          :disabled="!isExecuting || saving"
-          :placeholder="t('tests.run.caseActualResult')"
-          @blur="saveItem(item)"
-        />
-      </label>
+        <AppMarkdown :model-value="item.actualResult ?? ''" :disabled="!isExecuting || saving" :placeholder="t('tests.run.caseActualResult')" @update:model-value="item.actualResult = $event" @blur="saveItem(item)" />
+      </div>
     </article>
     </section>
   </TestWorkspaceSectionFrame>
@@ -279,7 +270,7 @@ onMounted(load)
     :close-label="t('common.actions.cancel')"
     @close="finishDialog = false"
   >
-    <label class="summary">{{ t('tests.run.summary') }}<textarea v-model="summary" maxlength="4000" /></label>
+    <div class="summary">{{ t('tests.run.summary') }}<AppMarkdown v-model="summary" /></div>
     <template #actions>
       <UiButton variant="secondary" @click="finishDialog = false">{{ t('common.actions.cancel') }}</UiButton>
       <UiButton :disabled="saving" @click="finish">{{ t('common.actions.confirm') }}</UiButton>

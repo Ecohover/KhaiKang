@@ -22,11 +22,12 @@
 3. [開發規範](./03-development-guidelines.md)
 4. [.NET 開發準則](./05-dotnet-development-guidelines.md)
 5. [AI 與 OpenAPI 協作開發流程](./06-ai-openapi-development-workflow.md)
-6. [語詞總表](./04-domain-glossary.md)
-7. [使用者與登入規格](../02-specs/01-user-authentication.md)
-8. [專案管理規格](../02-specs/02-project-management.md)
-9. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-10. [階段規劃總覽](../04-planning/01-phase-overview.md)
+6. [UI Guideline](./07-ui-guidelines.md)
+7. [語詞總表](./04-domain-glossary.md)
+8. [使用者與登入規格](../02-specs/01-user-authentication.md)
+9. [專案管理規格](../02-specs/02-project-management.md)
+10. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+11. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -44,6 +45,7 @@
 - [開發規範](./03-development-guidelines.md)
 - [.NET 開發準則](./05-dotnet-development-guidelines.md)
 - [AI 與 OpenAPI 協作開發流程](./06-ai-openapi-development-workflow.md)
+- [UI Guideline](./07-ui-guidelines.md)
 - [語詞總表](./04-domain-glossary.md)
 
 ### 02-specs
@@ -89,6 +91,9 @@
 - [待處理清單](../04-planning/02-backlog.md)
 - [任務管理 MVP 實作計畫](../04-planning/03-issue-management-implementation-plan.md)
 - [AI Agent Orchestration 設計方向](../04-planning/04-ai-agent-orchestration-direction.md)
+- [測試管理 MVP 實作計畫](../04-planning/05-test-management-implementation-plan.md)
+- [MVP 收尾與發布準備計畫](../04-planning/06-mvp-release-closure-plan.md)
+- [跨模組附件實作計畫](../04-planning/07-cross-module-attachments-implementation-plan.md)
 
 ## 文件使用原則
 

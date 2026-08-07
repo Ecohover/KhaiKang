@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronRight, CornerDownRight, Play, Plus } from '@lucide/vue'
-import { UiButton, UiPagination } from '@khaikang/ui'
+import { UiButton, UiPagination, UiStatusBadge, UiTable, UiTableContainer } from '@khaikang/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
@@ -111,10 +111,9 @@ onMounted(load)
       :title="t('tests.run.emptyTitle')"
       :description="t('tests.run.emptyDescription')"
     />
-    <section v-else class="list-panel">
-      <header><strong>{{ t('tests.run.title') }}</strong><span>{{ t('tests.run.count', { count: runs.length }) }}</span></header>
-      <div class="table-wrap">
-        <table>
+    <UiTableContainer v-else>
+      <template #header><strong>{{ t('tests.run.title') }}</strong><span>{{ t('tests.run.count', { count: runs.length }) }}</span></template>
+      <UiTable interactive>
           <thead><tr><th class="group-column"></th><th>{{ t('tests.run.code') }}</th><th>{{ t('tests.run.name') }}</th><th>{{ t('tests.run.statusLabel') }}</th><th>{{ t('tests.run.resultSummary') }}</th><th>{{ t('tests.run.updatedAt') }}</th><th>{{ t('common.actions.actions') }}</th></tr></thead>
           <tbody>
             <template v-for="group in paginatedGroups" :key="group.latest.planId">
@@ -126,7 +125,7 @@ onMounted(load)
               <td class="group-column" @click.stop><button v-if="group.history.length" type="button" class="history-toggle" @click="toggleGroup(group.latest.planId)"><ChevronDown v-if="expandedPlanIds.has(group.latest.planId)" :size="16" /><ChevronRight v-else :size="16" />{{ group.history.length + 1 }}</button></td>
               <td><code>{{ group.latest.code }}</code></td>
               <td><strong>{{ group.latest.name }}</strong><small>{{ group.latest.summary || t('tests.run.snapshotHint') }}</small></td>
-              <td><span class="status-pill" :class="group.latest.status">{{ t(`tests.run.status.${group.latest.status}`) }}</span></td>
+              <td><UiStatusBadge :variant="['in_progress', 'completed'].includes(group.latest.status) ? 'success' : 'neutral'">{{ t(`tests.run.status.${group.latest.status}`) }}</UiStatusBadge></td>
               <td class="progress-cell">
                 <div class="run-progress" :aria-label="`${group.latest.progress.passed}/${group.latest.progress.total}`">
                   <span class="passed" :style="{ width: `${progressPercent(group.latest.progress.passed, group.latest.progress.total)}%` }" />
@@ -150,13 +149,12 @@ onMounted(load)
               </td>
             </tr>
             <tr v-for="(previous, index) in expandedPlanIds.has(group.latest.planId) ? group.history : []" :key="previous.id" class="history-row" :class="{ 'history-row--last': index === group.history.length - 1 }" @click="router.push({ name: 'test-run-detail', params: { workspaceId, runId: previous.id } })">
-              <td class="group-column history-marker"><CornerDownRight :size="16" /></td><td><code>{{ previous.code }}</code></td><td>{{ previous.name }}</td><td><span class="status-pill" :class="previous.status">{{ t(`tests.run.status.${previous.status}`) }}</span></td><td class="progress-cell"><div class="run-progress" :aria-label="`${previous.progress.passed}/${previous.progress.total}`"><span class="passed" :style="{ width: `${progressPercent(previous.progress.passed, previous.progress.total)}%` }" /><span class="failed" :style="{ width: `${progressPercent(failedCount(previous), previous.progress.total)}%` }" /><span class="pending" :style="{ width: `${progressPercent(pendingCount(previous), previous.progress.total)}%` }" /></div><small class="progress-summary"><span class="passed">{{ previous.progress.passed }} {{ t('tests.run.result.passed') }}</span><span class="failed">{{ failedCount(previous) }} {{ t('tests.run.result.failed') }}</span><span class="pending">{{ pendingCount(previous) }} {{ t('tests.run.result.not_run') }}</span></small></td><td>{{ d(new Date(previous.updatedAt), 'medium') }}</td><td></td>
+              <td class="group-column history-marker"><CornerDownRight :size="16" /></td><td><code>{{ previous.code }}</code></td><td>{{ previous.name }}</td><td><UiStatusBadge :variant="['in_progress', 'completed'].includes(previous.status) ? 'success' : 'neutral'">{{ t(`tests.run.status.${previous.status}`) }}</UiStatusBadge></td><td class="progress-cell"><div class="run-progress" :aria-label="`${previous.progress.passed}/${previous.progress.total}`"><span class="passed" :style="{ width: `${progressPercent(previous.progress.passed, previous.progress.total)}%` }" /><span class="failed" :style="{ width: `${progressPercent(failedCount(previous), previous.progress.total)}%` }" /><span class="pending" :style="{ width: `${progressPercent(pendingCount(previous), previous.progress.total)}%` }" /></div><small class="progress-summary"><span class="passed">{{ previous.progress.passed }} {{ t('tests.run.result.passed') }}</span><span class="failed">{{ failedCount(previous) }} {{ t('tests.run.result.failed') }}</span><span class="pending">{{ pendingCount(previous) }} {{ t('tests.run.result.not_run') }}</span></small></td><td>{{ d(new Date(previous.updatedAt), 'medium') }}</td><td></td>
             </tr>
             </template>
           </tbody>
-        </table>
-      </div>
-      <UiPagination
+      </UiTable>
+      <template #footer><UiPagination
         :page="page"
         :page-size="pageSize"
         :total-count="runGroups.length"
@@ -169,13 +167,12 @@ onMounted(load)
         :page-label="t('common.pagination.page', { page, total: totalPages })"
         @page-change="changePage"
         @page-size-change="changePageSize"
-      />
-    </section>
+      /></template>
+    </UiTableContainer>
   </TestWorkspaceSectionFrame>
   <SharedStateBanner v-else type="loading" :title="t('tests.run.loading')" />
 </template>
 
 <style scoped>
-.list-panel{display:grid;overflow:hidden;background:white;border:1px solid var(--kk-border);border-radius:8px}.list-panel>header{display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kk-border)}.list-panel>header span{color:var(--kk-text-muted);font-size:.82rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--kk-border)}th{color:var(--kk-text-muted);background:var(--kk-surface-subtle);font-size:.76rem}tbody tr{cursor:pointer}tbody tr:hover{background:var(--kk-accent-soft)}td small{display:block;margin-top:4px;color:var(--kk-text-muted)}code{color:var(--kk-accent);font-weight:700}.status-pill{display:inline-flex;min-height:28px;align-items:center;padding:3px 9px;border-radius:999px;background:var(--kk-surface-subtle);font-size:.75rem;font-weight:700}.status-pill.in_progress,.status-pill.completed{color:var(--kk-accent);background:var(--kk-accent-soft)}
 .progress-cell{min-width:190px}.run-progress{display:flex;width:100%;height:8px;overflow:hidden;background:#edf0ee;border-radius:999px}.run-progress span{display:block;min-width:0;height:100%}.run-progress .passed{background:#2d9b62}.run-progress .failed{background:#df6256}.run-progress .pending{background:#c9d0cc}.progress-summary{display:flex!important;gap:9px;margin-top:6px;color:var(--kk-text-muted);font-size:.72rem}.progress-summary .passed{color:#18794e}.progress-summary .failed{color:#b42318}.progress-summary .pending{color:#596560}.group-column{width:56px;padding-right:0!important}.history-row{background:#fbfcfb}.history-row--last{background:#e1eee6}.history-row--last td{border-bottom-color:#9fc2aa}.history-marker{color:var(--kk-text-muted);padding-left:24px!important}.history-toggle{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;color:var(--kk-text-muted);background:transparent;border:0;cursor:pointer}
 </style>

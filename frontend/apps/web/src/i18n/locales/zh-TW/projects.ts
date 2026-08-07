@@ -139,6 +139,18 @@ export const projects = {
       editPlaceholder: '填寫處理結果與交付內容',
       createPlaceholder: '建立任務後即可填寫處理結果',
     },
+    attachments: {
+      title: '附件',
+      description: '上傳截圖、測試證據或相關檔案；圖片也可直接貼入上方編輯器。',
+      upload: '上傳附件',
+      uploading: '上傳中…',
+      empty: '目前沒有附件。',
+      delete: '移除附件',
+      deleteConfirm: '確定要移除這個附件嗎？',
+      uploadFailed: '附件上傳失敗，請稍後再試。',
+      deleteFailed: '附件移除失敗，請稍後再試。',
+      size: '{size} KB',
+    },
   },
   detail: {
     back: '返回專案列表',

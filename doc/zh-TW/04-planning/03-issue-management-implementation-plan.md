@@ -6,6 +6,8 @@
 
 功能規則仍以[專案管理規格](../02-specs/02-project-management.md)為準，資料責任仍以[專案管理資料模型](../03-data-model/02-project-management-data-model.md)為準。本文件只管理交付順序與完成狀態。
 
+> 2026-08-05 起，跨模組的 MVP 收尾順序改以[收尾與發布準備計畫](./06-mvp-release-closure-plan.md)為準。本文件保留任務管理功能明細；附件仍是 MVP，Tag、子任務、關聯、留言與通知則不納入 MVP。
+
 UI 統一使用「任務」；既有程式碼、資料表與 HTTP contract 保留 `Issue` 技術命名。
 
 ## MVP 完成範圍
@@ -122,7 +124,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第三階段：列表、看板與查詢
 
-狀態：進行中（分頁基礎完成，2026-07-24）
+狀態：進行中（分頁基礎完成，待依 MVP 收尾計畫完成驗收）
 
 已完成：
 
@@ -144,7 +146,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第四階段：稽核與併發安全
 
-狀態：尚未開始
+狀態：待 MVP 收尾驗收
 
 範圍：
 
@@ -156,7 +158,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第五階段：附件管理
 
-狀態：尚未開始
+狀態：待附件儲存提供者決策後開始（MVP 必要）
 
 範圍：
 
@@ -169,7 +171,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第六階段：MVP 完整驗收
 
-狀態：尚未開始
+狀態：待前述階段完成；跨模組順序見收尾與發布準備計畫
 
 範圍：
 

@@ -150,10 +150,10 @@ public sealed class ProjectEndpointsTests(IdentityApiFactory factory)
                 "Build and verify the first task",
                 "story",
                 "critical",
-                "Updated task description",
-                "As a project member, I want a complete task form.",
-                "The dedicated editor is available.",
-                "The create and edit flows were verified.",
+                "## Updated task description\n\n- One\n- Two",
+                "As a **project member**, I want a complete task form.",
+                "- [ ] The dedicated editor is available.",
+                "See [evidence](https://example.test/evidence).",
                 updatedIssue.Version)),
             await GetCsrfTokenAsync());
         updateIssueResponse.EnsureSuccessStatusCode();
@@ -162,12 +162,54 @@ public sealed class ProjectEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("Build and verify the first task", editedIssue.Title);
         Assert.Equal("story", editedIssue.TypeCode);
         Assert.Equal("critical", editedIssue.PriorityCode);
-        Assert.Equal("The create and edit flows were verified.", editedIssue.CompletionSummary);
+        Assert.Equal("See [evidence](https://example.test/evidence).", editedIssue.CompletionSummary);
+        Assert.Equal("## Updated task description\n\n- One\n- Two", editedIssue.Description);
+        Assert.Equal("As a **project member**, I want a complete task form.", editedIssue.UserStory);
+        Assert.Equal("- [ ] The dedicated editor is available.", editedIssue.DefinitionOfDone);
 
         var fetchedIssue = await _client.GetFromJsonAsync<IssueResponse>(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}");
         Assert.NotNull(fetchedIssue);
         Assert.Equal(editedIssue.Version, fetchedIssue.Version);
+
+        var attachmentBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        using var attachmentContent = new MultipartFormDataContent();
+        var attachmentFile = new ByteArrayContent(attachmentBytes);
+        attachmentFile.Headers.ContentType = new("image/png");
+        attachmentContent.Add(attachmentFile, "file", "evidence.png");
+        var uploadAttachmentResponse = await PostAsync(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments",
+            attachmentContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, uploadAttachmentResponse.StatusCode);
+        var attachment = await uploadAttachmentResponse.Content.ReadFromJsonAsync<IssueAttachmentResponse>();
+        Assert.NotNull(attachment);
+        Assert.Equal("evidence.png", attachment.OriginalFileName);
+        Assert.Equal("image/png", attachment.ContentType);
+        Assert.Equal(attachmentBytes.Length, attachment.FileSize);
+        Assert.Equal(64, attachment.FileHash.Length);
+
+        var listedAttachments = await _client.GetFromJsonAsync<IssueAttachmentResponse[]>(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments");
+        Assert.NotNull(listedAttachments);
+        Assert.Equal(attachment.Id, Assert.Single(listedAttachments).Id);
+
+        var attachmentDownload = await _client.GetAsync(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments/{attachment.Id}/content?inline=true");
+        attachmentDownload.EnsureSuccessStatusCode();
+        Assert.Equal("image/png", attachmentDownload.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(attachmentBytes, await attachmentDownload.Content.ReadAsByteArrayAsync());
+
+        var deleteAttachmentResponse = await DeleteAsync(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments/{attachment.Id}",
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.NoContent, deleteAttachmentResponse.StatusCode);
+        var attachmentsAfterDelete = await _client.GetFromJsonAsync<IssueAttachmentResponse[]>(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments");
+        Assert.NotNull(attachmentsAfterDelete);
+        Assert.Empty(attachmentsAfterDelete);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(
+            $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/attachments/{attachment.Id}/content")).StatusCode);
 
         var updateRolesResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/members/{addedMember.Id}/roles",
@@ -209,6 +251,16 @@ public sealed class ProjectEndpointsTests(IdentityApiFactory factory)
             .ReadFromJsonAsync<IssueResponse>();
         Assert.NotNull(unassignedIssue);
         Assert.Null(unassignedIssue.AssigneeAccountId);
+
+        var filteredIssues = await _client.GetFromJsonAsync<PagedResult<IssueResponse>>(
+            $"/api/v1/projects/{created.Id}/issues?page=1&pageSize=20&search=CORE-1&typeCode=story&statusCode=in_progress&priorityCode=critical&unassigned=true&sortBy=updatedAt&sortDirection=desc");
+        Assert.NotNull(filteredIssues);
+        Assert.Equal(1, filteredIssues.TotalCount);
+        Assert.Equal(unassignedIssue.Id, Assert.Single(filteredIssues.Items).Id);
+
+        var contradictoryFilterResponse = await _client.GetAsync(
+            $"/api/v1/projects/{created.Id}/issues?page=1&pageSize=20&assigneeAccountId={addedMember.AccountId}&unassigned=true");
+        Assert.Equal(HttpStatusCode.BadRequest, contradictoryFilterResponse.StatusCode);
 
         var reviewerEditResponse = await PutAsync(
             reviewerClient,

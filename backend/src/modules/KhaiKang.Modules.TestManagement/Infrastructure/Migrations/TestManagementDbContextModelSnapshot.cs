@@ -109,6 +109,94 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.ToTable("test_cases", (string)null);
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("file_hash");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("storage_key");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("storage_provider");
+
+                    b.Property<Guid>("TestCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_case_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<Guid>("UploadedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_test_case_attachments");
+
+                    b.HasIndex("UploadedByAccountId");
+
+                    b.HasIndex("TestCaseId", "IsDeleted")
+                        .HasDatabaseName("idx_test_case_attachments_case_deleted");
+
+                    b.ToTable("test_case_attachments", (string)null);
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -447,6 +535,94 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .HasDatabaseName("idx_test_run_items_run_sort_order");
 
                     b.ToTable("test_run_items", (string)null);
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItemAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("file_hash");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("storage_key");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("storage_provider");
+
+                    b.Property<Guid>("TestRunItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_run_item_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<Guid>("UploadedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_test_run_item_attachments");
+
+                    b.HasIndex("UploadedByAccountId");
+
+                    b.HasIndex("TestRunItemId", "IsDeleted")
+                        .HasDatabaseName("idx_test_run_item_attachments_item_deleted");
+
+                    b.ToTable("test_run_item_attachments", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItemStepResult", b =>
@@ -870,6 +1046,25 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.Navigation("Suite");
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseAttachment", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestCase", "TestCase")
+                        .WithMany()
+                        .HasForeignKey("TestCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_case_attachments_case");
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_case_attachments_uploaded_by_account");
+
+                    b.Navigation("TestCase");
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>
                 {
                     b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestCase", "TestCase")
@@ -962,6 +1157,25 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_test_run_items_run");
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItemAttachment", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestRunItem", "TestRunItem")
+                        .WithMany()
+                        .HasForeignKey("TestRunItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_run_item_attachments_item");
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_run_item_attachments_uploaded_by_account");
+
+                    b.Navigation("TestRunItem");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestRunItemStepResult", b =>
