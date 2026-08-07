@@ -12,12 +12,14 @@ import UiAttachmentDialog from './UiAttachmentDialog.vue'
 const props = withDefaults(defineProps<{
   modelValue: string
   disabled?: boolean
+  showToolbar?: boolean
   placeholder?: string
   labels?: Record<string, string>
   uploadImage?: ((file: File) => Promise<{ src: string, alt?: string }>) | undefined
   uploadAttachment?: ((file: File) => Promise<{ src: string, name?: string }>) | undefined
 }>(), {
   disabled: false,
+  showToolbar: true,
   placeholder: '',
   labels: () => ({}),
 })
@@ -392,7 +394,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="ui-markdown-editor" :class="{ 'ui-markdown-editor--disabled': disabled }">
-    <div class="ui-markdown-editor__toolbar" role="toolbar" :aria-label="labels.toolbar">
+    <div v-if="showToolbar" class="ui-markdown-editor__toolbar" role="toolbar" :aria-label="labels.toolbar">
       <button type="button" :aria-label="labels.bold" :title="labels.bold" :disabled="disabled" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent="rememberSelection" @click="toggleBold"><Bold :size="16" aria-hidden="true" /></button>
       <button type="button" :aria-label="labels.italic" :title="labels.italic" :disabled="disabled" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent="rememberSelection" @click="toggleItalic"><Italic :size="16" aria-hidden="true" /></button>
       <label class="ui-markdown-editor__size"><span class="sr-only">{{ labels.blockStyle }}</span><select :aria-label="labels.blockStyle" :title="labels.blockStyleHint" :value="currentBlockStyle()" :disabled="disabled" @mousedown="rememberSelection" @change="setBlockStyle"><option value="paragraph">¶</option><option value="heading-1">H1</option><option value="heading-2">H2</option><option value="heading-3">H3</option></select></label>

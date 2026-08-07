@@ -1509,6 +1509,81 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TestRunResponse' }
         '409': { description: Run is terminal or version conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestRunItemAttachments
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active evidence attachments linked to the test run item.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestRunItemAttachmentResponse' } }
+        '404': { description: Run item, run, or workspace is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: UploadTestRunItemAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Evidence attachment stored and linked to the test run item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunItemAttachmentResponse' }
+        '403': { description: Current role cannot execute the test run. }
+        '404': { description: Run item, run, or workspace not found. }
+        '409': { description: Workspace is inactive or run is not in progress. }
+        '413': { description: File exceeds the configured size limit. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments/{attachmentId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Test Management]
+      operationId: DeleteTestRunItemAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '204': { description: Evidence attachment soft-deleted. }
+        '403': { description: Current role cannot execute the test run. }
+        '404': { description: Attachment, run item, run, or workspace not found. }
+        '409': { description: Workspace is inactive or run is not in progress. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments/{attachmentId}/content:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: inline, in: query, required: false, schema: { type: boolean, default: false } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestRunItemAttachmentContent
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Evidence attachment bytes; images may be rendered inline.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { description: Attachment, run item, run, or workspace not found. }
+        '503': { description: Attachment storage is unavailable. }
   /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/steps/{stepId}:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1794,6 +1869,20 @@ components:
       properties:
         id: { type: string, format: uuid }
         testCaseId: { type: string, format: uuid }
+        originalFileName: { type: string, maxLength: 255 }
+        contentType: { type: string, maxLength: 200 }
+        fileSize: { type: integer, format: int64, minimum: 1 }
+        fileHash: { type: string, minLength: 64, maxLength: 64 }
+        uploadedByAccountId: { type: string, format: uuid }
+        uploadedByUsername: { type: string }
+        createdAt: { type: string, format: date-time }
+    TestRunItemAttachmentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testRunItemId, originalFileName, contentType, fileSize, fileHash, uploadedByAccountId, uploadedByUsername, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        testRunItemId: { type: string, format: uuid }
         originalFileName: { type: string, maxLength: 255 }
         contentType: { type: string, maxLength: 200 }
         fileSize: { type: integer, format: int64, minimum: 1 }

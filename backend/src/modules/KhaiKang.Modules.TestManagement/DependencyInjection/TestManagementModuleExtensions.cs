@@ -20,6 +20,7 @@ public static class TestManagementModuleExtensions
         services.AddDbContext<TestManagementDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<TestManagementService>();
         services.AddScoped<TestCaseAttachmentService>();
+        services.AddScoped<TestRunItemAttachmentService>();
         services.AddControllers()
             .AddApplicationPart(typeof(TestCaseAttachmentsController).Assembly);
         return services;

@@ -6,12 +6,14 @@ import { UiMarkdown } from '@khaikang/ui'
 withDefaults(defineProps<{
   modelValue: string
   mode?: 'edit' | 'display'
+  size?: 'default' | 'compact'
   disabled?: boolean
   placeholder?: string
   uploadImage?: ((file: File) => Promise<{ src: string, alt?: string }>) | undefined
   uploadAttachment?: ((file: File) => Promise<{ src: string, name?: string }>) | undefined
 }>(), {
   mode: 'edit',
+  size: 'default',
   disabled: false,
   placeholder: '',
 })
@@ -64,6 +66,7 @@ const labels = computed(() => ({
   <UiMarkdown
     :model-value="modelValue"
     :mode="mode"
+    :size="size"
     :disabled="disabled"
     :placeholder="placeholder"
     :labels="labels"

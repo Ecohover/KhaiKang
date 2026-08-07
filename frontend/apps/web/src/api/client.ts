@@ -27,6 +27,7 @@ import type {
   TestSuiteResponse,
   TestCaseResponse,
   TestCaseAttachmentResponse,
+  TestRunItemAttachmentResponse,
   TestTagResponse,
   CreateTestTagRequest,
   UpdateTestTagRequest,
@@ -649,6 +650,56 @@ export const apiClient = {
       `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/steps/${stepId}`,
       { method: 'PUT', headers, body },
     )
+  },
+
+  uploadTestRunItemAttachment(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+    file: File,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunItemAttachmentResponse>> {
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    return requestForm(
+      `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/attachments`,
+      formData,
+      { method: 'POST', headers },
+    )
+  },
+
+  listTestRunItemAttachments(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+  ): Promise<ApiResult<TestRunItemAttachmentResponse[]>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/attachments`,
+    )
+  },
+
+  deleteTestRunItemAttachment(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+    attachmentId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/attachments/${attachmentId}`,
+      { method: 'DELETE', headers },
+    )
+  },
+
+  testRunItemAttachmentContentUrl(
+    workspaceId: string,
+    runId: string,
+    itemId: string,
+    attachmentId: string,
+    inline = false,
+  ): string {
+    const suffix = inline ? '?inline=true' : ''
+    return `/api/v1/test-workspaces/${workspaceId}/runs/${runId}/items/${itemId}/attachments/${attachmentId}/content${suffix}`
   },
 
   updateTestRunStatus(

@@ -386,6 +386,18 @@ export interface TestCaseAttachmentResponse {
   createdAt: string
 }
 
+export interface TestRunItemAttachmentResponse {
+  id: string
+  testRunItemId: string
+  originalFileName: string
+  contentType: string
+  fileSize: number
+  fileHash: string
+  uploadedByAccountId: string
+  uploadedByUsername: string
+  createdAt: string
+}
+
 export type TestPlanStatus = 'draft' | 'active' | 'archived'
 
 export interface CreateTestPlanRequest {

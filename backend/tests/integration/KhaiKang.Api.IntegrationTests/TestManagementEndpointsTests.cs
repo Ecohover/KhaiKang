@@ -183,6 +183,26 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("image/png", attachmentDownload.Content.Headers.ContentType?.MediaType);
         Assert.Equal(attachmentBytes, await attachmentDownload.Content.ReadAsByteArrayAsync());
 
+        var expectedResultWithImage =
+            $"ooo\n\n![case-evidence.png](/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments/{attachment.Id}/content?inline=true#size=12)";
+        var addExpectedImageResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
+            new UpdateTestCaseRequest(
+                suite.Id,
+                updatedCase.Title,
+                updatedCase.Description,
+                updatedCase.Preconditions,
+                updatedCase.OverallExpectedResult,
+                updatedCase.SortOrder,
+                updatedCase.Status,
+                updatedCase.Version,
+                [new("1. Enter **valid** credentials.", expectedResultWithImage)],
+                TagIds: [tag.Id]));
+        addExpectedImageResponse.EnsureSuccessStatusCode();
+        updatedCase = await addExpectedImageResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
+        Assert.NotNull(updatedCase);
+        Assert.Equal(expectedResultWithImage, Assert.Single(updatedCase.Steps).ExpectedResult);
+
         var createPlanResponse = await PostAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans",
             JsonContent.Create(new
@@ -226,6 +246,7 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         var runStep = Assert.Single(runItem.Steps);
         Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
         Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
+        Assert.Equal(expectedResultWithImage, runStep.ExpectedResult);
 
         var changeSourceResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
@@ -250,6 +271,7 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         runStep = Assert.Single(runItem.Steps);
         Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
         Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
+        Assert.Equal(expectedResultWithImage, runStep.ExpectedResult);
 
         var stepResultResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/steps/{runStep.Id}",
@@ -261,6 +283,58 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("in_progress", stepRecordedRun.Status);
 
         runItem = Assert.Single(stepRecordedRun.Items);
+        var runEvidenceBytes = "run evidence"u8.ToArray();
+        using var runEvidenceContent = new MultipartFormDataContent();
+        var runEvidenceFile = new ByteArrayContent(runEvidenceBytes);
+        runEvidenceFile.Headers.ContentType = new("text/plain");
+        runEvidenceContent.Add(runEvidenceFile, "file", "run-evidence.txt");
+        var uploadRunEvidenceResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            runEvidenceContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, uploadRunEvidenceResponse.StatusCode);
+        var runEvidence = await uploadRunEvidenceResponse.Content
+            .ReadFromJsonAsync<TestRunItemAttachmentResponse>();
+        Assert.NotNull(runEvidence);
+        Assert.Equal(runItem.Id, runEvidence.TestRunItemId);
+        Assert.Equal("run-evidence.txt", runEvidence.OriginalFileName);
+
+        var listedRunEvidence = await _client
+            .GetFromJsonAsync<TestRunItemAttachmentResponse[]>(
+                $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments");
+        Assert.NotNull(listedRunEvidence);
+        Assert.Equal(runEvidence.Id, Assert.Single(listedRunEvidence).Id);
+
+        var runEvidenceDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}/content");
+        runEvidenceDownload.EnsureSuccessStatusCode();
+        Assert.Equal(runEvidenceBytes, await runEvidenceDownload.Content.ReadAsByteArrayAsync());
+
+        var deleteRunEvidenceRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}");
+        deleteRunEvidenceRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        var deleteRunEvidenceResponse = await _client.SendAsync(deleteRunEvidenceRequest);
+        Assert.Equal(HttpStatusCode.NoContent, deleteRunEvidenceResponse.StatusCode);
+
+        var deletedRunEvidenceDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}/content");
+        Assert.Equal(HttpStatusCode.NotFound, deletedRunEvidenceDownload.StatusCode);
+
+        using var retainedEvidenceContent = new MultipartFormDataContent();
+        retainedEvidenceContent.Add(
+            new ByteArrayContent("retained evidence"u8.ToArray()),
+            "file",
+            "retained-evidence.txt");
+        var retainedEvidenceResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            retainedEvidenceContent,
+            await GetCsrfTokenAsync());
+        retainedEvidenceResponse.EnsureSuccessStatusCode();
+        var retainedEvidence = await retainedEvidenceResponse.Content
+            .ReadFromJsonAsync<TestRunItemAttachmentResponse>();
+        Assert.NotNull(retainedEvidence);
+
         var itemResultResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
             new RecordTestResultRequest("passed", "Scenario passed.", runItem.Version));
@@ -280,6 +354,24 @@ public sealed class TestManagementEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("completed", completedRun.Status);
 
         runItem = Assert.Single(completedRun.Items);
+        using var terminalEvidenceContent = new MultipartFormDataContent();
+        terminalEvidenceContent.Add(
+            new ByteArrayContent("late evidence"u8.ToArray()),
+            "file",
+            "late-evidence.txt");
+        var terminalUploadResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            terminalEvidenceContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Conflict, terminalUploadResponse.StatusCode);
+
+        var terminalDeleteRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{retainedEvidence.Id}");
+        terminalDeleteRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        var terminalDeleteResponse = await _client.SendAsync(terminalDeleteRequest);
+        Assert.Equal(HttpStatusCode.Conflict, terminalDeleteResponse.StatusCode);
+
         var immutableResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
             new RecordTestResultRequest("failed", "Must not change.", runItem.Version));
