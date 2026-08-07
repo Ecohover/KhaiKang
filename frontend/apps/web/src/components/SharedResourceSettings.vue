@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Save, Settings, AlertCircle, CheckCircle2 } from '@lucide/vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
   defineProps<{
@@ -20,8 +21,6 @@ const props = withDefaults(
     saved?: boolean
   }>(),
   {
-    sectionDescription: '更新資源基本資料與狀態',
-    codeLabel: '資源代碼',
     canEdit: true,
     canChangeStatus: true,
     loading: false,
@@ -31,6 +30,8 @@ const props = withDefaults(
   },
 )
 
+const { t } = useI18n()
+
 const emit = defineEmits<{
   (e: 'save', payload: { name: string; description: string; status: 'active' | 'inactive' }): void
 }>()
@@ -38,6 +39,8 @@ const emit = defineEmits<{
 const formName = ref(props.name)
 const formDescription = ref(props.description)
 const formStatus = ref<'active' | 'inactive'>(props.status)
+const displayDescription = computed(() => props.sectionDescription ?? t('common.settings.defaultDescription'))
+const displayCodeLabel = computed(() => props.codeLabel ?? t('common.settings.defaultCodeLabel'))
 
 watch(
   () => props.name,
@@ -77,23 +80,23 @@ function handleSubmit(): void {
         <Settings :size="20" class="header-icon" />
         <div>
           <h3>{{ title }}</h3>
-          <p class="sub-desc">{{ sectionDescription }}</p>
+          <p class="sub-desc">{{ displayDescription }}</p>
         </div>
       </div>
-      <span v-if="version !== undefined" class="version-tag">版本 v{{ version }}</span>
+      <span v-if="version !== undefined" class="version-tag">{{ t('common.settings.version', { version }) }}</span>
     </header>
 
-    <div v-if="loading" class="form-state">載入設定資料中...</div>
+    <div v-if="loading" class="form-state">{{ t('common.settings.loading') }}</div>
 
     <form v-else class="settings-form" @submit.prevent="handleSubmit">
       <div class="form-grid">
         <!-- NAME FIELD -->
         <label class="form-field">
-          <span class="label-text">名稱 *</span>
+          <span class="label-text">{{ t('common.settings.nameRequired') }}</span>
           <input
             v-model="formName"
             class="input-control"
-            placeholder="請輸入名稱"
+            :placeholder="t('common.settings.namePlaceholder')"
             :disabled="saving || !canEdit"
             required
           />
@@ -101,35 +104,35 @@ function handleSubmit(): void {
 
         <!-- CODE / PREFIX FIELD (READONLY) -->
         <label class="form-field">
-          <span class="label-text">{{ codeLabel }}</span>
+          <span class="label-text">{{ displayCodeLabel }}</span>
           <input :value="codeOrPrefix" class="input-control readonly-input" disabled />
-          <small class="help-text">建立後此代碼/前綴無法修改</small>
+          <small class="help-text">{{ t('common.settings.codeImmutable') }}</small>
         </label>
 
         <!-- DESCRIPTION FIELD -->
         <label class="form-field full-width">
-          <span class="label-text">說明 / 簡介</span>
+          <span class="label-text">{{ t('common.settings.descriptionLabel') }}</span>
           <textarea
             v-model="formDescription"
             class="textarea-control"
             rows="4"
-            placeholder="填寫簡介說明..."
+            :placeholder="t('common.settings.descriptionPlaceholder')"
             :disabled="saving || !canEdit"
           />
         </label>
 
         <!-- STATUS FIELD -->
         <label class="form-field">
-          <span class="label-text">狀態</span>
+          <span class="label-text">{{ t('common.fields.status') }}</span>
           <select
             v-model="formStatus"
             class="select-control"
             :disabled="saving || !canEdit || !canChangeStatus"
           >
-            <option value="active">使用中 (Active)</option>
-            <option value="inactive">已停用 (Inactive)</option>
+            <option value="active">{{ t('common.status.active') }}</option>
+            <option value="inactive">{{ t('common.status.inactive') }}</option>
           </select>
-          <small v-if="!canChangeStatus" class="help-text">缺乏變更狀態權限</small>
+          <small v-if="!canChangeStatus" class="help-text">{{ t('common.settings.statusPermission') }}</small>
         </label>
       </div>
 
@@ -138,19 +141,19 @@ function handleSubmit(): void {
         <AlertCircle :size="16" /> {{ error }}
       </div>
       <div v-if="saved" class="message-banner success-banner" role="status">
-        <CheckCircle2 :size="16" /> 設定已成功儲存！
+        <CheckCircle2 :size="16" /> {{ t('common.settings.saved') }}
       </div>
 
       <!-- FORM ACTIONS -->
       <div class="form-actions">
-        <span v-if="!canEdit" class="permission-hint">僅供檢視，無編輯權限</span>
+        <span v-if="!canEdit" class="permission-hint">{{ t('common.settings.readOnly') }}</span>
         <button
           v-if="canEdit"
           type="submit"
           class="btn-primary"
           :disabled="saving || !formName.trim()"
         >
-          <Save :size="15" /> {{ saving ? '儲存中...' : '儲存設定' }}
+          <Save :size="15" /> {{ saving ? t('common.settings.saving') : t('common.settings.save') }}
         </button>
       </div>
     </form>

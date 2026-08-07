@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { ArrowLeft, CheckCircle2, ClipboardList, FileText, RefreshCw, Target } from '@lucide/vue'
+import { ArrowLeft, CheckCircle2, ClipboardList, FileText, Paperclip, RefreshCw, Target, Trash2, Upload } from '@lucide/vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiCreateActions } from '@khaikang/ui'
+import { UiAttachmentLink, UiButton, UiCreateActions, UiFormActionBar, UiFormSection, UiInput } from '@khaikang/ui'
+import AppMarkdown from '../components/AppMarkdown.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
+  IssueAttachmentResponse,
   IssueResponse,
   ProjectMemberResponse,
   ProjectResponse,
@@ -24,9 +26,11 @@ const project = ref<ProjectResponse>()
 const issue = ref<IssueResponse>()
 const metadata = ref<IssueMetadataResponse>()
 const members = ref<ProjectMemberResponse[]>([])
+const attachments = ref<IssueAttachmentResponse[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const savingAssignee = ref(false)
+const uploadingAttachment = ref(false)
 const error = ref('')
 const versionConflict = ref(false)
 const allowNavigation = ref(false)
@@ -54,6 +58,18 @@ const canCreate = computed(
 const canAssign = computed(
   () => project.value?.currentUserPermissions.includes('issue.assignee.change') ?? false,
 )
+const canUploadAttachments = computed(() => Boolean(
+  issueId.value && isActiveProject.value &&
+  project.value?.currentUserPermissions.includes('issue.attachment.upload'),
+))
+const canDeleteAttachments = computed(() => Boolean(
+  isActiveProject.value && project.value?.currentUserPermissions.includes('issue.attachment.delete'),
+))
+const attachmentDialogLabels = computed(() => ({
+  attachmentDialog: t('common.markdown.attachmentDialog'),
+  downloadAttachment: t('common.markdown.downloadAttachment'),
+  close: t('common.actions.close'),
+}))
 const contentReadOnly = computed(() => isEditing.value && !canEdit.value)
 const canSave = computed(
   () => isActiveProject.value
@@ -88,11 +104,12 @@ async function loadPage(): Promise<void> {
   error.value = ''
   versionConflict.value = false
   try {
-    const [projectResult, metadataResult, memberResult, issueResult] = await Promise.all([
+    const [projectResult, metadataResult, memberResult, issueResult, attachmentResult] = await Promise.all([
       apiClient.getProject(projectId.value),
       apiClient.getIssueMetadata(projectId.value),
       apiClient.listProjectMembers(projectId.value),
       issueId.value ? apiClient.getIssue(projectId.value, issueId.value) : Promise.resolve(undefined),
+      issueId.value ? apiClient.listIssueAttachments(projectId.value, issueId.value) : Promise.resolve(undefined),
     ])
 
     if (!projectResult.data || !metadataResult.data || (isEditing.value && !issueResult?.data)) {
@@ -106,6 +123,7 @@ async function loadPage(): Promise<void> {
     project.value = projectResult.data
     metadata.value = metadataResult.data
     members.value = memberResult.data ?? []
+    attachments.value = attachmentResult?.data ?? []
     if (issueResult?.data) {
       applyIssue(issueResult.data)
     } else {
@@ -271,6 +289,73 @@ function formatDateTime(value: string | null): string {
   if (!value) return t('projects.issues.notCompleted')
   return d(new Date(value), 'dateTime')
 }
+
+async function uploadIssueAttachment(file: File): Promise<IssueAttachmentResponse> {
+  if (!issueId.value || !canUploadAttachments.value) throw new Error('Attachment upload is unavailable.')
+  const result = await apiClient.uploadIssueAttachment(
+    projectId.value,
+    issueId.value,
+    file,
+    await secureHeaders(),
+  )
+  if (!result.data) throw new Error(problemMessage(result.error, t('projects.issues.attachments.uploadFailed')))
+  attachments.value = [result.data, ...attachments.value.filter(item => item.id !== result.data!.id)]
+  return result.data
+}
+
+async function uploadIssueImage(file: File): Promise<{ src: string, alt: string }> {
+  if (!file.type.startsWith('image/')) throw new Error('An image file is required.')
+  const attachment = await uploadIssueAttachment(file)
+  return {
+    src: apiClient.issueAttachmentContentUrl(projectId.value, attachment.issueId, attachment.id, true),
+    alt: attachment.originalFileName,
+  }
+}
+
+async function uploadIssueFile(file: File): Promise<{ src: string, name: string }> {
+  const attachment = await uploadIssueAttachment(file)
+  return {
+    src: apiClient.issueAttachmentContentUrl(projectId.value, attachment.issueId, attachment.id),
+    name: attachment.originalFileName,
+  }
+}
+
+async function selectAttachment(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || uploadingAttachment.value) return
+  uploadingAttachment.value = true
+  error.value = ''
+  try {
+    await uploadIssueAttachment(file)
+  } catch (uploadError) {
+    error.value = uploadError instanceof Error ? uploadError.message : t('projects.issues.attachments.uploadFailed')
+  } finally {
+    uploadingAttachment.value = false
+    input.value = ''
+  }
+}
+
+async function deleteAttachment(attachment: IssueAttachmentResponse): Promise<void> {
+  if (!issueId.value || !canDeleteAttachments.value ||
+      !window.confirm(t('projects.issues.attachments.deleteConfirm'))) return
+  error.value = ''
+  const result = await apiClient.deleteIssueAttachment(
+    projectId.value,
+    issueId.value,
+    attachment.id,
+    await secureHeaders(),
+  )
+  if (result.error) {
+    error.value = problemMessage(result.error, t('projects.issues.attachments.deleteFailed'))
+    return
+  }
+  attachments.value = attachments.value.filter(item => item.id !== attachment.id)
+}
+
+function attachmentSize(fileSize: number): string {
+  return t('projects.issues.attachments.size', { size: Math.max(0.1, fileSize / 1024).toFixed(1) })
+}
 </script>
 
 <template>
@@ -289,22 +374,6 @@ function formatDateTime(value: string | null): string {
           <h2>{{ isEditing ? issue?.key ?? t('projects.issues.edit') : t('projects.issues.create') }}</h2>
           <span>{{ t(isEditing ? 'projects.issues.editDescription' : 'projects.issues.createDescription') }}</span>
         </div>
-        <div v-if="isEditing" class="heading-actions">
-          <UiButton :disabled="!canSave || saving" @click="save()">
-            {{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}
-          </UiButton>
-        </div>
-        <UiCreateActions
-          v-else
-          :show-cancel="false"
-          :loading="saving"
-          :disabled="!canSave"
-          :cancel-label="t('common.actions.cancel')"
-          :create-label="t('projects.issues.create')"
-          :continue-label="t('projects.issues.createAndContinue')"
-          @create="save(false)"
-          @create-continue="save(true)"
-        />
       </div>
     </header>
 
@@ -341,10 +410,10 @@ function formatDateTime(value: string | null): string {
         {{ t('projects.issues.inactiveProject') }}
       </p>
 
-      <section class="form-section">
-        <header><ClipboardList :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.basic.title') }}</h3><p>{{ t('projects.issues.basic.description') }}</p></div></header>
+      <UiFormSection>
+        <template #header><ClipboardList :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.basic.title') }}</h3><p>{{ t('projects.issues.basic.description') }}</p></div></template>
         <div class="field-grid">
-          <label class="field field--full" for="issue-title"><span>{{ t('projects.issues.fields.title') }}</span><input id="issue-title" v-model="form.title" required maxlength="200" :placeholder="t('projects.issues.fields.titlePlaceholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
+          <label class="field field--full" for="issue-title"><span>{{ t('projects.issues.fields.title') }}</span><UiInput id="issue-title" v-model="form.title" required maxlength="200" :placeholder="t('projects.issues.fields.titlePlaceholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
           <label class="field"><span>{{ t('projects.issues.fields.type') }}</span><select v-model="form.typeCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.types" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
           <label class="field"><span>{{ t('projects.issues.fields.priority') }}</span><select v-model="form.priorityCode" required :disabled="contentReadOnly || !isActiveProject"><option v-for="item in metadata.priorities" :key="item.code" :value="item.code">{{ item.name }}</option></select></label>
           <label class="field"><span>{{ t('projects.issues.fields.assignee') }}</span><select
@@ -353,26 +422,33 @@ function formatDateTime(value: string | null): string {
             @change="isEditing && changeAssignee(($event.target as HTMLSelectElement).value || null)"
           ><option :value="null">{{ t('projects.issues.unassigned') }}</option><option v-for="member in members" :key="member.id" :value="member.accountId">{{ member.username }}</option></select></label>
           <div v-if="issue" class="field"><span>{{ t('projects.issues.fields.currentStatus') }}</span><div class="read-value">{{ issue.statusName }}</div></div>
-          <label class="field field--full"><span>{{ t('projects.issues.fields.description') }}</span><textarea v-model="form.description" rows="5" maxlength="20000" :placeholder="t('projects.issues.fields.descriptionPlaceholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
+          <div class="field field--full"><span>{{ t('projects.issues.fields.description') }}</span><AppMarkdown v-model="form.description" :mode="contentReadOnly ? 'display' : 'edit'" :placeholder="t('projects.issues.fields.descriptionPlaceholder')" :disabled="!isActiveProject" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div>
         </div>
-      </section>
+      </UiFormSection>
 
-      <section class="form-section">
-        <header><FileText :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.userStory.title') }}</h3><p>{{ t('projects.issues.userStory.description') }}</p></div></header>
-        <label class="field"><textarea v-model="form.userStory" rows="8" maxlength="20000" placeholder="As a... I want... So that..." :disabled="contentReadOnly || !isActiveProject" /></label>
-      </section>
+      <UiFormSection><template #header><FileText :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.userStory.title') }}</h3><p>{{ t('projects.issues.userStory.description') }}</p></div></template><div class="field"><AppMarkdown v-model="form.userStory" :mode="contentReadOnly ? 'display' : 'edit'" placeholder="As a... I want... So that..." :disabled="!isActiveProject" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div></UiFormSection>
 
-      <section class="form-section">
-        <header><Target :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.definition.title') }}</h3><p>{{ t('projects.issues.definition.description') }}</p></div></header>
-        <label class="field"><textarea v-model="form.definitionOfDone" rows="8" maxlength="20000" :placeholder="t('projects.issues.definition.placeholder')" :disabled="contentReadOnly || !isActiveProject" /></label>
-      </section>
+      <UiFormSection><template #header><Target :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.definition.title') }}</h3><p>{{ t('projects.issues.definition.description') }}</p></div></template><div class="field"><AppMarkdown v-model="form.definitionOfDone" :mode="contentReadOnly ? 'display' : 'edit'" :placeholder="t('projects.issues.definition.placeholder')" :disabled="!isActiveProject" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div></UiFormSection>
 
-      <section class="form-section">
-        <header><CheckCircle2 :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.completion.title') }}</h3><p>{{ t('projects.issues.completion.description') }}</p></div></header>
-        <label class="field"><textarea v-model="form.completionSummary" rows="8" maxlength="20000" :disabled="!isEditing || contentReadOnly || !isActiveProject" :placeholder="t(isEditing ? 'projects.issues.completion.editPlaceholder' : 'projects.issues.completion.createPlaceholder')" /></label>
-      </section>
+      <UiFormSection><template #header><CheckCircle2 :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.completion.title') }}</h3><p>{{ t('projects.issues.completion.description') }}</p></div></template><div class="field"><AppMarkdown v-model="form.completionSummary" :mode="!isEditing || contentReadOnly ? 'display' : 'edit'" :disabled="!isActiveProject" :placeholder="t(isEditing ? 'projects.issues.completion.editPlaceholder' : 'projects.issues.completion.createPlaceholder')" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div></UiFormSection>
 
-      <footer class="form-actions">
+      <UiFormSection v-if="isEditing">
+        <template #header><Paperclip :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.attachments.title') }}</h3><p>{{ t('projects.issues.attachments.description') }}</p></div></template>
+        <label v-if="canUploadAttachments" class="attachment-upload">
+          <Upload :size="16" aria-hidden="true" />
+          <span>{{ t(uploadingAttachment ? 'projects.issues.attachments.uploading' : 'projects.issues.attachments.upload') }}</span>
+          <input type="file" :disabled="uploadingAttachment" @change="selectAttachment" />
+        </label>
+        <p v-if="attachments.length === 0" class="attachment-empty">{{ t('projects.issues.attachments.empty') }}</p>
+        <ul v-else class="attachment-list">
+          <li v-for="attachment in attachments" :key="attachment.id">
+            <div><UiAttachmentLink :href="apiClient.issueAttachmentContentUrl(projectId, attachment.issueId, attachment.id)" :file-name="attachment.originalFileName" :labels="attachmentDialogLabels" /><small>{{ attachmentSize(attachment.fileSize) }} · {{ attachment.uploadedByUsername }}</small></div>
+            <UiButton v-if="canDeleteAttachments" type="button" variant="secondary" :aria-label="t('projects.issues.attachments.delete')" @click="deleteAttachment(attachment)"><Trash2 :size="15" aria-hidden="true" /></UiButton>
+          </li>
+        </ul>
+      </UiFormSection>
+
+      <UiFormActionBar mode="floating">
         <template v-if="isEditing">
           <UiButton variant="secondary" type="button" @click="router.push({ name: 'project-issues', params: { projectId } })">{{ t('common.actions.cancel') }}</UiButton>
           <UiButton type="submit" :disabled="!canSave || saving">{{ t(saving ? 'projects.issues.saving' : 'projects.issues.saveChanges') }}</UiButton>
@@ -388,7 +464,7 @@ function formatDateTime(value: string | null): string {
           @create="save(false)"
           @create-continue="save(true)"
         />
-      </footer>
+      </UiFormActionBar>
     </form>
 
   </section>
@@ -399,7 +475,6 @@ function formatDateTime(value: string | null): string {
 .page-heading { display: grid; gap: 14px; }
 .back-link { display: flex; width: fit-content; align-items: center; gap: 6px; padding: 0; color: var(--kk-text-muted); background: transparent; border: 0; cursor: pointer; }
 .heading-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
 .heading-row p, .heading-row h2 { margin: 0; }
 .heading-row p { color: var(--kk-accent); font-size: .75rem; font-weight: 750; letter-spacing: .08em; }
 .heading-row h2 { font-size: 1.8rem; }
@@ -422,9 +497,16 @@ function formatDateTime(value: string | null): string {
 .field textarea { line-height: 1.65; resize: vertical; }
 .field textarea:disabled { color: var(--kk-text-muted); background: var(--kk-surface-subtle); }
 .read-value { min-height: 39px; background: var(--kk-surface-subtle); }
-.form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 4px 0 20px; }
 .action-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: var(--kk-danger); background: #fff1f0; border: 1px solid #f1c2bd; border-radius: 7px; font-size: .82rem; }
 .readonly-notice { margin: 0; padding: 10px 14px; color: var(--kk-text-muted); background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 7px; font-size: .82rem; }
+.attachment-upload { position: relative; display: inline-flex; width: fit-content; min-height: 34px; align-items: center; gap: 7px; padding: 7px 11px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font-size: .82rem; font-weight: 650; cursor: pointer; }
+.attachment-upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.attachment-empty { margin: 0; color: var(--kk-text-muted); font-size: .84rem; }
+.attachment-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.attachment-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--kk-surface-subtle); border: 1px solid var(--kk-border); border-radius: 6px; }
+.attachment-list li > div { display: grid; min-width: 0; gap: 3px; }
+.attachment-list a { overflow: hidden; color: var(--kk-accent); font-size: .86rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-list small { color: var(--kk-text-muted); font-size: .72rem; }
 .page-state { padding: 42px 24px; text-align: center; background: var(--kk-surface); border: 1px dashed var(--kk-border-strong); border-radius: var(--kk-radius); }
 .page-state--error { color: var(--kk-danger); }
 @media (max-width: 720px) { .heading-row, .action-error { align-items: stretch; flex-direction: column; } .heading-actions { justify-content: flex-start; } .record-info { grid-template-columns: 1fr 1fr; } .field-grid { grid-template-columns: 1fr; } .field--full { grid-column: 1; } }

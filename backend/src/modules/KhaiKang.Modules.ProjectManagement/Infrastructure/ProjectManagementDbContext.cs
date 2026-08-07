@@ -27,6 +27,8 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
 
     public DbSet<Issue> Issues => Set<Issue>();
 
+    public DbSet<IssueAttachment> IssueAttachments => Set<IssueAttachment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var enforceAccountForeignKeys = Database.IsNpgsql();
@@ -45,6 +47,7 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         ConfigureIssueStatus(modelBuilder);
         ConfigureIssuePriority(modelBuilder);
         ConfigureIssue(modelBuilder, enforceAccountForeignKeys);
+        ConfigureIssueAttachment(modelBuilder, enforceAccountForeignKeys);
         ConfigureProjectAuditEvent(modelBuilder, enforceAccountForeignKeys);
     }
 
@@ -448,6 +451,49 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         entity.Property<DateTimeOffset>("UpdatedAt").HasColumnName("updated_at");
         entity.Property<Guid?>("UpdatedByAccountId").HasColumnName("updated_by_account_id");
         entity.Property<int>("Version").HasColumnName("version").IsConcurrencyToken();
+    }
+
+    private static void ConfigureIssueAttachment(
+        ModelBuilder modelBuilder,
+        bool enforceAccountForeignKeys)
+    {
+        var attachment = modelBuilder.Entity<IssueAttachment>();
+        attachment.ToTable("issue_attachments");
+        attachment.HasKey(x => x.Id).HasName("pk_issue_attachments");
+        attachment.Property(x => x.Id).HasColumnName("id");
+        attachment.Property(x => x.IssueId).HasColumnName("issue_id");
+        attachment.Property(x => x.UploadedByAccountId).HasColumnName("uploaded_by_account_id");
+        attachment.Property(x => x.OriginalFileName).HasColumnName("original_file_name").HasMaxLength(255);
+        attachment.Property(x => x.StorageProvider).HasColumnName("storage_provider").HasMaxLength(20);
+        attachment.Property(x => x.StorageKey).HasColumnName("storage_key");
+        attachment.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(200);
+        attachment.Property(x => x.FileSize).HasColumnName("file_size");
+        attachment.Property(x => x.FileHash).HasColumnName("file_hash").HasMaxLength(64);
+        attachment.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+        attachment.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        attachment.Property(x => x.CreatedAt).HasColumnName("created_at");
+        attachment.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
+        attachment.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        attachment.Property(x => x.UpdatedByAccountId).HasColumnName("updated_by_account_id");
+        attachment.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        attachment.HasIndex(x => x.IssueId).HasDatabaseName("idx_issue_attachments_issue_id");
+        attachment.HasIndex(x => x.UploadedByAccountId)
+            .HasDatabaseName("idx_issue_attachments_uploaded_by_account_id");
+        attachment.HasIndex(x => new { x.IssueId, x.IsDeleted })
+            .HasDatabaseName("idx_issue_attachments_issue_deleted");
+        attachment.HasOne(x => x.Issue)
+            .WithMany()
+            .HasForeignKey(x => x.IssueId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_issue_attachments_issue");
+        if (enforceAccountForeignKeys)
+        {
+            attachment.HasOne<AccountReference>()
+                .WithMany()
+                .HasForeignKey(x => x.UploadedByAccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_issue_attachments_uploaded_by_account");
+        }
     }
 
     private static object SeedIssueLookup(

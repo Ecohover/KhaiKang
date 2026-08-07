@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { ArrowLeft, GripVertical, Plus, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Plus, Trash2 } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiField } from '@khaikang/ui'
+import { UiButton, UiCreateActions, UiField, UiFormActionBar, UiFormSection } from '@khaikang/ui'
+import AppMarkdown from '../components/AppMarkdown.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -39,11 +40,11 @@ const activeSuites = computed(() =>
 )
 
 const validationHint = computed(() => {
-  if (!suiteId.value) return '請選擇測試套件'
-  if (!title.value.trim()) return '請填寫案例標題'
-  if (!steps.value.length) return '至少需要一個測試步驟'
+  if (!suiteId.value) return t('tests.testCase.suiteRequired')
+  if (!title.value.trim()) return t('tests.testCase.titleRequired')
+  if (!steps.value.length) return t('tests.testCase.stepsRequired')
   if (steps.value.some((step) => !step.action.trim() || !step.expectedResult.trim())) {
-    return '所有步驟的操作說明與預期結果均不得為空'
+    return t('tests.testCase.stepFieldsRequired')
   }
   return ''
 })
@@ -60,6 +61,15 @@ function addStep(): void {
 
 function removeStep(index: number): void {
   if (steps.value.length > 1) steps.value.splice(index, 1)
+}
+
+function moveStep(index: number, direction: -1 | 1): void {
+  const target = index + direction
+  if (target < 0 || target >= steps.value.length) return
+  const step = steps.value[index]
+  if (!step) return
+  steps.value.splice(index, 1)
+  steps.value.splice(target, 0, step)
 }
 
 async function load(): Promise<void> {
@@ -142,13 +152,13 @@ onMounted(load)
 
     <p v-if="loading" class="state-panel">{{ t('tests.workspace.loading') }}</p>
     <form v-else-if="workspace" class="create-form" @submit.prevent="create(false)">
-      <section class="form-section">
-        <header>
+      <UiFormSection>
+        <template #header>
           <div>
             <h3>{{ t('tests.testCase.basicInformation') }}</h3>
             <p>{{ t('tests.testCase.basicInformationHint') }}</p>
           </div>
-        </header>
+        </template>
         <label>
           <span>{{ t('tests.testCase.suite') }}</span>
           <select v-model="suiteId" required :disabled="creating">
@@ -165,27 +175,22 @@ onMounted(load)
           :placeholder="t('tests.testCase.titlePlaceholder')"
           :disabled="creating"
         />
-        <label>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.description') }}</span>
-          <textarea v-model="description" rows="3" maxlength="4000" :disabled="creating" />
-        </label>
-        <label>
+          <AppMarkdown v-model="description" :disabled="creating" />
+        </div>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.preconditions') }}</span>
-          <textarea v-model="preconditions" rows="3" maxlength="4000" :disabled="creating" />
-        </label>
-        <label>
+          <AppMarkdown v-model="preconditions" :disabled="creating" />
+        </div>
+        <div class="markdown-field">
           <span>{{ t('tests.testCase.overallExpectedResult') }}</span>
-          <textarea
-            v-model="overallExpectedResult"
-            rows="3"
-            maxlength="4000"
-            :disabled="creating"
-          />
-        </label>
-      </section>
+          <AppMarkdown v-model="overallExpectedResult" :disabled="creating" />
+        </div>
+      </UiFormSection>
 
-      <section class="form-section">
-        <header>
+      <UiFormSection>
+        <template #header>
           <div>
             <h3>{{ t('tests.testCase.steps') }}</h3>
             <p>{{ t('tests.testCase.stepsHint') }}</p>
@@ -193,71 +198,43 @@ onMounted(load)
           <UiButton type="button" variant="secondary" :disabled="creating" @click="addStep">
             <Plus :size="16" />{{ t('tests.testCase.addStep') }}
           </UiButton>
-        </header>
+        </template>
         <article v-for="(step, index) in steps" :key="step.key" class="step-card">
           <header>
             <span><GripVertical :size="17" />{{ t('tests.testCase.stepNumber', { number: index + 1 }) }}</span>
-            <button
-              type="button"
-              :disabled="creating || steps.length === 1"
-              :aria-label="t('tests.testCase.removeStep')"
-              @click="removeStep(index)"
-            >
-              <Trash2 :size="16" />{{ t('tests.testCase.removeStep') }}
-            </button>
+            <div class="step-actions">
+              <button type="button" :disabled="creating || index === 0" :aria-label="t('tests.testCase.moveStepUp')" @click="moveStep(index, -1)"><ArrowUp :size="16" /></button>
+              <button type="button" :disabled="creating || index === steps.length - 1" :aria-label="t('tests.testCase.moveStepDown')" @click="moveStep(index, 1)"><ArrowDown :size="16" /></button>
+              <button type="button" :disabled="creating || steps.length === 1" :aria-label="t('tests.testCase.removeStep')" @click="removeStep(index)"><Trash2 :size="16" />{{ t('tests.testCase.removeStep') }}</button>
+            </div>
           </header>
-          <label>
+          <div class="markdown-field">
             <span>{{ t('tests.testCase.action') }}</span>
-            <textarea v-model="step.action" rows="3" maxlength="4000" required :disabled="creating" />
-          </label>
-          <label>
+            <AppMarkdown v-model="step.action" :disabled="creating" />
+          </div>
+          <div class="markdown-field">
             <span>{{ t('tests.testCase.expectedResult') }}</span>
-            <textarea
-              v-model="step.expectedResult"
-              rows="3"
-              maxlength="4000"
-              required
-              :disabled="creating"
-            />
-          </label>
+            <AppMarkdown v-model="step.expectedResult" :disabled="creating" />
+          </div>
         </article>
-      </section>
+      </UiFormSection>
 
-      <!-- STICKY ACTION BAR FIXED AT BOTTOM OF SCREEN -->
-      <div class="sticky-action-bar">
-        <div class="sticky-action-content">
-          <div class="validation-status">
-            <p v-if="error" class="error" role="alert">{{ error }}</p>
-            <p v-else-if="!isValid" class="validation-hint">{{ validationHint }}</p>
-          </div>
-          <div class="actions-group">
-            <UiButton
-              type="button"
-              variant="secondary"
-              :disabled="creating"
-              @click="router.push({ name: 'test-suites', params: { workspaceId } })"
-            >
-              {{ t('common.actions.cancel') }}
-            </UiButton>
-            <UiButton
-              type="button"
-              :loading="creating"
-              :disabled="!isValid"
-              @click="create(false)"
-            >
-              {{ t('tests.testCase.create') }}
-            </UiButton>
-            <UiButton
-              type="button"
-              variant="secondary"
-              :disabled="!isValid || creating"
-              @click="create(true)"
-            >
-              {{ t('tests.testCase.createAndContinue') }}
-            </UiButton>
-          </div>
-        </div>
-      </div>
+      <UiFormActionBar mode="floating">
+        <template #status>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+          <p v-else-if="!isValid" class="validation-hint">{{ validationHint }}</p>
+        </template>
+          <UiCreateActions
+            :loading="creating"
+            :disabled="!isValid"
+            :cancel-label="t('common.actions.cancel')"
+            :create-label="t('tests.testCase.create')"
+            :continue-label="t('tests.testCase.createAndContinue')"
+            @cancel="router.push({ name: 'test-suites', params: { workspaceId } })"
+            @create="create(false)"
+            @create-continue="create(true)"
+          />
+      </UiFormActionBar>
     </form>
     <div v-else class="state-panel state-panel--error" role="alert">{{ error }}</div>
   </section>
@@ -335,8 +312,11 @@ onMounted(load)
   font-size: 0.84rem;
 }
 
-.form-section label {
+.form-section label,
+.form-section .markdown-field {
   display: grid;
+  min-width: 0;
+  align-content: start;
   gap: 7px;
   font-size: 0.875rem;
   font-weight: 650;
@@ -354,7 +334,8 @@ onMounted(load)
 
 .step-card {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
   gap: 14px;
   padding: 16px;
   background: var(--kk-surface-subtle);
@@ -384,33 +365,9 @@ onMounted(load)
   opacity: 0.4;
   cursor: not-allowed;
 }
+.step-actions{display:flex;align-items:center;gap:4px}.step-actions button:not(:last-child){display:grid;place-items:center;padding:5px;border:1px solid var(--kk-border);border-radius:4px;background:var(--kk-surface);color:var(--kk-text-muted)}
 
 /* STICKY BOTTOM ACTION BAR */
-.sticky-action-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 100;
-  margin-top: 12px;
-  padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--kk-border-strong);
-  border-radius: var(--kk-radius);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.sticky-action-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.validation-status {
-  display: flex;
-  align-items: center;
-}
-
 .validation-hint {
   margin: 0;
   font-size: 0.84rem;
@@ -449,10 +406,6 @@ onMounted(load)
   .form-section > header {
     align-items: stretch;
     flex-direction: column;
-  }
-  .sticky-action-content {
-    flex-direction: column;
-    align-items: stretch;
   }
   .actions-group {
     justify-content: flex-end;

@@ -101,7 +101,14 @@ onMounted(load)
 
     <p v-if="loading" class="state-panel">{{ t('tests.workspace.loading') }}</p>
     <form v-else-if="workspace" class="create-form" @submit.prevent="create(false)">
-      <label>
+      <section class="form-section">
+        <header>
+          <div>
+            <h3>{{ t('tests.testCase.basicInformation') }}</h3>
+            <p>{{ t('tests.suite.editDescription') }}</p>
+          </div>
+        </header>
+        <label>
         <span>{{ t('tests.suite.parent') }}</span>
         <select v-model="parentId" :disabled="creating">
           <option :value="null">{{ t('tests.suite.root') }}</option>
@@ -125,6 +132,7 @@ onMounted(load)
         <span>{{ t('tests.suite.description') }}</span>
         <textarea v-model="description" rows="7" maxlength="4000" :disabled="creating" />
       </label>
+      </section>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <UiCreateActions
         :loading="creating"
@@ -142,5 +150,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.create-page{display:grid;max-width:900px;gap:22px;margin:0 auto}.back-link{display:flex;width:fit-content;align-items:center;gap:6px;padding:0;color:var(--kk-text-muted);background:transparent;border:0;cursor:pointer}.create-page header h2{margin:3px 0 7px;font-size:clamp(1.65rem,3vw,2.2rem)}.create-page header span{color:var(--kk-text-muted)}.eyebrow{margin:0;color:var(--kk-accent);font-size:.75rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.create-form{display:grid;gap:22px;padding:24px;background:var(--kk-surface);border:1px solid var(--kk-border);border-radius:var(--kk-radius);box-shadow:var(--kk-shadow)}.create-form label{display:grid;gap:7px;font-size:.875rem;font-weight:650}.create-form select,.create-form textarea{padding:11px;color:var(--kk-text);background:var(--kk-surface);border:1px solid var(--kk-border-strong);border-radius:var(--kk-radius);font:inherit}.error,.state-panel--error{color:var(--kk-danger)}.state-panel{margin:0;padding:42px 24px;text-align:center;background:var(--kk-surface);border:1px dashed var(--kk-border-strong);border-radius:var(--kk-radius)}
+.create-page{display:grid;max-width:960px;gap:22px;margin:0 auto;padding-bottom:40px}.back-link{display:flex;width:fit-content;align-items:center;gap:6px;padding:0;color:var(--kk-text-muted);background:transparent;border:0;cursor:pointer}.create-page>header h2{margin:3px 0 7px;font-size:clamp(1.65rem,3vw,2.2rem)}.create-page>header span,.form-section p{color:var(--kk-text-muted)}.eyebrow{margin:0;color:var(--kk-accent);font-size:.75rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.create-form{display:grid;gap:18px}.form-section{display:grid;gap:18px;padding:24px;background:var(--kk-surface);border:1px solid var(--kk-border);border-radius:var(--kk-radius);box-shadow:var(--kk-shadow)}.form-section>header{display:flex;align-items:start;justify-content:space-between;gap:16px}.form-section h3,.form-section p{margin:0}.form-section p{margin-top:4px;font-size:.84rem}.form-section label{display:grid;gap:7px;font-size:.875rem;font-weight:650}.form-section select,.form-section textarea{padding:11px;color:var(--kk-text);background:var(--kk-surface);border:1px solid var(--kk-border-strong);border-radius:var(--kk-radius);font:inherit}.create-form :deep(.ui-create-actions){position:sticky;bottom:0;z-index:10;padding:14px 20px;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border:1px solid var(--kk-border-strong);border-radius:var(--kk-radius);box-shadow:0 -4px 16px rgba(0,0,0,.08)}.error,.state-panel--error{color:var(--kk-danger)}.state-panel{margin:0;padding:42px 24px;text-align:center;background:var(--kk-surface);border:1px dashed var(--kk-border-strong);border-radius:var(--kk-radius)}
 </style>

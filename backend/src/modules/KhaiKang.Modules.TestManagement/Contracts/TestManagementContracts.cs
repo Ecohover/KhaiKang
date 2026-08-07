@@ -57,7 +57,8 @@ public sealed record CreateTestCaseRequest(
     string? Preconditions,
     string? OverallExpectedResult,
     int SortOrder,
-    IReadOnlyList<CreateTestCaseStepRequest> Steps);
+    IReadOnlyList<CreateTestCaseStepRequest> Steps,
+    IReadOnlyList<Guid>? TagIds = null);
 
 public sealed record UpdateTestCaseRequest(
     Guid SuiteId,
@@ -68,7 +69,14 @@ public sealed record UpdateTestCaseRequest(
     int SortOrder,
     string Status,
     int Version,
-    IReadOnlyList<CreateTestCaseStepRequest> Steps);
+    IReadOnlyList<CreateTestCaseStepRequest> Steps,
+    IReadOnlyList<Guid>? TagIds = null);
+
+public sealed record TestTagResponse(Guid Id, string Name, string? Description, string Status, int Version);
+
+public sealed record CreateTestTagRequest(string Name, string? Description);
+
+public sealed record UpdateTestTagRequest(string Name, string? Description, string Status, int Version);
 
 public sealed record TestCaseStepResponse(
     Guid Id,
@@ -79,6 +87,8 @@ public sealed record TestCaseStepResponse(
 public sealed record TestCaseResponse(
     Guid Id,
     Guid SuiteId,
+    int CaseNo,
+    IReadOnlyList<TestTagResponse> Tags,
     string Title,
     string? Description,
     string? Preconditions,

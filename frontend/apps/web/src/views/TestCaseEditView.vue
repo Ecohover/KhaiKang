@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import TestCaseEditForm from '../components/TestCaseEditForm.vue'
 import { apiClient, problemMessage } from '../api/client'
@@ -18,6 +18,7 @@ const suites = ref<TestSuiteResponse[]>([])
 const originalCase = ref<TestCaseResponse>()
 const loading = ref(true)
 const error = ref('')
+const isDirty = ref(false)
 const { showUpdated } = useSaveNotice()
 
 async function load(): Promise<void> {
@@ -58,6 +59,11 @@ function handleCancel(): void {
 }
 
 onMounted(load)
+
+onBeforeRouteLeave(() => {
+  if (!isDirty.value) return true
+  return window.confirm(t('tests.testCase.unsavedChanges'))
+})
 </script>
 
 <template>
@@ -67,8 +73,10 @@ onMounted(load)
     <TestCaseEditForm
       v-else-if="originalCase"
       :workspace-id="workspaceId"
+      :workspace="workspace"
       :test-case="originalCase"
       :suites="suites"
+      @dirty-change="isDirty = $event"
       @saved="handleSaved"
       @cancel="handleCancel"
     />

@@ -65,7 +65,7 @@ async function create(continueCreating: boolean): Promise<void> {
       ]"
     />
 
-    <article class="form-card">
+    <form class="form-card" @submit.prevent="create(false)">
       <header>
         <h2>{{ t('projects.create.title') }}</h2>
         <p>{{ t('projects.create.description') }}</p>
@@ -99,36 +99,44 @@ async function create(continueCreating: boolean): Promise<void> {
       </div>
 
       <UiCreateActions
-        :creating="creating"
+        :loading="creating"
         :disabled="disabled"
         :create-label="t('projects.create.submit')"
         :continue-label="t('projects.create.submitAndContinue')"
         @create="create(false)"
-        @continue="create(true)"
+        @create-continue="create(true)"
       />
-    </article>
+    </form>
   </section>
 </template>
 
 <style scoped>
 .create-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  max-width: 960px;
   gap: 20px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .form-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 20px;
   background: white;
   border: 1px solid var(--kk-border);
-  border-radius: 10px;
+  border-radius: var(--kk-radius);
   padding: 24px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.form-card :deep(.ui-create-actions) {
+  position: sticky;
+  bottom: 0;
+  justify-content: flex-end;
+  padding: 14px 0 0;
+  background: var(--kk-surface);
+  border-top: 1px solid var(--kk-border);
 }
 
 .form-card header h2 {

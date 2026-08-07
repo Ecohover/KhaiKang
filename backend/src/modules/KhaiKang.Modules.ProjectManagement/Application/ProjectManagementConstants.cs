@@ -16,6 +16,8 @@ public static class ProjectManagementConstants
     public const string IssueStatusChangePermission = "issue.status.change";
     public const string IssueUpdatePermission = "issue.update";
     public const string IssueAssigneeChangePermission = "issue.assignee.change";
+    public const string IssueAttachmentUploadPermission = "issue.attachment.upload";
+    public const string IssueAttachmentDeletePermission = "issue.attachment.delete";
     public const string PermissionClaimType = "permission";
 
     public static readonly Guid OwnerRoleId = Guid.Parse("4f5961ac-5a4b-49e1-a73c-451d43a39718");

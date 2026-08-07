@@ -3,11 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { Columns3, List, Plus } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiButton, UiPagination } from '@khaikang/ui'
+import { UiAlert, UiButton, UiEmptyState, UiPagination, UiSelect } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
+  IssueListQuery,
   IssueResponse,
+  ProjectMemberResponse,
   ProjectResponse,
 } from '../api/contracts'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
@@ -15,11 +17,14 @@ import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
 import SharedSearchField from '../components/SharedSearchField.vue'
+import SharedFilterToolbar from '../components/SharedFilterToolbar.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import { shouldWarnMissingCompletionSummary } from '../issues/issueWorkflow'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 type IssueView = 'list' | 'board'
+type IssueSortBy = NonNullable<IssueListQuery['sortBy']>
+type IssueSortDirection = NonNullable<IssueListQuery['sortDirection']>
 
 const route = useRoute()
 const router = useRouter()
@@ -32,30 +37,22 @@ const pageSize = ref(20)
 const totalCount = ref(0)
 const totalPages = ref(0)
 const metadata = ref<IssueMetadataResponse>()
+const members = ref<ProjectMemberResponse[]>([])
 const loading = ref(true)
 const error = ref('')
 const actionError = ref('')
 const completionWarning = ref<{ issueId: string; key: string }>()
 const searchQuery = ref('')
+const filterType = ref('')
 const filterStatus = ref('')
+const filterPriority = ref('')
+const filterAssignee = ref('')
+const sortBy = ref<IssueSortBy>('updatedAt')
+const sortDirection = ref<IssueSortDirection>('desc')
 const activeView = ref<IssueView>('list')
 const updatingIssueId = ref<string>()
 const draggedIssueId = ref<string>()
 const { showCreated, showUpdated } = useSaveNotice()
-
-const filteredIssues = computed(() => {
-  let list = issues.value
-  if (filterStatus.value) {
-    list = list.filter((i) => i.statusCode === filterStatus.value)
-  }
-  const query = searchQuery.value.trim().toLowerCase()
-  if (query) {
-    list = list.filter(
-      (i) => i.title.toLowerCase().includes(query) || i.key.toLowerCase().includes(query),
-    )
-  }
-  return list
-})
 
 const canCreate = computed(
   () => project.value?.status === 'active'
@@ -78,15 +75,16 @@ async function loadPage(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const [projectResult, issueResult, metadataResult] = await Promise.all([
+    const [projectResult, issueResult, metadataResult, membersResult] = await Promise.all([
       apiClient.getProject(projectId.value),
-      apiClient.listIssues(projectId.value, page.value, pageSize.value),
+      apiClient.listIssues(projectId.value, page.value, pageSize.value, currentFilters()),
       apiClient.getIssueMetadata(projectId.value),
+      apiClient.listProjectMembers(projectId.value),
     ])
 
-    if (!projectResult.data || !issueResult.data || !metadataResult.data) {
+    if (!projectResult.data || !issueResult.data || !metadataResult.data || !membersResult.data) {
       error.value = problemMessage(
-        projectResult.error ?? issueResult.error ?? metadataResult.error,
+        projectResult.error ?? issueResult.error ?? metadataResult.error ?? membersResult.error,
         t('projects.issues.loadFailed'),
       )
       return
@@ -99,11 +97,43 @@ async function loadPage(): Promise<void> {
     totalCount.value = issueResult.data.totalCount
     totalPages.value = issueResult.data.totalPages
     metadata.value = metadataResult.data
+    members.value = membersResult.data.filter((member) => member.status === 'active')
   } catch {
     error.value = t('projects.issues.connectionFailed')
   } finally {
     loading.value = false
   }
+}
+
+function currentFilters(): IssueListQuery {
+  return {
+    ...(searchQuery.value.trim() && { search: searchQuery.value.trim() }),
+    ...(filterType.value && { typeCode: filterType.value }),
+    ...(filterStatus.value && { statusCode: filterStatus.value }),
+    ...(filterPriority.value && { priorityCode: filterPriority.value }),
+    ...(filterAssignee.value && filterAssignee.value !== 'unassigned' && {
+      assigneeAccountId: filterAssignee.value,
+    }),
+    ...(filterAssignee.value === 'unassigned' && { unassigned: true }),
+    sortBy: sortBy.value,
+    sortDirection: sortDirection.value,
+  }
+}
+
+async function applyFilters(): Promise<void> {
+  page.value = 1
+  await loadPage()
+}
+
+async function clearFilters(): Promise<void> {
+  searchQuery.value = ''
+  filterType.value = ''
+  filterStatus.value = ''
+  filterPriority.value = ''
+  filterAssignee.value = ''
+  sortBy.value = 'updatedAt'
+  sortDirection.value = 'desc'
+  await applyFilters()
 }
 
 async function changePage(nextPage: number): Promise<void> {
@@ -190,8 +220,15 @@ function formatDate(value: string): string {
       :meta="`${project.code} · PROJECT`"
       :title="project.name"
       :subtitle="t('projects.issues.title')"
-      :status="project.status"
-    />
+    >
+      <UiButton
+        v-if="canCreate"
+        @click="router.push({ name: 'project-issue-new', params: { projectId } })"
+      >
+        <Plus :size="17" aria-hidden="true" />
+        {{ t('projects.issues.create') }}
+      </UiButton>
+    </ResourcePageHeader>
 
     <SharedStateBanner
       v-if="loading"
@@ -208,8 +245,8 @@ function formatDate(value: string): string {
     />
 
     <template v-else-if="project && metadata">
-      <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
-      <div v-if="completionWarning" class="action-warning" role="status">
+      <UiAlert v-if="actionError" variant="error">{{ actionError }}</UiAlert>
+      <UiAlert v-if="completionWarning" variant="warning">
         <span>{{ t('projects.issues.completionWarning', { key: completionWarning.key }) }}</span>
         <RouterLink
           :to="{
@@ -219,7 +256,7 @@ function formatDate(value: string): string {
         >
           {{ t('projects.issues.addCompletion') }}
         </RouterLink>
-      </div>
+      </UiAlert>
 
       <!-- VIEW TABS (分頁標籤列) -->
       <SharedViewTabs
@@ -232,52 +269,72 @@ function formatDate(value: string): string {
 
       <SharedCardSection
         :title="t('projects.issues.title')"
-        :description="t('projects.issues.createDescription', '追蹤與處理專案內所有 Issue 與狀態')"
+        :description="t('projects.issues.createDescription')"
       >
         <template #headerRight>
-          <span class="count-badge">{{ t('projects.issues.count', { count: filteredIssues.length }, filteredIssues.length) }}</span>
+          <span class="count-badge">{{ t('projects.issues.count', { count: totalCount }, totalCount) }}</span>
         </template>
 
-        <!-- TOOLBAR: SEARCH & ACTION AREA (清單上面的查詢區塊與新增任務按鈕) -->
-        <div class="list-toolbar">
-          <div class="search-filters">
-            <SharedSearchField
-              v-model="searchQuery"
-              placeholder="搜尋任務編號或標題..."
-              :clear-label="t('common.search.clear')"
-            />
-
-            <select v-model="filterStatus" class="status-select">
-              <option value="">所有狀態</option>
-              <option v-for="s in metadata.statuses" :key="s.code" :value="s.code">
-                {{ s.name }}
-              </option>
-            </select>
-          </div>
-
-          <UiButton
-            v-if="canCreate"
-            @click="router.push({ name: 'project-issue-new', params: { projectId } })"
-          >
-            <Plus :size="17" aria-hidden="true" />
-            {{ t('projects.issues.create') }}
-          </UiButton>
-        </div>
+        <!-- TOOLBAR: SEARCH & FILTER AREA -->
+        <form class="issue-filter-form" @submit.prevent="applyFilters">
+        <SharedFilterToolbar align="start" class="issue-filter-toolbar">
+          <SharedSearchField
+            v-model="searchQuery"
+            placeholder="搜尋任務編號或標題..."
+            :clear-label="t('common.search.clear')"
+          />
+          <UiSelect v-model="filterType" aria-label="任務類型" @change="applyFilters">
+            <option value="">所有類型</option>
+            <option v-for="type in metadata.types" :key="type.code" :value="type.code">
+              {{ type.name }}
+            </option>
+          </UiSelect>
+          <UiSelect v-model="filterStatus" aria-label="任務狀態" @change="applyFilters">
+            <option value="">所有狀態</option>
+            <option v-for="s in metadata.statuses" :key="s.code" :value="s.code">
+              {{ s.name }}
+            </option>
+          </UiSelect>
+          <UiSelect v-model="filterPriority" aria-label="任務優先級" @change="applyFilters">
+            <option value="">所有優先級</option>
+            <option v-for="priority in metadata.priorities" :key="priority.code" :value="priority.code">
+              {{ priority.name }}
+            </option>
+          </UiSelect>
+          <UiSelect v-model="filterAssignee" aria-label="處理人" @change="applyFilters">
+            <option value="">所有處理人</option>
+            <option value="unassigned">未指派</option>
+            <option v-for="member in members" :key="member.accountId" :value="member.accountId">
+              {{ member.username }}
+            </option>
+          </UiSelect>
+          <UiSelect v-model="sortBy" aria-label="排序欄位" @change="applyFilters">
+            <option value="updatedAt">最近更新</option>
+            <option value="issueNo">任務編號</option>
+          </UiSelect>
+          <UiSelect v-model="sortDirection" aria-label="排序方向" @change="applyFilters">
+            <option value="desc">由新到舊</option>
+            <option value="asc">由舊到新</option>
+          </UiSelect>
+          <UiButton type="submit" variant="secondary">搜尋</UiButton>
+          <UiButton type="button" variant="ghost" @click="clearFilters">清除</UiButton>
+        </SharedFilterToolbar>
+        </form>
 
       <div v-if="activeView === 'list'" class="issue-list">
         <div class="issue-list__header">
           <span>{{ t('projects.issues.columns.key') }}</span><span>{{ t('projects.issues.columns.title') }}</span><span>{{ t('projects.issues.columns.status') }}</span><span>{{ t('projects.issues.columns.assignee') }}</span><span>{{ t('projects.issues.columns.updatedAt') }}</span>
         </div>
-        <div v-for="issue in filteredIssues" :key="issue.id" class="issue-row">
+        <div v-for="issue in issues" :key="issue.id" class="issue-row">
           <strong>{{ issue.key }}</strong>
           <RouterLink
             :to="{ name: 'project-issue-edit', params: { projectId, issueId: issue.id } }"
           >
             <span class="issue-type">{{ issue.typeName }}</span>{{ issue.title }}
           </RouterLink>
-          <select
+          <UiSelect
             v-if="canChangeStatus"
-            :value="issue.statusCode"
+            :model-value="issue.statusCode"
             :aria-label="t('projects.issues.changeStatus', { key: issue.key })"
             :disabled="updatingIssueId === issue.id"
             @change="changeStatus(issue, ($event.target as HTMLSelectElement).value)"
@@ -285,14 +342,12 @@ function formatDate(value: string): string {
             <option v-for="status in metadata.statuses" :key="status.code" :value="status.code">
               {{ status.name }}
             </option>
-          </select>
+          </UiSelect>
           <span v-else>{{ issue.statusName }}</span>
           <span>{{ issue.assigneeUsername ?? t('projects.issues.unassigned') }}</span>
           <span>{{ formatDate(issue.updatedAt) }}</span>
         </div>
-        <div v-if="issues.length === 0" class="empty-state">
-          <List :size="28" aria-hidden="true" /><strong>{{ t('projects.issues.emptyTitle') }}</strong><span>{{ t('projects.issues.emptyDescription') }}</span>
-        </div>
+        <UiEmptyState v-if="issues.length === 0" :icon="List" :title="t('projects.issues.emptyTitle')" :description="t('projects.issues.emptyDescription')" />
       </div>
 
       <div v-else class="issue-board">
@@ -323,8 +378,8 @@ function formatDate(value: string): string {
               <footer><span>{{ issue.priorityName }}</span><span>{{ issue.assigneeUsername ?? t('projects.issues.unassigned') }}</span></footer>
               <label v-if="canChangeStatus" class="board-status-field">
                 <span>{{ t('projects.issues.columns.status') }}</span>
-                <select
-                  :value="issue.statusCode"
+                <UiSelect
+                  :model-value="issue.statusCode"
                   :disabled="updatingIssueId === issue.id"
                   @change="changeStatus(issue, ($event.target as HTMLSelectElement).value)"
                 >
@@ -335,7 +390,7 @@ function formatDate(value: string): string {
                   >
                     {{ statusOption.name }}
                   </option>
-                </select>
+                </UiSelect>
               </label>
             </article>
             <span v-if="issuesForStatus(status.code).length === 0" class="board-empty">{{ t('projects.issues.emptyStatus') }}</span>
@@ -373,14 +428,10 @@ function formatDate(value: string): string {
   box-sizing: border-box;
 }
 .board-column header { display: flex; align-items: center; }
-.issue-row select { width: 100%; padding: 9px 10px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
-.action-error { margin: 0; padding: 10px 14px; color: var(--kk-danger); background: #fff1f0; border: 1px solid #f1c2bd; border-radius: 7px; font-size: .82rem; }
-.action-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 10px 14px; color: #715514; background: #fff8df; border: 1px solid #e9d48a; border-radius: 7px; font-size: .82rem; }
-.action-warning a { color: inherit; font-weight: 700; }
+.issue-row :deep(.ui-select) { width: 100%; }
+.ui-alert a { color: inherit; font-weight: 700; }
 .count-badge { font-size: 0.82rem; color: var(--kk-text-muted); }
-.list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.search-filters { display: flex; align-items: center; gap: 10px; flex: 1; }
-.status-select { min-height: 42px; padding: 0 12px; font-size: 0.85rem; border: 1px solid var(--kk-border); border-radius: var(--kk-radius); background: var(--kk-surface); color: var(--kk-text); }
+.issue-filter-toolbar { margin-bottom: 16px; }
 .issue-list { overflow: hidden; background: var(--kk-surface); border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
 .issue-list__header, .issue-row { display: grid; grid-template-columns: 90px minmax(240px, 1fr) 140px 150px 150px; gap: 12px; align-items: center; padding: 12px 16px; }
 .issue-list__header { color: var(--kk-text-muted); background: var(--kk-surface-subtle); border-bottom: 1px solid var(--kk-border); font-size: .75rem; font-weight: 700; }
@@ -390,9 +441,6 @@ function formatDate(value: string): string {
 .issue-row > a { display: flex; align-items: center; gap: 8px; color: var(--kk-text); font-weight: 650; text-decoration: none; }
 .issue-row > a:hover { color: var(--kk-accent); }
 .issue-type { padding: 2px 6px; color: var(--kk-text-muted); background: var(--kk-surface-subtle); border-radius: 4px; font-size: .7rem; font-weight: 500; }
-.empty-state { display: grid; min-height: 260px; place-content: center; justify-items: center; gap: 8px; color: var(--kk-text-muted); text-align: center; }
-.empty-state strong { color: var(--kk-text); }
-.empty-state span { font-size: .82rem; }
 .issue-board { display: grid; overflow-x: auto; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: 14px; padding-bottom: 8px; }
 .board-column { min-height: 440px; padding: 12px; background: #eef1ef; border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
 .board-column header { justify-content: space-between; padding: 3px 3px 12px; font-size: .82rem; }
@@ -407,6 +455,6 @@ function formatDate(value: string): string {
 .issue-card > a:hover { color: var(--kk-accent); }
 .issue-card footer { display: flex; justify-content: space-between; gap: 8px; color: var(--kk-text-muted); font-size: .72rem; }
 .board-status-field { display: grid; gap: 5px; color: var(--kk-text-muted); font-size: .7rem; }
-.board-status-field select { width: 100%; min-height: 34px; padding: 6px 8px; color: var(--kk-text); background: var(--kk-surface); border: 1px solid var(--kk-border-strong); border-radius: 6px; font: inherit; }
-@media (max-width: 720px) { .action-warning { align-items: flex-start; flex-direction: column; } .list-toolbar, .search-filters { align-items: stretch; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
+.board-status-field :deep(.ui-select) { width: 100%; }
+@media (max-width: 720px) { .action-warning { align-items: flex-start; flex-direction: column; } .issue-list__header, .issue-row { grid-template-columns: 80px 1fr 110px; } .issue-list__header span:nth-child(n + 4), .issue-row > span:nth-child(n + 4) { display: none; } }
 </style>

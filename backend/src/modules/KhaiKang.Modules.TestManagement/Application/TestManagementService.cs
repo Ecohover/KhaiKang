@@ -29,6 +29,37 @@ public sealed class TestManagementService(
 {
     private static readonly string[] Roles = ["owner", "manager", "tester", "viewer"];
 
+    public async Task<IReadOnlyList<TestTagResponse>> ListTagsAsync(CancellationToken cancellationToken) =>
+        await dbContext.Tags.AsNoTracking().OrderBy(x => x.Name)
+            .Select(x => new TestTagResponse(x.Id, x.Name, x.Description, x.Status, x.Version))
+            .ToListAsync(cancellationToken);
+
+    public async Task<TestManagementResult<TestTagResponse>> CreateTagAsync(
+        Guid accountId, CreateTestTagRequest request, CancellationToken cancellationToken)
+    {
+        var name = request.Name.Trim();
+        if (await dbContext.Tags.AnyAsync(x => x.Name.ToUpper() == name.ToUpper(), cancellationToken))
+            return new(TestManagementOutcome.Conflict, Code: "test_tag_name_conflict");
+        var tag = new TestTag(Guid.NewGuid(), name, Clean(request.Description), accountId, timeProvider.GetUtcNow());
+        dbContext.Tags.Add(tag);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new(TestManagementOutcome.Succeeded, ToTagResponse(tag));
+    }
+
+    public async Task<TestManagementResult<TestTagResponse>> UpdateTagAsync(
+        Guid tagId, Guid accountId, UpdateTestTagRequest request, CancellationToken cancellationToken)
+    {
+        var tag = await dbContext.Tags.SingleOrDefaultAsync(x => x.Id == tagId, cancellationToken);
+        if (tag is null) return new(TestManagementOutcome.NotFound);
+        if (tag.Version != request.Version) return new(TestManagementOutcome.Conflict, Code: "test_tag_version_conflict");
+        var name = request.Name.Trim();
+        if (await dbContext.Tags.AnyAsync(x => x.Id != tagId && x.Name.ToUpper() == name.ToUpper(), cancellationToken))
+            return new(TestManagementOutcome.Conflict, Code: "test_tag_name_conflict");
+        tag.Update(name, Clean(request.Description), request.Status, accountId, timeProvider.GetUtcNow());
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new(TestManagementOutcome.Succeeded, ToTagResponse(tag));
+    }
+
     public async Task<IReadOnlyList<TestWorkspaceResponse>> ListWorkspacesAsync(
         Guid accountId,
         CancellationToken cancellationToken)
@@ -415,6 +446,9 @@ public sealed class TestManagementService(
         Guid workspaceId,
         Guid accountId,
         Guid? suiteId,
+        string? search,
+        string? status,
+        Guid? tagId,
         CancellationToken cancellationToken)
     {
         if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
@@ -428,9 +462,23 @@ public sealed class TestManagementService(
         {
             query = query.Where(x => x.TestSuiteId == suiteId);
         }
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(x => x.Title.Contains(term));
+        }
+        if (status is "active" or "inactive")
+        {
+            query = query.Where(x => x.Status == status);
+        }
+        if (tagId is not null)
+        {
+            query = query.Where(x => x.Tags.Any(tag => tag.TestTagId == tagId));
+        }
 
         var cases = await query
             .Include(x => x.Steps)
+            .Include(x => x.Tags).ThenInclude(x => x.Tag)
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.Title)
             .ToListAsync(cancellationToken);
@@ -462,10 +510,15 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound, Code: "test_suite_not_found");
         }
 
+        var tags = await ActiveTagsAsync(request.TagIds, cancellationToken);
+        if (tags is null) return new(TestManagementOutcome.Invalid, Code: "test_tag_not_found");
+
         var now = timeProvider.GetUtcNow();
         var testCase = new TestCase(
             Guid.NewGuid(),
+            workspaceId,
             suite.Id,
+            await NextCaseNoAsync(workspaceId, cancellationToken),
             request.Title.Trim(),
             Clean(request.Description),
             Clean(request.Preconditions),
@@ -486,7 +539,17 @@ public sealed class TestManagementService(
         }
 
         dbContext.Cases.Add(testCase);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        foreach (var tag in tags)
+            dbContext.CaseTags.Add(new TestCaseTag(Guid.NewGuid(), testCase.Id, tag.Id, accountId, now));
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "case_number_conflict");
+        }
+        await dbContext.Entry(testCase).Collection(x => x.Tags).Query().Include(x => x.Tag).LoadAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToCaseResponse(testCase));
     }
 
@@ -503,6 +566,7 @@ public sealed class TestManagementService(
 
         var testCase = await dbContext.Cases.AsNoTracking()
             .Include(x => x.Steps)
+            .Include(x => x.Tags).ThenInclude(x => x.Tag)
             .SingleOrDefaultAsync(x => x.Id == caseId && x.Suite.TestWorkspaceId == workspaceId, cancellationToken);
         return testCase is null
             ? new(TestManagementOutcome.NotFound)
@@ -529,6 +593,7 @@ public sealed class TestManagementService(
 
         var testCase = await dbContext.Cases
             .Include(x => x.Steps)
+            .Include(x => x.Tags).ThenInclude(x => x.Tag)
             .SingleOrDefaultAsync(x => x.Id == caseId && x.Suite.TestWorkspaceId == workspaceId, cancellationToken);
         if (testCase is null)
         {
@@ -548,6 +613,13 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "test_suite_not_found");
         }
 
+        IReadOnlyList<TestTag>? tags = null;
+        if (request.TagIds is not null)
+        {
+            tags = await ActiveTagsAsync(request.TagIds, cancellationToken);
+            if (tags is null) return new(TestManagementOutcome.Invalid, Code: "test_tag_not_found");
+        }
+
         var now = timeProvider.GetUtcNow();
         testCase.Update(
             targetSuite.Id,
@@ -565,6 +637,12 @@ public sealed class TestManagementService(
             dbContext.CaseSteps.Remove(step);
         }
         testCase.ClearSteps();
+        if (tags is not null)
+        {
+            dbContext.CaseTags.RemoveRange(testCase.Tags);
+            foreach (var tag in tags)
+                dbContext.CaseTags.Add(new TestCaseTag(Guid.NewGuid(), testCase.Id, tag.Id, accountId, now));
+        }
         for (var index = 0; index < request.Steps.Count; index++)
         {
             var step = new TestStep(
@@ -579,6 +657,8 @@ public sealed class TestManagementService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (tags is not null)
+            await dbContext.Entry(testCase).Collection(x => x.Tags).Query().Include(x => x.Tag).LoadAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToCaseResponse(testCase));
     }
 
@@ -747,6 +827,25 @@ public sealed class TestManagementService(
         return await GetRunAsync(workspaceId, run.Id, accountId, cancellationToken);
     }
 
+    public async Task<TestManagementResult<TestRunResponse>> RerunAsync(
+        Guid workspaceId, Guid runId, Guid accountId, CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null) return new(TestManagementOutcome.NotFound);
+        if (!CanExecute(access.Role) || access.Workspace.Status != "active")
+            return new(TestManagementOutcome.Forbidden);
+
+        var source = await dbContext.Runs.AsNoTracking().SingleOrDefaultAsync(
+            x => x.Id == runId && dbContext.Plans.Any(
+                plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
+            cancellationToken);
+        if (source is null) return new(TestManagementOutcome.NotFound);
+        if (!IsTerminal(source.Status))
+            return new(TestManagementOutcome.Conflict, Code: "run_not_terminal");
+        return await CreateRunAsync(workspaceId, accountId,
+            new CreateTestRunRequest(source.TestPlanId, $"{source.Name} rerun"), cancellationToken);
+    }
+
     public async Task<TestManagementResult<TestRunResponse>> RecordRunItemAsync(
         Guid workspaceId, Guid runId, Guid itemId, Guid accountId,
         RecordTestResultRequest request, CancellationToken cancellationToken)
@@ -911,6 +1010,12 @@ public sealed class TestManagementService(
         throw new InvalidOperationException("Unable to generate a unique workspace prefix.");
     }
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private async Task<IReadOnlyList<TestTag>?> ActiveTagsAsync(IReadOnlyList<Guid>? tagIds, CancellationToken cancellationToken)
+    {
+        var ids = tagIds?.Distinct().ToArray() ?? [];
+        var tags = await dbContext.Tags.Where(x => ids.Contains(x.Id) && x.Status == "active").ToListAsync(cancellationToken);
+        return tags.Count == ids.Length ? tags : null;
+    }
     private static string PlanName(string? value, DateTimeOffset now) =>
         string.IsNullOrWhiteSpace(value)
             ? $"TestPlan{now.ToOffset(TimeSpan.FromHours(8)):yyyyMMdd}"
@@ -923,6 +1028,9 @@ public sealed class TestManagementService(
         new(
             x.Id,
             x.TestSuiteId,
+            x.CaseNo,
+            x.Tags.OrderBy(tag => tag.Tag.Name).Select(tag => new TestTagResponse(
+                tag.Tag.Id, tag.Tag.Name, tag.Tag.Description, tag.Tag.Status, tag.Tag.Version)).ToArray(),
             x.Title,
             x.Description,
             x.Preconditions,
@@ -939,6 +1047,13 @@ public sealed class TestManagementService(
             x.CreatedAt,
             x.UpdatedAt,
             x.Version);
+    private static TestTagResponse ToTagResponse(TestTag x) =>
+        new(x.Id, x.Name, x.Description, x.Status, x.Version);
+    private async Task<int> NextCaseNoAsync(Guid workspaceId, CancellationToken cancellationToken) =>
+        (await dbContext.Cases
+            .Where(x => x.TestWorkspaceId == workspaceId)
+            .Select(x => (int?)x.CaseNo)
+            .MaxAsync(cancellationToken) ?? 0) + 1;
     private static TestPlanResponse ToPlanResponse(TestPlan x) =>
         new(
             x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",

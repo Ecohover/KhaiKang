@@ -8,12 +8,13 @@
 
 ## 產品功能待處理
 
-- Test Workspace 與 Project 關聯
 - Issue tag
 - Issue parent / sub-task
 - 自訂角色
 - 自訂工作流規則
 - 自訂欄位模板
+
+`Test Workspace` 與 `Project` 的多對多關聯已移入[目前 MVP 收尾計畫](./06-mvp-release-closure-plan.md)，不再列為後續 backlog。
 
 ## 自訂欄位設計方向待處理
 

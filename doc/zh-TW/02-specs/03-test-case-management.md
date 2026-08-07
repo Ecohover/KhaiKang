@@ -52,7 +52,7 @@
 
 ### Test Workspace
 
-`Test Workspace` 是測試資產與存取權限的根容器，MVP 中獨立於 Project。
+`Test Workspace` 是測試資產與存取權限的根容器。MVP 可透過多對多關聯連結多個 Project，但 Workspace 仍是測試資產的唯一存取與共同維護邊界；Project 關聯不取代 Workspace 成員與固定角色。
 
 建立 Test Workspace 的帳號自動成為 `owner`。MVP 使用固定角色：
 
@@ -61,7 +61,7 @@
 - `tester`：讀取測試資產、建立及執行 Test Run，不能管理成員或修改案例目錄。
 - `viewer`：只能讀取測試資產與既有執行結果。
 
-同一帳號在一個 Workspace 中只能有一個有效成員關係及一個固定角色。自訂角色與 Project 關聯不屬於 MVP。
+同一帳號在一個 Workspace 中只能有一個有效成員關係及一個固定角色。資產不建立個人擁有者 ACL；具備對應角色的成員共同維護。自訂角色不屬於 MVP。
 
 ### Test Case
 
@@ -179,7 +179,7 @@ Test Workspace
 
 手動執行完成後，使用者應可快速查看整體結果與失敗、阻塞項目。
 
-第一階段不從 Project Issue 觸發 Test Run；未來加入專案整合時，應沿用相同的 Test Plan 與 Test Run 流程。
+MVP 不從 Project Issue 直接觸發 Test Run；Project 關聯只提供 Workspace 與 Project 的導覽，不改變既有 Test Plan 與 Test Run 流程。
 
 ### 未來方向：自動化執行（待確認）
 
@@ -211,18 +211,18 @@ MVP 建議每個 `Test Run Item` 支援：
 - 每個 `Test Case` 在 MVP 中必須且只能屬於一個 `Test Suite`。
 - `Test Suite` 可以形成最多五層的樹狀結構；移動套件或案例不得改變既有 Test Plan 的項目範圍。
 - 只有具備該 Test Workspace 存取權的成員可以查看或操作測試管理資料。
-- Test Workspace 在 MVP 中不直接關聯 Project；Project 關聯留待後續規格。
-- Test Case 在 MVP 中以 UUID 作為穩定識別，不另建立對外案例流水號。
+- Test Workspace 可關聯多個 Project，Project 也可關聯多個 Workspace；關聯不建立 Issue 對 Case、Plan 或 Run 的細部追溯。
+- Test Case 在目前 MVP 中以 UUID 作為穩定識別；對外案例編號與 Workspace Prefix 的規則屬於後續功能，確認資料遷移策略後再納入。
 - `Test Run` 必須來自一份 `Test Plan`；MVP 不先提供無計畫的臨時執行流程。
 - `Test Run` 只能由使用者從測試管理頁面手動觸發；不支援 Issue、CI 或 AI 觸發。
 - 每個 Test Run Item 都可由使用者手動填寫結果。
 - Vitest、xUnit 與其他單元測試不與 Test Case 綁定，其結果不建立 Test Run Item。
 - Test Plan 至少必須有一個 Test Plan Item；不得建立空的 Test Plan。
-- Test Suite、Tag 與搜尋只用於找出和批次加入案例，不提供 AND、OR、NOT 或巢狀條件編輯。
+- Test Suite 與 Tag 可用於分類與找出案例；MVP 以 Suite 與樹狀案例選取加入 Plan，不提供 Tag 或搜尋結果批次加入，亦不提供 AND、OR、NOT 或巢狀條件編輯。
 - `Test Plan` 建立後的案例清單應固定，後續套件異動不應自動改變既有計畫。
 - `Test Run Item` 建立時必須保存案例內容快照。
 - `Test Plan` 在 MVP 中只要求名稱與測試目的，不先加入目標版本、環境或負責人欄位。
-- `completed` 或 `cancelled` 的 `Test Run` 與其結果完全唯讀；需要重測時應建立新的 `Test Run`。
+- `completed` 的 `Test Run` 與其結果完全唯讀。`cancelled` 的 Run 可重新開始並回到 `in_progress`，保留既有案例與步驟結果；若需新的獨立測試紀錄，使用者仍可建立新的 `Test Run`。
 
 ## 安全與稽核
 
@@ -242,7 +242,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - 使用者可在已授權的 Test Workspace 內建立與查詢測試案例。
 - 使用者可建立樹狀測試套件，並將案例放入指定套件。
 - 每個測試案例可包含前置準備，並包含可排序步驟與每個步驟的預期結果，且可套用多個測試標籤。
-- 使用者可建立測試計畫，從 Suite、Tag 或搜尋結果手動加入、移除及排序案例。
+- 使用者可建立測試計畫，從 Suite 與樹狀案例選取加入、移除及排序案例。
 - 使用者可先批次加入一個 Suite 的全部案例，再手動移除部分案例。
 - 使用者可依測試計畫建立多次測試執行。
 - 使用者可從測試管理頁面手動開始、持續執行與完成一份手動測試執行。

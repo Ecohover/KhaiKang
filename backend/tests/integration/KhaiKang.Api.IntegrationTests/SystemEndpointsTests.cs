@@ -34,6 +34,8 @@ public sealed class SystemEndpointsTests(WebApplicationFactory<Program> factory)
         var contract = await response.Content.ReadAsStringAsync();
         Assert.Contains("operationId: Login", contract, StringComparison.Ordinal);
         Assert.Contains("AuthenticatedUserResponse:", contract, StringComparison.Ordinal);
+        Assert.Contains("operationId: UploadIssueAttachment", contract, StringComparison.Ordinal);
+        Assert.Contains("IssueAttachmentResponse:", contract, StringComparison.Ordinal);
     }
 
     [Fact]

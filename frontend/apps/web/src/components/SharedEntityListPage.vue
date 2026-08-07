@@ -38,7 +38,6 @@ const emit = defineEmits<{
     </ResourcePageHeader>
 
     <div class="list-toolbar">
-      <span>{{ countLabel }}</span>
       <UiViewModeToggle
         :model-value="viewMode"
         :storage-key="storageKey"
@@ -47,6 +46,7 @@ const emit = defineEmits<{
         :grid-label="gridLabel"
         @update:model-value="emit('update:viewMode', $event)"
       />
+      <span>{{ countLabel }}</span>
     </div>
 
     <SharedStateBanner

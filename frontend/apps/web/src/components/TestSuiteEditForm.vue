@@ -57,7 +57,7 @@ const eligibleParentSuites = computed(() =>
 )
 
 const validationHint = computed(() => {
-  if (!name.value.trim()) return '請填寫測試套件名稱'
+  if (!name.value.trim()) return t('tests.suite.nameRequired')
   return ''
 })
 
@@ -98,7 +98,7 @@ async function save(): Promise<void> {
           <ArrowLeft :size="16" /> {{ t('tests.testCase.backToList') }}
         </button>
         <p class="eyebrow">{{ t('tests.management') }}</p>
-        <h2>{{ t('tests.suite.editTitle', '編輯測試套件') }} — {{ props.suite.name }}</h2>
+        <h2>{{ t('tests.suite.editTitle') }} — {{ props.suite.name }}</h2>
       </div>
     </header>
 
@@ -108,7 +108,7 @@ async function save(): Promise<void> {
       <section class="form-section">
         <header class="section-header">
           <h3>{{ t('tests.testCase.basicInformation') }}</h3>
-          <p>更新套件名稱、層級關係與運作狀態設定。</p>
+          <p>{{ t('tests.suite.editDescription') }}</p>
         </header>
 
         <div class="form-grid">
@@ -123,10 +123,10 @@ async function save(): Promise<void> {
           </label>
 
           <label class="form-field">
-            <span>狀態</span>
+            <span>{{ t('common.fields.status') }}</span>
             <select v-model="status">
-              <option value="active">使用中 (Active)</option>
-              <option value="inactive">停用中 (Inactive)</option>
+              <option value="active">{{ t('common.status.active') }}</option>
+              <option value="inactive">{{ t('common.status.inactive') }}</option>
             </select>
           </label>
         </div>
@@ -153,7 +153,7 @@ async function save(): Promise<void> {
               ⚠️ {{ validationHint }}
             </span>
             <span v-else class="hint-text text-emerald-600">
-              ✓ 所有必要欄位均已完整填寫
+              ✓ {{ t('tests.suite.completedHint') }}
             </span>
           </div>
           <div class="action-buttons">

@@ -31,14 +31,13 @@ const props = withDefaults(
     canEditRole?: boolean
     canRemove?: boolean
     addMemberPlaceholder?: string
+    showAddAction?: boolean
   }>(),
   {
-    title: '成員管理',
-    description: '管理專案或工作區之成員權限與角色組',
     canAdd: true,
     canEditRole: true,
     canRemove: true,
-    addMemberPlaceholder: '請輸入使用者名稱',
+    showAddAction: true,
   },
 )
 
@@ -52,7 +51,7 @@ const saving = ref(false)
 const error = ref('')
 
 const searchQuery = ref('')
-const isAddingMember = ref(false)
+const isAddingMember = defineModel<boolean>('adding', { default: false })
 const newUsername = ref('')
 const newRole = ref('')
 
@@ -85,6 +84,12 @@ const paginatedMembers = computed(() => {
 
 const totalCount = computed(() => filteredMembers.value.length)
 const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value) || 1)
+const memberRecordLabel = computed(() => t(props.resourceType === 'project'
+  ? 'common.members.projectRecord'
+  : 'common.members.workspaceRecord'))
+const displayTitle = computed(() => props.title ?? t('common.members.title'))
+const displayDescription = computed(() => props.description ?? t('common.members.description'))
+const usernamePlaceholder = computed(() => props.addMemberPlaceholder ?? t('common.members.addPlaceholder'))
 
 // Reset page when search query changes
 watch(searchQuery, () => {
@@ -114,7 +119,7 @@ async function loadData(): Promise<void> {
         }))
         roles.value = roleRes.data.map((r) => ({ code: r.code, label: r.name }))
       } else {
-        error.value = problemMessage(memberRes.error ?? roleRes.error, '載入成員列表失敗')
+        error.value = problemMessage(memberRes.error ?? roleRes.error, t('common.members.loadFailed'))
       }
     } else {
       const memberRes = await apiClient.listTestWorkspaceMembers(props.resourceId)
@@ -128,7 +133,7 @@ async function loadData(): Promise<void> {
         }))
         roles.value = defaultWorkspaceRoles
       } else {
-        error.value = problemMessage(memberRes.error, '載入成員列表失敗')
+        error.value = problemMessage(memberRes.error, t('common.members.loadFailed'))
       }
     }
 
@@ -136,7 +141,7 @@ async function loadData(): Promise<void> {
       newRole.value = roles.value[0].code
     }
   } catch {
-    error.value = '載入成員資料時發生網路連線問題'
+    error.value = t('common.errors.connectionFailed')
   } finally {
     loading.value = false
   }
@@ -154,12 +159,12 @@ async function handleAddMember(): Promise<void> {
         await secureHeaders(),
       )
       if (result.data) {
-        showCreated('專案成員', result.data.username)
+        showCreated(memberRecordLabel.value, result.data.username)
         newUsername.value = ''
         isAddingMember.value = false
         await loadData()
       } else {
-        error.value = problemMessage(result.error, '新增成員失敗')
+        error.value = problemMessage(result.error, t('common.members.addFailed'))
       }
     } else {
       const result = await apiClient.addTestWorkspaceMember(
@@ -168,16 +173,16 @@ async function handleAddMember(): Promise<void> {
         await secureHeaders(),
       )
       if (result.data) {
-        showCreated('工作區成員', result.data.username)
+        showCreated(memberRecordLabel.value, result.data.username)
         newUsername.value = ''
         isAddingMember.value = false
         await loadData()
       } else {
-        error.value = problemMessage(result.error, '新增成員失敗')
+        error.value = problemMessage(result.error, t('common.members.addFailed'))
       }
     }
   } catch {
-    error.value = '新增成員時發生連線失敗'
+    error.value = t('common.errors.connectionFailed')
   } finally {
     saving.value = false
   }
@@ -199,10 +204,10 @@ async function handleRoleChange(member: ResourceMemberItem, event: Event): Promi
         await secureHeaders(),
       )
       if (result.data) {
-        showUpdated('專案成員', result.data.username)
+        showUpdated(memberRecordLabel.value, result.data.username)
         await loadData()
       } else {
-        error.value = problemMessage(result.error, '更新成員角色失敗')
+        error.value = problemMessage(result.error, t('common.members.updateFailed'))
       }
     } else {
       const result = await apiClient.updateTestWorkspaceMember(
@@ -212,21 +217,21 @@ async function handleRoleChange(member: ResourceMemberItem, event: Event): Promi
         await secureHeaders(),
       )
       if (result.data) {
-        showUpdated('工作區成員', result.data.username)
+        showUpdated(memberRecordLabel.value, result.data.username)
         await loadData()
       } else {
-        error.value = problemMessage(result.error, '更新成員角色失敗')
+        error.value = problemMessage(result.error, t('common.members.updateFailed'))
       }
     }
   } catch {
-    error.value = '更新角色時發生連線失敗'
+    error.value = t('common.errors.connectionFailed')
   } finally {
     saving.value = false
   }
 }
 
 async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
-  if (!window.confirm(`確定要移除成員「${member.username}」嗎？`)) return
+  if (!window.confirm(t('common.members.removeConfirm', { username: member.username }))) return
   if (!props.resourceId) return
 
   saving.value = true
@@ -240,7 +245,7 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
         await secureHeaders(),
       )
       if (result.error) {
-        error.value = problemMessage(result.error, '移除成員失敗')
+        error.value = problemMessage(result.error, t('common.members.removeFailed'))
       } else {
         await loadData()
       }
@@ -252,13 +257,13 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
         await secureHeaders(),
       )
       if (result.error) {
-        error.value = problemMessage(result.error, '移除成員失敗')
+        error.value = problemMessage(result.error, t('common.members.removeFailed'))
       } else {
         await loadData()
       }
     }
   } catch {
-    error.value = '移除成員時發生連線失敗'
+    error.value = t('common.errors.connectionFailed')
   } finally {
     saving.value = false
   }
@@ -270,10 +275,10 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
     <!-- PANEL HEADER -->
     <header class="panel-header">
       <div>
-        <h3>{{ title }}</h3>
-        <p v-if="description" class="sub-desc">{{ description }}</p>
+        <h3>{{ displayTitle }}</h3>
+        <p v-if="displayDescription" class="sub-desc">{{ displayDescription }}</p>
       </div>
-      <span class="member-count-badge">共 {{ totalCount }} 位成員</span>
+      <span class="member-count-badge">{{ t('common.members.count', { count: totalCount }) }}</span>
     </header>
 
     <div v-if="error" class="error-banner" role="alert">
@@ -284,27 +289,27 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
     <div class="list-toolbar">
       <SharedSearchField
         v-model="searchQuery"
-        placeholder="搜尋成員名稱或角色..."
+        :placeholder="t('common.members.searchPlaceholder')"
         :clear-label="t('common.search.clear')"
       />
 
       <UiButton
-        v-if="canAdd"
+        v-if="canAdd && showAddAction"
         @click="isAddingMember = !isAddingMember"
       >
         <Plus :size="16" aria-hidden="true" />
-        {{ isAddingMember ? '取消新增' : '新增成員' }}
+        {{ isAddingMember ? t('common.members.cancelAdd') : t('common.members.add') }}
       </UiButton>
     </div>
 
     <!-- EXPANDABLE ADD MEMBER FORM PANEL -->
     <div v-if="canAdd && isAddingMember" class="add-member-card">
-      <h4><UserPlus :size="15" /> 新增成員資料</h4>
+      <h4><UserPlus :size="15" /> {{ t('common.members.addDetails') }}</h4>
       <div class="add-member-form">
         <input
           v-model="newUsername"
           class="inline-input"
-          :placeholder="addMemberPlaceholder"
+          :placeholder="usernamePlaceholder"
           :disabled="saving"
           @keyup.enter="handleAddMember"
         />
@@ -318,21 +323,21 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
           @click="handleAddMember"
         >
           <Plus :size="16" aria-hidden="true" />
-          {{ saving ? '處理中...' : '確定新增' }}
+          {{ saving ? t('common.settings.saving') : t('common.members.confirmAdd') }}
         </UiButton>
       </div>
     </div>
 
     <!-- MEMBER LIST TABLE -->
-    <div v-if="loading" class="list-state">載入成員列表中...</div>
+    <div v-if="loading" class="list-state">{{ t('common.members.loading') }}</div>
     <div v-else-if="paginatedMembers.length" class="member-table-container">
       <table class="member-table">
         <thead>
           <tr>
-            <th>使用者名稱</th>
-            <th>角色權限</th>
-            <th>加入時間</th>
-            <th v-if="canRemove" class="text-right">操作</th>
+            <th>{{ t('common.fields.username') }}</th>
+            <th>{{ t('common.fields.role') }}</th>
+            <th>{{ t('common.fields.joinedAt') }}</th>
+            <th v-if="canRemove" class="text-right">{{ t('common.actions.actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -365,7 +370,7 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
                 :disabled="saving"
                 @click="handleRemoveMember(member)"
               >
-                <Trash2 :size="13" /> 移除
+                <Trash2 :size="13" /> {{ t('common.members.remove') }}
               </button>
             </td>
           </tr>
@@ -373,7 +378,7 @@ async function handleRemoveMember(member: ResourceMemberItem): Promise<void> {
       </table>
     </div>
     <div v-else class="list-state empty">
-      {{ searchQuery ? '找不到符合條件的成員。' : '目前尚無成員。' }}
+      {{ searchQuery ? t('common.members.emptySearch') : t('common.members.empty') }}
     </div>
 
     <!-- PAGINATION (成員頁面分頁區塊) -->

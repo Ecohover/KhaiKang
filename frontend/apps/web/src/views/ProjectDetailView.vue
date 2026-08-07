@@ -102,7 +102,7 @@ function formatDate(value: string): string {
       <ResourcePageHeader
         :meta="`${project.code} · PROJECT`"
         :title="project.name"
-        :subtitle="project.description || '專案總覽儀表板與狀態管理'"
+        :subtitle="project.description || t('projects.detail.defaultDescription')"
         :status="project.status"
       />
 
@@ -110,7 +110,7 @@ function formatDate(value: string): string {
       <SharedViewTabs
         model-value="home"
         :tabs="[
-          { key: 'home', label: '首頁', icon: LayoutDashboard }
+          { key: 'home', label: t('projects.detail.homeTab'), icon: LayoutDashboard }
         ]"
       />
 
@@ -155,7 +155,7 @@ function formatDate(value: string): string {
               <small class="activity-time">{{ formatDate(issue.updatedAt) }}</small>
             </li>
           </ul>
-          <p v-else class="empty-activities">目前尚無任務動態與紀錄。</p>
+          <p v-else class="empty-activities">{{ t('projects.detail.noRecentActivity') }}</p>
         </SharedCardSection>
       </div>
     </template>

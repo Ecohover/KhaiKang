@@ -167,11 +167,11 @@ public static class TestManagementEndpointExtensions
           .WithName("UpdateTestSuite").Produces<TestSuiteResponse>();
 
         workspaces.MapGet("/{workspaceId:guid}/cases", async (
-            Guid workspaceId, Guid? suiteId, ClaimsPrincipal principal,
+            Guid workspaceId, Guid? suiteId, string? search, string? status, Guid? tagId, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>
         {
             if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
-            return Map(await service.ListCasesAsync(workspaceId, accountId, suiteId, token));
+            return Map(await service.ListCasesAsync(workspaceId, accountId, suiteId, search, status, tagId, token));
         }).WithName("ListTestCases").Produces<IReadOnlyList<TestCaseResponse>>();
 
         workspaces.MapPost("/{workspaceId:guid}/cases", async (
@@ -301,6 +301,18 @@ public static class TestManagementEndpointExtensions
         }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
           .WithName("CreateTestRun").Produces<TestRunResponse>(201);
 
+        workspaces.MapPost("/{workspaceId:guid}/runs/{runId:guid}/rerun", async (
+            Guid workspaceId, Guid runId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.RerunAsync(workspaceId, runId, accountId, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.Created($"/api/v1/test-workspaces/{workspaceId}/runs/{result.Value!.Id}", result.Value)
+                : Map(result);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("RerunTestRun").Produces<TestRunResponse>(201);
+
         workspaces.MapPut("/{workspaceId:guid}/runs/{runId:guid}/items/{itemId:guid}", async (
             Guid workspaceId, Guid runId, Guid itemId, RecordTestResultRequest request,
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
@@ -341,6 +353,38 @@ public static class TestManagementEndpointExtensions
                 workspaceId, runId, accountId, request, token));
         }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
           .WithName("UpdateTestRunStatus").Produces<TestRunResponse>();
+
+        var tags = endpoints.MapGroup("/api/v1/test-tags")
+            .WithTags("Test Management")
+            .RequireAuthorization();
+
+        tags.MapGet("/", async (TestManagementService service, CancellationToken token) =>
+            Results.Ok(await service.ListTagsAsync(token)))
+            .WithName("ListTestTags").Produces<IReadOnlyList<TestTagResponse>>();
+
+        tags.MapPost("/", async (CreateTestTagRequest request, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (ValidateTag(request.Name, request.Description) is { } invalid) return invalid;
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.CreateTagAsync(accountId, request, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.Created($"/api/v1/test-tags/{result.Value!.Id}", result.Value) : Map(result);
+        }).RequireAuthorization("account.create")
+          .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("CreateTestTag").Produces<TestTagResponse>(201);
+
+        tags.MapPut("/{tagId:guid}", async (Guid tagId, UpdateTestTagRequest request,
+            ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
+        {
+            if (ValidateTag(request.Name, request.Description) is { } invalid) return invalid;
+            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["tag"] = ["Status or version is invalid."] });
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.UpdateTagAsync(tagId, accountId, request, token));
+        }).RequireAuthorization("account.create")
+          .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("UpdateTestTag").Produces<TestTagResponse>();
 
         return endpoints;
     }
@@ -421,6 +465,11 @@ public static class TestManagementEndpointExtensions
             ],
         });
     }
+
+    private static IResult? ValidateTag(string name, string? description) =>
+        string.IsNullOrWhiteSpace(name) || name.Length > 50 || description?.Length > 4000
+            ? Results.ValidationProblem(new Dictionary<string, string[]> { ["tag"] = ["Tag name or description is invalid."] })
+            : null;
 
     private static bool ValidRole(string role) =>
         role is "owner" or "manager" or "tester" or "viewer";

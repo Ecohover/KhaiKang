@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import UiSelect from './UiSelect.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -45,15 +46,15 @@ const pageSummary = computed(() => props.pageLabel
     <span class="ui-pagination__summary">{{ summary }}</span>
     <label>
       <span>{{ pageSizeLabel }}</span>
-      <select
-        :value="pageSize"
+      <UiSelect
+        :model-value="pageSize"
         :disabled="disabled"
-        @change="emit('pageSizeChange', Number(($event.target as HTMLSelectElement).value))"
+        @update:model-value="emit('pageSizeChange', Number($event))"
       >
         <option v-for="option in pageSizeOptions" :key="option" :value="option">
           {{ option }}
         </option>
-      </select>
+      </UiSelect>
     </label>
     <div class="ui-pagination__controls">
       <button
@@ -93,10 +94,10 @@ const pageSummary = computed(() => props.pageLabel
   gap: 8px;
 }
 
-.ui-pagination select,
+.ui-pagination :deep(.ui-select),
 .ui-pagination button {
-  min-height: 28px;
-  padding: 3px 8px;
+  min-height: 32px;
+  padding: 5px 10px;
   color: var(--kk-text);
   background: var(--kk-surface);
   border: 1px solid var(--kk-border-strong);

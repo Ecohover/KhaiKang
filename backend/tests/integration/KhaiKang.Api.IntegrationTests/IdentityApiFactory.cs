@@ -21,6 +21,10 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         "Host=localhost;Database=khaikang_testing;Username=testing;Password=testing";
 
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
+    private readonly string _attachmentRoot = Path.Combine(
+        Path.GetTempPath(),
+        "khaikang-integration-tests",
+        Guid.NewGuid().ToString("N"));
     private readonly string? _previousConnectionString;
     private readonly ServiceProvider _sqliteServices = new ServiceCollection()
         .AddEntityFrameworkSqlite()
@@ -49,6 +53,7 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("Attachments:LocalRoot", _attachmentRoot);
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<IdentityDbContext>>();
@@ -93,6 +98,7 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         {
             _connection.Dispose();
             _sqliteServices.Dispose();
+            if (Directory.Exists(_attachmentRoot)) Directory.Delete(_attachmentRoot, recursive: true);
             Environment.SetEnvironmentVariable("ConnectionStrings__KhaiKang", _previousConnectionString);
         }
     }

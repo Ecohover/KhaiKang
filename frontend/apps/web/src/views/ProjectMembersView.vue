@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { List } from '@lucide/vue'
+import { List, Plus } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { UiButton } from '@khaikang/ui'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import ResourceMemberManager from '../components/ResourceMemberManager.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
@@ -19,6 +20,7 @@ const route = useRoute()
 const { t } = useI18n()
 const projectId = computed(() => String(route.params.projectId))
 const project = ref<ProjectResponse>()
+const addingMember = ref(false)
 
 const canAddMember = computed(() =>
   project.value?.currentUserPermissions.includes(PROJECT_MEMBER_ADD_PERMISSION) === true &&
@@ -59,14 +61,17 @@ async function loadPage(): Promise<void> {
       :meta="`${project.code} · PROJECT`"
       :title="project.name"
       :subtitle="t('projects.members.title')"
-      :status="project.status"
-    />
+    >
+      <UiButton v-if="canAddMember" @click="addingMember = !addingMember">
+        <Plus :size="16" />{{ t(addingMember ? 'common.members.cancelAdd' : 'common.members.add') }}
+      </UiButton>
+    </ResourcePageHeader>
 
     <!-- VIEW TABS (分頁標籤列) -->
     <SharedViewTabs
       model-value="list"
       :tabs="[
-        { key: 'list', label: '列表', icon: List }
+        { key: 'list', label: t('common.views.list'), icon: List }
       ]"
     />
 
@@ -74,10 +79,11 @@ async function loadPage(): Promise<void> {
       resource-type="project"
       :resource-id="projectId"
       :title="t('projects.members.record')"
-      :description="t('projects.members.sectionDescription', '管理本專案之成員權限與角色組')"
       :can-add="canAddMember"
       :can-edit-role="canAssignRoles"
       :can-remove="canRemoveMember"
+      :show-add-action="false"
+      v-model:adding="addingMember"
     />
   </section>
 </template>

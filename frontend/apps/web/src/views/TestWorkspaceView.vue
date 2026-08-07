@@ -10,9 +10,12 @@ import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
 import SharedCardSection from '../components/SharedCardSection.vue'
 import SharedResourceSettings from '../components/SharedResourceSettings.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
+import SharedFilterToolbar from '../components/SharedFilterToolbar.vue'
+import SharedSearchField from '../components/SharedSearchField.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
+import TestCaseEditForm from '../components/TestCaseEditForm.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
-import type { TestCaseResponse, TestSuiteResponse, TestWorkspaceMemberResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
+import type { TestCaseResponse, TestSuiteResponse, TestTagResponse, TestWorkspaceMemberResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
@@ -23,6 +26,7 @@ const workspace = ref<TestWorkspaceResponse>()
 const members = ref<TestWorkspaceMemberResponse[]>([])
 const suites = ref<TestSuiteResponse[]>([])
 const cases = ref<TestCaseResponse[]>([])
+const tags = ref<TestTagResponse[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
@@ -39,16 +43,21 @@ const tab = computed<'home' | 'suites' | 'members' | 'settings'>(() => {
 })
 
 const tabLabel = computed(() => {
-  if (tab.value === 'home') return '首頁'
+  if (tab.value === 'home') return t('projects.detail.homeTab')
   if (tab.value === 'members') return t('tests.member.title')
   if (tab.value === 'settings') return t('tests.workspace.settings')
-  return t('routes.testSuites', '測試管理')
+  return t('routes.testSuites')
 })
 const username = ref('')
 const memberRole = ref<TestWorkspaceRole>('tester')
 const { showCreated, showUpdated } = useSaveNotice()
 
 const canManage = computed(() => ['owner', 'manager'].includes(workspace.value?.currentUserRole ?? ''))
+const suiteView = ref<'tree' | 'list'>('tree')
+const caseQuery = ref('')
+const caseStatusFilter = ref<'active' | 'inactive' | ''>('')
+const caseTagFilter = ref('')
+const addingMember = ref(false)
 
 interface TreeNode {
   type: 'suite' | 'case'
@@ -103,7 +112,7 @@ const visibleTreeNodes = computed(() => {
 
     // 2. ALL test cases directly under parentId come SECOND (after all child suites)
     if (parentId !== null) {
-      const suiteCases = (casesBySuite.value.get(parentId) ?? [])
+      const suiteCases = (allCasesBySuite.value.get(parentId) ?? [])
         .sort((left, right) => left.sortOrder - right.sortOrder || left.title.localeCompare(right.title))
 
       suiteCases.forEach((testCase, idx) => {
@@ -125,7 +134,7 @@ const visibleTreeNodes = computed(() => {
   return nodes
 })
 
-const casesBySuite = computed(() => {
+const allCasesBySuite = computed(() => {
   const result = new Map<string, TestCaseResponse[]>()
   for (const testCase of cases.value) {
     const values = result.get(testCase.suiteId) ?? []
@@ -136,6 +145,15 @@ const casesBySuite = computed(() => {
     values.sort((left, right) => left.sortOrder - right.sortOrder || left.title.localeCompare(right.title))
   }
   return result
+})
+
+const filteredCases = computed(() => {
+  const query = caseQuery.value.trim().toLocaleLowerCase()
+  return cases.value.filter((item) =>
+    (!caseStatusFilter.value || item.status === caseStatusFilter.value) &&
+    (!caseTagFilter.value || item.tags.some((tag) => tag.id === caseTagFilter.value)) &&
+    (!query || item.title.toLocaleLowerCase().includes(query)),
+  )
 })
 
 const selectedSuite = computed(() => {
@@ -150,9 +168,19 @@ const selectedCase = computed(() => {
 
 const casesForSelectedSuite = computed(() => {
   if (selectedSuiteId.value) {
-    return casesBySuite.value.get(selectedSuiteId.value) ?? []
+    return allCasesBySuite.value.get(selectedSuiteId.value) ?? []
   }
   return cases.value
+})
+
+// Keeps the legacy block type-safe while the shared form above owns the live case editor.
+const legacySelectedCase = computed(() => selectedCase.value)
+
+const childSuitesForSelectedSuite = computed(() => {
+  if (!selectedSuiteId.value) return []
+  return suites.value
+    .filter((suite) => suite.parentId === selectedSuiteId.value)
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
 })
 
 function hasChildren(suiteId: string): boolean {
@@ -277,6 +305,7 @@ const caseForm = ref({
   preconditions: '',
   overallExpectedResult: '',
   status: 'active' as 'active' | 'inactive',
+  tagIds: [] as string[],
   steps: [] as Array<{ key: number; action: string; expectedResult: string }>,
 })
 const nextCaseStepKey = ref(1)
@@ -290,6 +319,7 @@ function populateCaseForm(): void {
     preconditions: selectedCase.value.preconditions ?? '',
     overallExpectedResult: selectedCase.value.overallExpectedResult ?? '',
     status: selectedCase.value.status,
+    tagIds: selectedCase.value.tags.map((tag) => tag.id),
     steps: selectedCase.value.steps.map((step, idx) => ({
       key: idx + 1,
       action: step.action,
@@ -309,6 +339,7 @@ const isCaseDirty = computed(() => {
   if (caseForm.value.preconditions.trim() !== (selectedCase.value.preconditions ?? '')) return true
   if (caseForm.value.overallExpectedResult.trim() !== (selectedCase.value.overallExpectedResult ?? '')) return true
   if (caseForm.value.status !== selectedCase.value.status) return true
+  if (caseForm.value.tagIds.join(',') !== selectedCase.value.tags.map((tag) => tag.id).sort().join(',')) return true
   if (caseForm.value.steps.length !== selectedCase.value.steps.length) return true
   return caseForm.value.steps.some((step, idx) => {
     const orig = selectedCase.value!.steps[idx]
@@ -340,6 +371,7 @@ async function saveCaseForm(): Promise<void> {
       overallExpectedResult: caseForm.value.overallExpectedResult.trim() || null,
       sortOrder: selectedCase.value.sortOrder,
       status: caseForm.value.status,
+      tagIds: caseForm.value.tagIds,
       version: selectedCase.value.version,
       steps: caseForm.value.steps.map((step) => ({
         action: step.action.trim(),
@@ -361,23 +393,11 @@ async function saveCaseForm(): Promise<void> {
 const isCreatingCase = ref(false)
 
 function startCreateCase(suiteId?: string | null): void {
-  const targetSuiteId = suiteId ?? selectedSuiteId.value
-  const targetSuite = suites.value.find((suite) => suite.id === targetSuiteId)
-  if (!targetSuiteId || !targetSuite || targetSuite.status !== 'active') return
-  selectedCaseId.value = null
-  isCreatingCase.value = true
-  caseForm.value = {
-    suiteId: targetSuiteId,
-    title: '',
-    description: '',
-    preconditions: '',
-    overallExpectedResult: '',
-    status: 'active',
-    steps: [
-      { key: 1, action: '', expectedResult: '' }
-    ],
-  }
-  nextCaseStepKey.value = 2
+  router.push({
+    name: 'test-case-new',
+    params: { workspaceId: workspaceId.value },
+    query: suiteId ? { suiteId } : {},
+  })
 }
 
 function cancelCreateCase(): void {
@@ -400,7 +420,8 @@ async function saveCreatedCase(): Promise<void> {
       description: caseForm.value.description.trim() || null,
       preconditions: caseForm.value.preconditions.trim() || null,
       overallExpectedResult: caseForm.value.overallExpectedResult.trim() || null,
-      sortOrder: (casesBySuite.value.get(caseForm.value.suiteId)?.length ?? 0) + 1,
+      sortOrder: (allCasesBySuite.value.get(caseForm.value.suiteId)?.length ?? 0) + 1,
+      tagIds: caseForm.value.tagIds,
       steps: validSteps,
     },
     await secureHeaders(),
@@ -431,18 +452,35 @@ function selectCaseItem(testCase: TestCaseResponse): void {
   populateCaseForm()
 }
 
+function openCaseFromList(testCase: TestCaseResponse): void {
+  suiteView.value = 'tree'
+  selectCaseItem(testCase)
+}
+
+function handleEmbeddedCaseSaved(updatedCase: TestCaseResponse): void {
+  const index = cases.value.findIndex((item) => item.id === updatedCase.id)
+  if (index !== -1) cases.value[index] = updatedCase
+  showUpdated(t('tests.testCase.record'), updatedCase.title)
+}
+
+function handleEmbeddedCaseCancel(): void {
+  selectSuiteItem(selectedCase.value?.suiteId ?? selectedSuiteId.value)
+}
+
 async function load(): Promise<void> {
   loading.value = true
-  const [workspaceResult, memberResult, suiteResult, caseResult] = await Promise.all([
+  const [workspaceResult, memberResult, suiteResult, caseResult, tagResult] = await Promise.all([
     apiClient.getTestWorkspace(workspaceId.value),
     apiClient.listTestWorkspaceMembers(workspaceId.value),
     apiClient.listTestSuites(workspaceId.value),
     apiClient.listTestCases(workspaceId.value),
+    apiClient.listTestTags(),
   ])
   workspace.value = workspaceResult.data
   members.value = memberResult.data ?? []
   suites.value = suiteResult.data ?? []
   cases.value = caseResult.data ?? []
+  tags.value = tagResult.data?.filter((tag) => tag.status === 'active') ?? []
   error.value = problemMessage(
     workspaceResult.error ?? memberResult.error ?? suiteResult.error ?? caseResult.error,
     workspace.value ? '' : t('tests.workspace.loadFailed'),
@@ -461,25 +499,6 @@ async function load(): Promise<void> {
   }
 
   loading.value = false
-}
-
-async function toggleSuite(suite: TestSuiteResponse): Promise<void> {
-  saving.value = true
-  const result = await apiClient.updateTestSuite(workspaceId.value, suite.id, {
-    parentId: suite.parentId,
-    name: suite.name,
-    description: suite.description,
-    sortOrder: suite.sortOrder,
-    status: suite.status === 'active' ? 'inactive' : 'active',
-    version: suite.version,
-  }, await secureHeaders())
-  if (result.data) {
-    Object.assign(suite, result.data)
-    showUpdated(t('tests.suite.record'), result.data.name)
-  } else {
-    error.value = problemMessage(result.error, t('tests.suite.updateFailed'))
-  }
-  saving.value = false
 }
 
 async function addMember(): Promise<void> {
@@ -603,8 +622,18 @@ onMounted(load)
       :meta="`${workspace.prefix} · TEST WORKSPACE · ${workspace.currentUserRole}`"
       :title="workspace.name"
       :subtitle="workspace.description || t('tests.workspace.defaultDescription')"
-      :status="workspace.status"
-    />
+      :status="tab === 'members' ? '' : workspace.status"
+    >
+      <UiButton
+        v-if="tab === 'suites' && canManage"
+        @click="startCreateCase()"
+      >
+        <Plus :size="16" /> {{ t('tests.testCase.create') }}
+      </UiButton>
+      <UiButton v-if="tab === 'members' && canManage" @click="addingMember = !addingMember">
+        <Plus :size="16" />{{ t(addingMember ? 'common.members.cancelAdd' : 'common.members.add') }}
+      </UiButton>
+    </ResourcePageHeader>
 
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -613,7 +642,7 @@ onMounted(load)
       v-if="tab === 'home'"
       model-value="home"
       :tabs="[
-        { key: 'home', label: '首頁', icon: LayoutDashboard }
+        { key: 'home', label: t('tests.workspace.homeTitle'), icon: LayoutDashboard }
       ]"
     />
 
@@ -621,29 +650,30 @@ onMounted(load)
     <SharedCardSection
       v-if="tab === 'home'"
       :icon="LayoutDashboard"
-      title="首頁"
-      description="測試工作區總覽與數據儀表板"
+      :title="t('tests.workspace.homeTitle')"
+      :description="t('tests.workspace.homeDescription')"
     >
       <div class="home-placeholder-box">
         <div class="placeholder-icon-wrap">
           <LayoutDashboard :size="36" />
         </div>
-        <h4>測試工作區首頁功能預留區</h4>
-        <p>此處已為您完成首頁導覽設定，後續可在此擴充測試執行率圖表、案例涵蓋率統計與最近執行紀錄。</p>
+        <h4>{{ t('tests.workspace.homePlaceholderTitle') }}</h4>
+        <p>{{ t('tests.workspace.homePlaceholderDescription') }}</p>
       </div>
     </SharedCardSection>
 
     <!-- VIEW TABS FOR SUITES (分頁標籤列) -->
     <SharedViewTabs
       v-if="tab === 'suites'"
-      model-value="tree"
+      v-model="suiteView"
       :tabs="[
-        { key: 'tree', label: '測試樹', icon: FolderTree }
+        { key: 'tree', label: t('tests.suite.treeView'), icon: FolderTree },
+        { key: 'list', label: t('tests.suite.listView'), icon: List }
       ]"
     />
 
     <!-- TAB 1: SUITES & CASES VSCODE STYLE SPLIT VIEW -->
-    <div v-if="tab === 'suites'" class="suite-split-layout">
+    <div v-if="tab === 'suites' && suiteView === 'tree'" class="suite-split-layout">
       <!-- LEFT SIDEBAR: VSCODE STYLE EXPLORER TREE -->
       <aside class="panel suite-sidebar">
         <header class="sidebar-header">
@@ -652,7 +682,6 @@ onMounted(load)
             <p>{{ t('tests.suite.treeDescription') }}</p>
           </div>
         </header>
-
         <!-- ALL CASES SELECTION -->
         <div
           class="tree-item all-cases-item"
@@ -660,7 +689,7 @@ onMounted(load)
           @click="selectSuiteItem(null)"
         >
           <Layers :size="16" class="tree-item-icon" />
-          <span class="tree-label">所有測試案例</span>
+          <span class="tree-label">{{ t('tests.workspace.allCases') }}</span>
           <span class="badge">{{ cases.length }}</span>
         </div>
 
@@ -680,7 +709,7 @@ onMounted(load)
             >
               <!-- COLLAPSE CHEVRON -->
               <button
-                v-if="hasChildren(node.suite.id) || (casesBySuite.get(node.suite.id)?.length ?? 0) > 0"
+                v-if="hasChildren(node.suite.id) || (allCasesBySuite.get(node.suite.id)?.length ?? 0) > 0"
                 type="button"
                 class="chevron-btn"
                 @click.stop="toggleCollapse(node.suite.id)"
@@ -698,7 +727,7 @@ onMounted(load)
               <span class="tree-label" :title="node.suite.name">{{ node.suite.name }}</span>
 
               <!-- CASE COUNT BADGE -->
-              <span class="badge">{{ casesBySuite.get(node.suite.id)?.length ?? 0 }}</span>
+              <span class="badge">{{ allCasesBySuite.get(node.suite.id)?.length ?? 0 }}</span>
 
               <!-- HOVER ACTIONS -->
               <div class="hover-actions" @click.stop>
@@ -735,7 +764,7 @@ onMounted(load)
               @click="selectCaseItem(node.testCase)"
             >
               <FileCheck2 :size="15" class="tree-item-icon case-file-icon" />
-              <span class="case-code-prefix">{{ workspace.prefix }}-{{ node.caseIndex }}</span>
+              <span class="case-code-prefix">{{ workspace.prefix }}-TC{{ node.testCase.caseNo }}</span>
               <span class="tree-label" :title="node.testCase.title">{{ node.testCase.title }}</span>
             </div>
           </template>
@@ -764,18 +793,24 @@ onMounted(load)
         :class="{ 'mode-suite': !selectedCase && !isCreatingCase, 'mode-case': Boolean(selectedCase) || isCreatingCase }"
       >
         <!-- INLINE CASE CREATION FORM -->
-        <template v-if="isCreatingCase">
+        <template v-if="selectedCase">
+          <TestCaseEditForm
+            embedded
+            :workspace-id="workspaceId"
+            :workspace="workspace"
+            :test-case="selectedCase"
+            :suites="suites"
+            @saved="handleEmbeddedCaseSaved"
+            @cancel="handleEmbeddedCaseCancel"
+          />
+        </template>
+
+        <template v-else-if="isCreatingCase">
           <header class="case-panel-header">
             <div class="header-main-col">
               <div class="header-top-row">
                 <div class="breadcrumb">
                   <span>{{ workspace.name }}</span>
-                  <span> / </span>
-                  <select v-model="caseForm.suiteId" class="select-breadcrumb">
-                    <option v-for="s in suites" :key="s.id" :value="s.id">
-                      {{ getSuiteFullPath(s.id) }}
-                    </option>
-                  </select>
                 </div>
               </div>
               <div class="header-title-row">
@@ -789,21 +824,21 @@ onMounted(load)
                     autofocus
                   />
                 </label>
-                <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
-                </select>
               </div>
             </div>
 
             <div class="header-actions">
+              <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
+                <option value="active">{{ t('common.status.active') }}</option>
+                <option value="inactive">{{ t('common.status.inactive') }}</option>
+              </select>
               <button
                 type="button"
                 class="btn-primary"
                 :disabled="saving || !caseForm.title.trim() || !caseForm.steps.some(s => s.action.trim() && s.expectedResult.trim())"
                 @click="saveCreatedCase"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '建立案例' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.createAction') }}
               </button>
               <button
                 type="button"
@@ -819,17 +854,24 @@ onMounted(load)
           <div class="case-detail-body">
             <section class="detail-section">
               <h4>{{ t('tests.testCase.description') }}</h4>
-              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" placeholder="測試目標與說明"></textarea>
+              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.descriptionPlaceholder')"></textarea>
+            </section>
+
+            <section class="detail-section">
+              <h4>{{ t('tests.testCase.tags') }}</h4>
+              <select v-model="caseForm.tagIds" class="tag-select" multiple>
+                <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+              </select>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.preconditions') }}</h4>
-              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" placeholder="前置準備"></textarea>
+              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.preconditionsPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.overallExpectedResult') }}</h4>
-              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" placeholder="整體預期結果"></textarea>
+              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.expectedPlaceholder')"></textarea>
             </section>
 
             <!-- STEPS SECTION -->
@@ -871,39 +913,33 @@ onMounted(load)
         </template>
 
         <!-- ALWAYS-EDITABLE SINGLE CASE DETAIL VIEW -->
-        <template v-else-if="selectedCase">
+        <template v-else-if="legacySelectedCase">
           <!-- SINGLE CASE HEADER -->
           <header class="case-panel-header">
             <div class="header-main-col">
               <div class="header-top-row">
                 <div class="breadcrumb">
                   <span>{{ workspace.name }}</span>
-                  <span> / </span>
-                  <select v-model="caseForm.suiteId" class="select-breadcrumb">
-                    <option v-for="s in suites" :key="s.id" :value="s.id">
-                      {{ getSuiteFullPath(s.id) }}
-                    </option>
-                  </select>
                 </div>
               </div>
               <div class="header-title-row">
-                <input v-model="caseForm.title" class="editable-title-input" placeholder="案例標題" required />
-                <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
-                </select>
+                <input v-model="caseForm.title" class="editable-title-input" :placeholder="t('tests.testCase.titlePlaceholderShort')" required />
               </div>
-              <p class="suite-desc">案例編號：{{ workspace.prefix }}-{{ (casesBySuite.get(selectedCase.suiteId)?.findIndex(c => c.id === selectedCase?.id) ?? 0) + 1 }} · {{ t('tests.testCase.stepCount', { count: selectedCase.steps.length }) }}</p>
+              <p class="suite-desc">{{ t('tests.workspace.caseNumber', { code: `${workspace.prefix}-TC${legacySelectedCase.caseNo}` }) }} · {{ t('tests.testCase.stepCount', { count: legacySelectedCase.steps.length }) }}</p>
             </div>
 
             <div class="header-actions">
+              <select v-model="caseForm.status" class="status-select-pill" :class="caseForm.status">
+                <option value="active">{{ t('common.status.active') }}</option>
+                <option value="inactive">{{ t('common.status.inactive') }}</option>
+              </select>
               <button
                 type="button"
                 class="btn-primary"
                 :disabled="saving || !isCaseDirty || !caseForm.title.trim() || !caseForm.steps.length"
                 @click="saveCaseForm"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '儲存變更' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.saveAction') }}
               </button>
             </div>
           </header>
@@ -911,18 +947,35 @@ onMounted(load)
           <!-- CASE DETAIL BODY -->
           <div class="case-detail-body">
             <section class="detail-section">
+              <label class="form-field">
+                <span>{{ t('tests.testCase.suite') }}</span>
+                <select v-model="caseForm.suiteId" class="case-suite-select">
+                  <option v-for="suite in suites" :key="suite.id" :value="suite.id">
+                    {{ getSuiteFullPath(suite.id) }}
+                  </option>
+                </select>
+              </label>
+            </section>
+            <section class="detail-section">
               <h4>{{ t('tests.testCase.description') }}</h4>
-              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" placeholder="測試目標與說明"></textarea>
+              <textarea v-model="caseForm.description" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.descriptionPlaceholder')"></textarea>
+            </section>
+
+            <section class="detail-section">
+              <h4>{{ t('tests.testCase.tags') }}</h4>
+              <select v-model="caseForm.tagIds" class="tag-select" multiple>
+                <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+              </select>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.preconditions') }}</h4>
-              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" placeholder="前置準備"></textarea>
+              <textarea v-model="caseForm.preconditions" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.preconditionsPlaceholder')"></textarea>
             </section>
 
             <section class="detail-section">
               <h4>{{ t('tests.testCase.overallExpectedResult') }}</h4>
-              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" placeholder="整體預期結果"></textarea>
+              <textarea v-model="caseForm.overallExpectedResult" class="editable-textarea" rows="2" :placeholder="t('tests.testCase.expectedPlaceholder')"></textarea>
             </section>
 
             <!-- EDITABLE STEPS SECTION -->
@@ -984,34 +1037,14 @@ onMounted(load)
               </div>
               <div v-if="selectedSuite" class="header-title-row">
                 <input v-model="suiteForm.name" class="editable-title-input" placeholder="測試套件名稱" required />
-                <select v-model="suiteForm.status" class="status-select-pill" :class="suiteForm.status">
-                  <option value="active">使用中 (Active)</option>
-                  <option value="inactive">已停用 (Inactive)</option>
-                </select>
               </div>
-              <h2 v-else class="header-static-title">所有測試案例</h2>
-              <textarea v-if="selectedSuite" v-model="suiteForm.description" class="editable-textarea desc-input" placeholder="描述此測試套件的目的..." rows="2"></textarea>
-              <p v-else class="suite-desc">共包含 {{ cases.length }} 個測試案例</p>
+              <template v-else>
+                <h2 class="header-static-title">{{ t('tests.workspace.allCases') }}</h2>
+                <p class="suite-desc">{{ t('tests.workspace.caseCount', { count: cases.length }) }}</p>
+              </template>
             </div>
 
             <div class="header-actions">
-              <button
-                v-if="canManage && selectedSuite && selectedSuite.depth < 5"
-                type="button"
-                class="btn-subtle"
-                @click="router.push({ name: 'test-suite-new', params: { workspaceId }, query: { parentId: selectedSuite.id } })"
-              >
-                <FolderPlus :size="14" /> {{ t('tests.suite.addChild') }}
-              </button>
-              <button
-                v-if="canManage && selectedSuite"
-                type="button"
-                class="btn-subtle"
-                :disabled="saving"
-                @click="toggleSuite(selectedSuite)"
-              >
-                {{ t(selectedSuite.status === 'active' ? 'tests.suite.disable' : 'tests.suite.enable') }}
-              </button>
               <button
                 v-if="canManage && selectedSuite"
                 type="button"
@@ -1019,13 +1052,35 @@ onMounted(load)
                 :disabled="saving || !isSuiteDirty || !suiteForm.name.trim()"
                 @click="saveSuiteForm"
               >
-                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : '儲存變更' }}
+                <Save :size="14" /> {{ saving ? t('tests.workspace.loading') : t('tests.testCase.saveAction') }}
               </button>
             </div>
+            <textarea
+              v-if="selectedSuite"
+              v-model="suiteForm.description"
+              class="editable-textarea desc-input"
+              placeholder="描述此測試套件的目的..."
+              rows="2"
+            ></textarea>
           </header>
 
-          <!-- CASE CARDS LIST -->
-          <div v-if="casesForSelectedSuite.length" class="case-card-list">
+          <!-- DIRECT CHILD SUITES, THEN DIRECT CASES -->
+          <div v-if="childSuitesForSelectedSuite.length || casesForSelectedSuite.length" class="case-card-list">
+            <article
+              v-for="suite in childSuitesForSelectedSuite"
+              :key="suite.id"
+              class="case-card suite-card"
+              @click="selectSuiteItem(suite.id)"
+            >
+              <div class="case-card-icon"><Folder :size="18" /></div>
+              <div class="case-card-content">
+                <div class="case-card-title-row">
+                  <strong class="case-title">{{ suite.name }}</strong>
+                  <span class="child-suite-label">{{ t('tests.suite.record') }}</span>
+                </div>
+                <p class="case-desc-preview">{{ suite.description || t('tests.suite.noDescription') }}</p>
+              </div>
+            </article>
             <article
               v-for="testCase in casesForSelectedSuite"
               :key="testCase.id"
@@ -1053,38 +1108,94 @@ onMounted(load)
               </div>
             </article>
 
-            <!-- INLINE CREATE CASE BUTTON AT LAST ROW OF CASE LIST -->
-            <div
-              v-if="canManage && selectedSuite?.status === 'active'"
-              class="create-case-bottom-row"
-            >
-              <button
-                type="button"
-                class="btn-subtle btn-create-case-bottom"
-                @click="startCreateCase(selectedSuiteId)"
-              >
-                <Plus :size="16" /> {{ t('tests.testCase.create') }}
-              </button>
-            </div>
           </div>
 
           <!-- EMPTY STATE -->
           <div v-else class="empty-cases">
             <FileCheck2 :size="36" />
-            <h4>此測試套件尚無案例</h4>
-            <p>建立第一個測試案例以記錄步驟與驗收條件。</p>
-            <button
-              v-if="canManage && selectedSuite?.status === 'active'"
-              type="button"
-              class="btn-primary empty-cta"
-              @click="startCreateCase(selectedSuiteId)"
-            >
-              <Plus :size="16" /> {{ t('tests.testCase.create') }}
-            </button>
+            <h4>{{ t('tests.testCase.suiteEmptyTitle') }}</h4>
+            <p>{{ t('tests.testCase.suiteEmptyDescription') }}</p>
           </div>
+          <footer
+            v-if="canManage && selectedSuite"
+            class="suite-create-actions"
+          >
+            <button
+              v-if="selectedSuite.depth < 5"
+              type="button"
+              class="btn-subtle"
+              @click="router.push({ name: 'test-suite-new', params: { workspaceId }, query: { parentId: selectedSuite.id } })"
+            >
+              <FolderPlus :size="15" /> {{ t('tests.suite.createChild') }}
+            </button>
+            <button type="button" class="btn-primary" @click="startCreateCase(selectedSuite.id)">
+              <Plus :size="15" /> {{ t('tests.testCase.create') }}
+            </button>
+          </footer>
         </template>
       </main>
     </div>
+
+    <SharedCardSection
+      v-else-if="tab === 'suites' && suiteView === 'list'"
+      class="case-list-view"
+      :title="t('tests.workspace.allCases')"
+      :description="t('tests.testCase.listDescription')"
+    >
+      <template #headerRight>
+        <span class="count-badge">{{ t('tests.workspace.caseCount', { count: filteredCases.length }) }}</span>
+      </template>
+      <SharedFilterToolbar align="start" class="case-filter-toolbar">
+          <SharedSearchField
+            v-model="caseQuery"
+            :placeholder="t('tests.workspace.caseSearchPlaceholder')"
+            :clear-label="t('common.search.clear')"
+          />
+          <select v-model="caseStatusFilter">
+            <option value="">{{ t('tests.workspace.allCaseStatuses') }}</option>
+            <option value="active">{{ t('common.status.active') }}</option>
+            <option value="inactive">{{ t('common.status.inactive') }}</option>
+          </select>
+          <select v-model="caseTagFilter">
+            <option value="">{{ t('tests.workspace.allTags') }}</option>
+            <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+          </select>
+      </SharedFilterToolbar>
+      <div v-if="filteredCases.length" class="case-table-wrap">
+        <table class="case-table">
+          <thead>
+            <tr>
+              <th>{{ t('tests.testCase.columns.code') }}</th>
+              <th>{{ t('tests.testCase.columns.title') }}</th>
+              <th>{{ t('tests.testCase.columns.path') }}</th>
+              <th>{{ t('tests.testCase.columns.tags') }}</th>
+              <th>{{ t('tests.testCase.columns.steps') }}</th>
+              <th>{{ t('tests.testCase.columns.status') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+          v-for="testCase in filteredCases"
+          :key="testCase.id"
+          :class="{ inactive: testCase.status === 'inactive' }"
+          @click="openCaseFromList(testCase)"
+            >
+              <td><code>{{ workspace.prefix }}-TC{{ testCase.caseNo }}</code></td>
+              <td><strong>{{ testCase.title }}</strong><small>{{ testCase.description || t('tests.testCase.noDescription') }}</small></td>
+              <td class="suite-path-cell">{{ getSuiteFullPath(testCase.suiteId) }}</td>
+              <td>{{ testCase.tags.map((tag) => tag.name).join(' · ') || '—' }}</td>
+              <td>{{ t('tests.testCase.stepCount', { count: testCase.steps.length }) }}</td>
+              <td><span class="case-status-badge" :class="testCase.status">{{ t(`tests.workspace.${testCase.status}`) }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="empty-cases">
+        <FileCheck2 :size="36" />
+        <h4>{{ t('tests.testCase.suiteEmptyTitle') }}</h4>
+        <p>{{ t('tests.testCase.suiteEmptyDescription') }}</p>
+      </div>
+    </SharedCardSection>
 
     <!-- VIEW TABS FOR MEMBERS (分頁標籤列) -->
     <SharedViewTabs
@@ -1105,6 +1216,8 @@ onMounted(load)
       :can-add="canManage"
       :can-edit-role="canManage"
       :can-remove="canManage"
+      :show-add-action="false"
+      v-model:adding="addingMember"
     />
 
     <!-- VIEW TABS FOR SETTINGS (分頁標籤列) -->
@@ -1148,6 +1261,30 @@ onMounted(load)
   gap: 20px;
   align-items: start;
 }
+
+.case-list-view {
+  min-height: 400px;
+}
+
+.case-filter-toolbar { margin-bottom: 16px; }
+.case-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--kk-border);
+  border-radius: var(--kk-radius);
+}
+
+.case-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.case-table th,
+.case-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--kk-border); }
+.case-table th { color: var(--kk-text-muted); background: var(--kk-surface-subtle); font-size: .75rem; font-weight: 700; }
+.case-table tbody tr { cursor: pointer; }
+.case-table tbody tr:hover { background: var(--kk-accent-soft); }
+.case-table tbody tr:last-child td { border-bottom: 0; }
+.case-table td small { display: block; margin-top: 4px; color: var(--kk-text-muted); }
+.case-table td code { color: var(--kk-accent); font-weight: 700; }
+.case-table tbody tr.inactive { opacity: .58; }
+.suite-path-cell { color: var(--kk-text-muted); }
+
 
 .suite-sidebar {
   display: flex;
@@ -1346,6 +1483,24 @@ onMounted(load)
   padding-left: 10px !important;
 }
 
+.tree-filters {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 8px 0 12px;
+}
+
+.tree-filters input,
+.tree-filters select {
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--kk-border);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--kk-text);
+  background: #fff;
+}
+
 .empty-tree {
   display: flex;
   flex-direction: column;
@@ -1356,31 +1511,39 @@ onMounted(load)
   color: var(--kk-text-muted);
 }
 
-/* RIGHT MAIN PANEL - COLOR DYNAMICS ACCORDING TO SUITE OR CASE SELECTION */
+/* RIGHT MAIN PANEL - one stable frame for suite, case, and creation modes */
 .case-main-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
+  gap: 0;
+  padding: 0;
   border-radius: 12px;
-  min-height: 480px;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-/* SUITE MODE: MATCHES LEFT TREE ACTIVE SUITE ITEM BACKGROUND (#eaf5ee) */
-.case-main-panel.mode-suite {
-  background: #eaf5ee;
-  border: 1px solid #bee3cb;
-}
-
-/* CASE MODE: LIGHTER CLEAN WHITE BACKGROUND (#ffffff) */
-.case-main-panel.mode-case {
   background: #ffffff;
   border: 1px solid var(--kk-border);
+  min-height: 400px;
+  overflow: hidden;
+}
+
+.case-main-panel.mode-suite {
+  background: #ffffff;
+  border-color: #bee3cb;
+}
+
+.case-main-panel.mode-case {
+  background: #ffffff;
+  height: min(720px, calc(100dvh - 170px));
+}
+
+.case-main-panel.mode-case :deep(.edit-page--embedded) { width: 100%; }
+
+.case-main-panel.mode-suite .case-panel-header {
+  background: #eaf5ee;
+  border-bottom-color: #bee3cb;
 }
 
 .case-panel-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
@@ -1463,6 +1626,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 20px;
 }
 
 .detail-section {
@@ -1505,6 +1669,10 @@ onMounted(load)
   border-bottom: 1px solid var(--kk-border);
 }
 
+.case-panel-header .desc-input {
+  flex: 0 0 100%;
+}
+
 .step-row {
   display: grid;
   grid-template-columns: 50px 1fr 1fr;
@@ -1525,6 +1693,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 20px;
 }
 
 .case-card {
@@ -1544,6 +1713,17 @@ onMounted(load)
 }
 .case-card.inactive {
   opacity: 0.55;
+}
+
+.suite-card {
+  background: #eaf5ee;
+  border-color: #8fc8a5;
+}
+
+.child-suite-label {
+  color: var(--kk-accent);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .case-card-icon {
@@ -1610,31 +1790,14 @@ onMounted(load)
   color: var(--kk-text-muted);
 }
 
-/* INLINE CREATE CASE AT BOTTOM OF CASE LIST */
-.create-case-bottom-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 6px;
-}
-
-.btn-create-case-bottom {
-  width: 100%;
-  border: 1px dashed #7cb994;
-  background: white;
-  color: var(--kk-accent);
-}
-.btn-create-case-bottom:hover {
-  background: #d4ebd9;
-  border-color: var(--kk-accent);
-}
-
 .empty-cases {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: auto 0;
-  padding: 48px 0;
+  flex: 1;
+  min-height: 240px;
+  padding: 48px 20px;
   gap: 8px;
   color: var(--kk-text-muted);
   text-align: center;
@@ -1650,6 +1813,15 @@ onMounted(load)
 }
 .empty-cta {
   margin-top: 6px;
+}
+
+.suite-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--kk-border);
+  background: var(--kk-surface-subtle);
 }
 
 .form label, .settings label { display: grid; gap: 7px; font-size: .8rem; font-weight: 700; }
@@ -1856,6 +2028,16 @@ input, textarea, select { min-width: 0; padding: 10px 11px; font: inherit; backg
   box-sizing: border-box;
   background: #ffffff;
   transition: all 0.15s ease-in-out;
+}
+
+.case-suite-select {
+  min-height: 38px;
+  padding: 8px 10px;
+  color: var(--kk-text);
+  background: #fff;
+  border: 1px solid var(--kk-border);
+  border-radius: 6px;
+  font: inherit;
 }
 .editable-textarea:focus {
   outline: none;

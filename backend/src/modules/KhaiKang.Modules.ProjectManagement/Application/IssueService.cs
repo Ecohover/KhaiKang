@@ -17,6 +17,7 @@ public sealed class IssueService(
         Guid accountId,
         int page,
         int pageSize,
+        IssueListQuery request,
         CancellationToken cancellationToken)
     {
         if (!await HasPermissionAsync(
@@ -35,12 +36,18 @@ public sealed class IssueService(
             .Include(issue => issue.IssueStatus)
             .Include(issue => issue.IssuePriority)
             .Where(issue => issue.ProjectId == projectId);
+        query = ApplyListFilters(query, request);
         var totalCount = await query.LongCountAsync(cancellationToken);
         var skip = (long)(page - 1) * pageSize;
         var issues = skip > int.MaxValue
             ? []
-            : await query
-                .OrderByDescending(issue => issue.IssueNo)
+            : await ApplyListOrdering(
+                query,
+                request,
+                string.Equals(
+                    dbContext.Database.ProviderName,
+                    "Microsoft.EntityFrameworkCore.Sqlite",
+                    StringComparison.Ordinal))
                 .Skip((int)skip)
                 .Take(pageSize)
                 .ToArrayAsync(cancellationToken);
@@ -61,6 +68,83 @@ public sealed class IssueService(
             accounts)).ToArray();
 
         return new PagedResult<IssueResponse>(items, page, pageSize, totalCount);
+    }
+
+    private static IQueryable<Issue> ApplyListFilters(
+        IQueryable<Issue> query,
+        IssueListQuery request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            var normalizedSearch = search.ToLowerInvariant();
+            var keyIssueNumber = TryGetIssueNumberFromKey(search);
+            query = query.Where(issue =>
+                issue.Title.ToLower().Contains(normalizedSearch) ||
+                (keyIssueNumber.HasValue && issue.IssueNo == keyIssueNumber.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.TypeCode))
+        {
+            query = query.Where(issue => issue.IssueType.Code == request.TypeCode);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.StatusCode))
+        {
+            query = query.Where(issue => issue.IssueStatus.Code == request.StatusCode);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PriorityCode))
+        {
+            query = query.Where(issue => issue.IssuePriority.Code == request.PriorityCode);
+        }
+
+        if (request.Unassigned == true)
+        {
+            query = query.Where(issue => issue.AssigneeAccountId == null);
+        }
+        else if (request.AssigneeAccountId.HasValue)
+        {
+            query = query.Where(issue => issue.AssigneeAccountId == request.AssigneeAccountId);
+        }
+
+        return query;
+    }
+
+    private static IOrderedQueryable<Issue> ApplyListOrdering(
+        IQueryable<Issue> query,
+        IssueListQuery request,
+        bool useSqliteFallback)
+    {
+        var descending = !string.Equals(request.SortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+        var sortByIssueNumber = string.Equals(request.SortBy, "issueNo", StringComparison.OrdinalIgnoreCase);
+        if (sortByIssueNumber)
+        {
+            return descending
+                ? query.OrderByDescending(issue => issue.IssueNo)
+                : query.OrderBy(issue => issue.IssueNo);
+        }
+
+        if (useSqliteFallback)
+        {
+            return descending
+                ? query.OrderByDescending(issue => issue.IssueNo)
+                : query.OrderBy(issue => issue.IssueNo);
+        }
+
+        return descending
+            ? query.OrderByDescending(issue => issue.UpdatedAt).ThenByDescending(issue => issue.IssueNo)
+            : query.OrderBy(issue => issue.UpdatedAt).ThenBy(issue => issue.IssueNo);
+    }
+
+    private static int? TryGetIssueNumberFromKey(string value)
+    {
+        var separatorIndex = value.LastIndexOf('-');
+        return separatorIndex < 1 || separatorIndex == value.Length - 1
+            ? null
+            : int.TryParse(value[(separatorIndex + 1)..], out var issueNo) && issueNo > 0
+                ? issueNo
+                : null;
     }
 
     public async Task<IssueMetadataResponse?> GetMetadataAsync(

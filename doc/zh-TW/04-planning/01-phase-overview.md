@@ -31,19 +31,21 @@
 | planning | 任務管理 MVP 實作計畫 | Active | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
 | planning | AI Agent Orchestration 設計方向 | Direction | [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) |
 | planning | 測試管理 MVP 實作計畫 | Active | [測試管理 MVP 實作計畫](./05-test-management-implementation-plan.md) |
+| planning | MVP 收尾與發布準備計畫 | Active | [MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md) |
 
 ## 近期範圍
 
-近期目標聚焦在最小可運作產品：
+目前 MVP 收尾順序以[收尾與發布準備計畫](./06-mvp-release-closure-plan.md)為準，近期聚焦：
 
 - 本機使用者登入
 - 專案建立與成員管理
 - 預設專案角色
 - Issue 建立、指派、自由流轉、附件與完成
-- 測試案例、測試套件、測試計畫與測試執行的核心規格
-- 核心資料表與欄位設計
-- Audit / history 設計方向收斂
-- MVP 權限矩陣收斂
+- Issue 列表／看板查詢與手機操作收尾
+- 附件儲存提供者決策及附件管理
+- Test Workspace 與多個 Project 關聯
+- PostgreSQL migration 現階段整理及發布前再整理
+- 專案與測試管理的端到端驗收
 
 ## 後續階段
 
