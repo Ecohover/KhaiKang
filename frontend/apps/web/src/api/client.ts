@@ -19,6 +19,7 @@ import type {
   IssueResponse,
   IssueAttachmentResponse,
   LoginRequest,
+  LinkTestWorkspaceProjectRequest,
   PagedResult,
   ProjectResponse,
   ProjectMemberResponse,
@@ -32,6 +33,7 @@ import type {
   CreateTestTagRequest,
   UpdateTestTagRequest,
   TestWorkspaceMemberResponse,
+  TestWorkspaceProjectResponse,
   TestWorkspaceResponse,
   AddTestWorkspaceMemberRequest,
   UpdateProjectRequest,
@@ -406,6 +408,34 @@ export const apiClient = {
     headers: HeadersInit,
   ): Promise<ApiResult<TestWorkspaceResponse>> {
     return request(`/api/v1/test-workspaces/${workspaceId}`, { method: 'PUT', headers, body })
+  },
+
+  listTestWorkspaceProjects(
+    workspaceId: string,
+  ): Promise<ApiResult<TestWorkspaceProjectResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/projects`)
+  },
+
+  linkTestWorkspaceProject(
+    workspaceId: string,
+    body: LinkTestWorkspaceProjectRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestWorkspaceProjectResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/projects`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  unlinkTestWorkspaceProject(
+    workspaceId: string,
+    projectId: string,
+    version: number,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/projects/${projectId}?version=${encodeURIComponent(version)}`,
+      { method: 'DELETE', headers },
+    )
   },
 
   listTestWorkspaceMembers(

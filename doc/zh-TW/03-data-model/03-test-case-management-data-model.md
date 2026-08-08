@@ -27,6 +27,7 @@
 ### 測試工作區
 
 - `test_workspaces`
+- `test_workspace_projects`
 - `test_workspace_members`
 
 ### 測試案例目錄
@@ -56,6 +57,7 @@
 
 ```text
 test_workspaces
+  |- test_workspace_projects -> projects
   |- test_workspace_members -> accounts
   |- test_suites (tree)
   |    `- test_cases
@@ -75,6 +77,7 @@ test_workspaces
 | 資料表 | 類型 | 說明 |
 | --- | --- | --- |
 | `test_workspaces` | Entity | 保存測試資產的根工作區。 |
+| `test_workspace_projects` | Mapping | 保存 Test Workspace 與 Project 的多對多導覽關聯。 |
 | `test_workspace_members` | Entity | 保存帳號在測試工作區中的固定角色與成員生命週期。 |
 | `test_suites` | Entity | 保存測試工作區內可形成樹狀結構的測試套件。 |
 | `test_cases` | Entity | 保存可重複使用的測試案例與前置準備。 |
@@ -107,6 +110,7 @@ test_workspaces
 | --- | --- | --- | --- | --- | --- |
 | `id` | 測試工作區主鍵（`test_workspace`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `name` | 測試工作區名稱 | `varchar(200)` | Y | Y | 對人可讀的主要名稱。 |
+| `prefix` | 案例編號前綴 | `varchar(10)` | Y | Y | 2–10 個英文字母或數字，且以字母開頭；建立時未指定則由系統產生。 |
 | `description` | 測試工作區說明 | `text` | N | N | 補充測試資產範圍與用途。 |
 | `status` | 測試工作區狀態 | `varchar(20)` | Y | N | 目前支援 `active`、`inactive`。 |
 | `audit_info` | 操作紀錄 | `-` | Y | N | 詳細結構請參考 [Audit Info 結構](./99-audit-metadata-fields.md)。 |
@@ -123,7 +127,7 @@ test_workspaces
 | 分組 | 欄位 |
 | --- | --- |
 | 身份識別 | `id` |
-| 基本資料 | `name`、`description` |
+| 基本資料 | `name`、`prefix`、`description` |
 | 狀態資訊 | `status` |
 | 系統欄位 | `audit_info` |
 
@@ -131,6 +135,7 @@ test_workspaces
 
 - `id` 一律使用 UUID。
 - `name` 在系統範圍內唯一。
+- `prefix` 正規化為大寫並在系統範圍內唯一；建立後不因 Workspace 名稱更新而改變。
 - Workspace 停用不代表刪除；既有測試歷程必須可追溯。
 - Project 與 Test Workspace 以多對多關聯表處理，不在 `test_workspaces` 重複保存單一 `project_id`。
 - 建立 Workspace 的帳號必須在同一個 transaction 內建立為第一位 `owner` 成員。
@@ -142,6 +147,7 @@ test_workspaces
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_test_workspaces_name` 於 `name`。
+- 建立 unique constraint `uq_test_workspaces_prefix` 於 `prefix`。
 
 ---
 

@@ -52,7 +52,7 @@ Test Run 是否需要一位明確的「指派執行人」尚未決定。MVP 目�
 | 1 | 完成 Issue 列表／看板收尾 | 關鍵字、類型、狀態、優先度、處理人、未指派、排序與手機替代操作皆可驗收。 |
 | 2 | 決定附件儲存提供者（已完成） | 第一版採 `local` Docker volume，保留 `IFileStorage` 供未來新增 S3-compatible provider。 |
 | 3 | 實作附件（功能已完成） | Issue、Test Case 與 Test Run Item 已完成 migration、上傳／列表／下載／軟刪除、權限與自動化測試；Docker 持久化仍待驗證。 |
-| 4 | 定義並實作 Workspace–Project 多對多關聯 | 同步規格、資料模型、OpenAPI、後端、前端與驗收案例。 |
+| 4 | 定義並實作 Workspace–Project 多對多關聯（功能已完成） | 已同步規格、資料模型、OpenAPI、後端、前端與整合驗收案例；尚待 PostgreSQL 套用與人工端到端驗收。 |
 | 5 | 整理 migration（現在） | 盤點尚未發布的 migration，整併為可讀、可重現的一組；以乾淨 PostgreSQL 執行驗證。 |
 | 6 | 端到端驗收 | 以真實使用者流程驗收 Project → Issue 與 Workspace → Case → Plan → Run；確認共同維護、Workspace 隔離、版本衝突與 Run 結果操作者資料。 |
 | 7 | 發布前 migration 整理與驗證 | 凍結 schema 後再整併一次；於乾淨 PostgreSQL 套用、重啟、升級路徑與備份／還原演練皆成功。 |

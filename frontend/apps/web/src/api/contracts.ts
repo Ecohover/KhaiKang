@@ -224,6 +224,20 @@ export interface TestWorkspaceResponse {
   version: number
 }
 
+export interface LinkTestWorkspaceProjectRequest {
+  projectId: string
+}
+
+export interface TestWorkspaceProjectResponse {
+  id: string
+  projectId: string
+  code: string
+  name: string
+  status: 'active' | 'inactive'
+  linkedAt: string
+  version: number
+}
+
 export interface CreateTestWorkspaceRequest {
   name: string
   prefix?: string | null

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.Identity.Contracts;
+using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Domain;
 using KhaiKang.Modules.TestManagement.Infrastructure;
@@ -25,6 +26,7 @@ public sealed record TestManagementResult<T>(
 public sealed class TestManagementService(
     TestManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
+    IProjectDirectory projectDirectory,
     TimeProvider timeProvider)
 {
     private static readonly string[] Roles = ["owner", "manager", "tester", "viewer"];
@@ -81,6 +83,132 @@ public sealed class TestManagementService(
                 x.AccountId == accountId && x.Status == "active")
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<TestManagementResult<IReadOnlyList<TestWorkspaceProjectResponse>>> ListWorkspaceProjectsAsync(
+        Guid workspaceId,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        var links = await dbContext.WorkspaceProjects
+            .AsNoTracking()
+            .Where(link => link.TestWorkspaceId == workspaceId)
+            .ToArrayAsync(cancellationToken);
+        var projects = await projectDirectory.GetByIdsAsync(
+            links.Select(link => link.ProjectId).ToArray(), cancellationToken);
+        var response = links
+            .Where(link => projects.ContainsKey(link.ProjectId))
+            .Select(link => ToWorkspaceProjectResponse(link, projects[link.ProjectId]))
+            .OrderBy(link => link.Name)
+            .ThenBy(link => link.Code)
+            .ToArray();
+        return new(TestManagementOutcome.Succeeded, response);
+    }
+
+    public async Task<TestManagementResult<TestWorkspaceProjectResponse>> LinkWorkspaceProjectAsync(
+        Guid workspaceId,
+        Guid accountId,
+        LinkTestWorkspaceProjectRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        {
+            return new(TestManagementOutcome.Forbidden);
+        }
+
+        var project = await projectDirectory.FindAccessibleAsync(
+            request.ProjectId, accountId, cancellationToken);
+        if (project is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (project.Status != "active")
+        {
+            return new(TestManagementOutcome.Conflict, Code: "project_not_active");
+        }
+
+        if (await dbContext.WorkspaceProjects.AnyAsync(
+            link => link.TestWorkspaceId == workspaceId && link.ProjectId == request.ProjectId,
+            cancellationToken))
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_already_linked");
+        }
+
+        var link = new TestWorkspaceProject(
+            Guid.NewGuid(), workspaceId, request.ProjectId, accountId, timeProvider.GetUtcNow());
+        dbContext.WorkspaceProjects.Add(link);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                ConstraintName: "uq_test_workspace_projects_workspace_project",
+            })
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_already_linked");
+        }
+
+        return new(
+            TestManagementOutcome.Succeeded,
+            ToWorkspaceProjectResponse(link, project));
+    }
+
+    public async Task<TestManagementResult<object>> UnlinkWorkspaceProjectAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid accountId,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        {
+            return new(TestManagementOutcome.Forbidden);
+        }
+
+        var link = await dbContext.WorkspaceProjects.SingleOrDefaultAsync(
+            item => item.TestWorkspaceId == workspaceId && item.ProjectId == projectId,
+            cancellationToken);
+        if (link is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (link.Version != version)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_version_conflict");
+        }
+
+        dbContext.WorkspaceProjects.Remove(link);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_version_conflict");
+        }
+
+        return new(TestManagementOutcome.Succeeded, new object());
     }
 
     public async Task<TestManagementResult<TestWorkspaceResponse>> CreateWorkspaceAsync(
@@ -1022,6 +1150,17 @@ public sealed class TestManagementService(
             : value.Trim();
     private static TestWorkspaceResponse ToWorkspaceResponse(TestWorkspace x, string role) =>
         new(x.Id, x.Name, x.Prefix, x.Description, x.Status, role, x.CreatedAt, x.UpdatedAt, x.Version);
+    private static TestWorkspaceProjectResponse ToWorkspaceProjectResponse(
+        TestWorkspaceProject link,
+        ProjectDirectoryEntry project) =>
+        new(
+            link.Id,
+            link.ProjectId,
+            project.Code,
+            project.Name,
+            project.Status,
+            link.CreatedAt,
+            link.Version);
     private static TestSuiteResponse ToSuiteResponse(TestSuite x, int depth) =>
         new(x.Id, x.ParentId, x.Name, x.Description, x.SortOrder, x.Status, depth, x.Version);
     private static TestCaseResponse ToCaseResponse(TestCase x) =>

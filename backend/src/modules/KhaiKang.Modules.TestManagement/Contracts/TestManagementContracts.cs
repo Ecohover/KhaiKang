@@ -13,6 +13,17 @@ public sealed record TestWorkspaceResponse(
     DateTimeOffset UpdatedAt,
     int Version);
 
+public sealed record LinkTestWorkspaceProjectRequest(Guid ProjectId);
+
+public sealed record TestWorkspaceProjectResponse(
+    Guid Id,
+    Guid ProjectId,
+    string Code,
+    string Name,
+    string Status,
+    DateTimeOffset LinkedAt,
+    int Version);
+
 public sealed record AddTestWorkspaceMemberRequest(string Username, string Role);
 public sealed record UpdateTestWorkspaceMemberRequest(string Role, int Version);
 public sealed record TestWorkspaceMemberResponse(
