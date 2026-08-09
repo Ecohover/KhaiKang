@@ -220,6 +220,6 @@ HTTP contract：
 ## 風險與注意事項
 
 - OpenAPI、C# 與 TypeScript 都是維護中的正式來源檔，必須同一階段同步。
-- 目前工作區包含尚未提交的專案管理與權限功能，實作時不得覆蓋或拆散既有變更。
+- 相關專案管理、權限、migration 與文件變更已於 `a483fb1` 提交並推送；本項工作區風險已解除。
 - 第一階段不新增資料表，原則上不需要 migration；若 EF model snapshot 發生變化，必須先確認是否為非預期變更。
 - SQLite 整合測試可驗證 HTTP 與授權流程，但 PostgreSQL-specific 的並行流水號行為留到第四階段使用 PostgreSQL 驗證。

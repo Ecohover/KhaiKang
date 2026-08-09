@@ -24,8 +24,8 @@ Status: core implementation and baseline verification complete as of 2026-08-09.
 - Backend build completed with zero warnings/errors and 21 automated tests passed.
 - A local attachment-storage probe remained readable after an API restart.
 
-## Remaining Before Publishing a Usable MVP Build
+## Current MVP Status
 
-- Perform one short smoke pass for setup/login, Project/Issue, Workspace/Case/Plan/Run, and attachment upload/download.
-- Review and commit the baseline migration replacement and synchronized documentation.
+- Core implementation, baseline migration replacement, synchronized documentation, automated checks, and the basic local restart-persistence check are complete and committed.
+- A short setup/login, Project/Issue, Workspace/Case/Plan/Run, and attachment smoke pass is sufficient when producing a new usable build; full desktop/mobile acceptance is deferred.
 - Production Docker-volume, upgrade-path, and backup/restore verification remain release-hardening work, not a blocker for the local MVP milestone.
