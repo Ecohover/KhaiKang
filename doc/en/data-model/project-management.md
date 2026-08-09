@@ -17,8 +17,11 @@ Status: synchronized with `InitialProjectManagement` on 2026-08-09. Traditional 
 | `issues` | Project-scoped `issue_no`, content, metadata foreign keys, reporter, optional assignee, completion fields, and audit metadata. `(project_id, issue_no)` is unique. |
 | `issue_attachments` | Attachment metadata, opaque storage key, hash, size, uploader, soft-delete state, and audit metadata. Bytes are not stored in PostgreSQL. |
 | `project_audit_events` | Project-domain actor, event, target, outcome, and occurrence time. |
+| `project_number_counters` | PostgreSQL-managed scoped counter used by `next_project_number`; `(counter_type, scope_id)` is the primary key. The MVP uses type `issue` with Project ID as scope. |
 
 Project creation and its first Owner membership are transactional. Foreign keys to `accounts` and `permissions` cross the module boundary at the database level but are mapped through explicit module contracts in application code.
+
+Issue creation calls `next_project_number('issue', project_id)` in the same transaction as the Issue insert. PostgreSQL serializes updates to the matching counter row, so concurrent creates receive distinct Project-scoped numbers without locking unrelated Projects.
 
 ## Deferred Models
 

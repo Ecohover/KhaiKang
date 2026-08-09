@@ -907,6 +907,13 @@
 
 - 建立 unique constraint `uq_issues_project_issue_no` 於 `project_id + issue_no`。
 
+#### Issue 流水號配置
+
+- PostgreSQL baseline 建立 `project_number_counters`，以 `counter_type + scope_id` 作為複合主鍵；MVP 的 `issue` counter 以 `project_id` 作為 scope。
+- 建立 Issue 時，在同一個 transaction 內呼叫 `next_project_number('issue', project_id)` 並寫入 Issue。
+- Function 使用原子的 `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING` 配置下一個編號；相同 Project 的並行建立會依序取得不同編號，不同 Project 不互相鎖定。
+- 唯一約束仍保留為最後一道資料完整性保護。
+
 ---
 
 #### Issue Mapping 設計原則

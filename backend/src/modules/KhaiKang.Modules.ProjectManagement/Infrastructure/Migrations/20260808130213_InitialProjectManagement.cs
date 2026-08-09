@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -13,6 +13,36 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(
+                """
+                CREATE TABLE public.project_number_counters
+                (
+                    counter_type varchar(20) NOT NULL,
+                    scope_id uuid NOT NULL,
+                    last_value integer NOT NULL,
+                    CONSTRAINT pk_project_number_counters PRIMARY KEY (counter_type, scope_id),
+                    CONSTRAINT ck_project_number_counters_type CHECK (counter_type IN ('issue')),
+                    CONSTRAINT ck_project_number_counters_value CHECK (last_value > 0)
+                );
+
+                CREATE FUNCTION public.next_project_number(
+                    p_counter_type varchar,
+                    p_scope_id uuid)
+                RETURNS integer
+                LANGUAGE sql
+                VOLATILE
+                AS $function$
+                    INSERT INTO public.project_number_counters
+                        (counter_type, scope_id, last_value)
+                    VALUES
+                        (p_counter_type, p_scope_id, 1)
+                    ON CONFLICT (counter_type, scope_id)
+                    DO UPDATE
+                    SET last_value = public.project_number_counters.last_value + 1
+                    RETURNING last_value;
+                $function$;
+                """);
+
             migrationBuilder.CreateTable(
                 name: "issue_priorities",
                 columns: table => new
@@ -605,6 +635,11 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("DROP FUNCTION IF EXISTS public.next_project_number(varchar, uuid);");
+
+            migrationBuilder.DropTable(
+                name: "project_number_counters");
+
             migrationBuilder.DropTable(
                 name: "issue_attachments");
 

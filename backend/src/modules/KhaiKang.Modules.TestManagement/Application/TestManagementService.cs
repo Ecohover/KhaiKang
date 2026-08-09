@@ -641,12 +641,13 @@ public sealed class TestManagementService(
         var tags = await ActiveTagsAsync(request.TagIds, cancellationToken);
         if (tags is null) return new(TestManagementOutcome.Invalid, Code: "test_tag_not_found");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
         var testCase = new TestCase(
             Guid.NewGuid(),
             workspaceId,
             suite.Id,
-            await NextCaseNoAsync(workspaceId, cancellationToken),
+            await NextNumberAsync("case", workspaceId, cancellationToken),
             request.Title.Trim(),
             Clean(request.Description),
             Clean(request.Preconditions),
@@ -672,6 +673,7 @@ public sealed class TestManagementService(
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
@@ -833,10 +835,9 @@ public sealed class TestManagementService(
         if (cases is null)
             return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var planNo = (await dbContext.Plans
-            .Where(x => x.TestWorkspaceId == workspaceId)
-            .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1;
+        var planNo = await NextNumberAsync("plan", workspaceId, cancellationToken);
         var name = PlanName(request.Name, now);
         var plan = new TestPlan(
             Guid.NewGuid(), workspaceId, planNo, name, Clean(request.Description),
@@ -848,6 +849,7 @@ public sealed class TestManagementService(
                 Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
     }
 
@@ -934,10 +936,9 @@ public sealed class TestManagementService(
         if (plan.Items.Any(x => x.TestCase.Status != "active"))
             return new(TestManagementOutcome.Conflict, Code: "plan_contains_inactive_case");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var runNo = (await dbContext.Runs
-            .Where(x => x.TestPlanId == plan.Id)
-            .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1;
+        var runNo = await NextNumberAsync("run", plan.Id, cancellationToken);
         var run = new TestRun(
             Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now);
         dbContext.Runs.Add(run);
@@ -952,6 +953,7 @@ public sealed class TestManagementService(
                     Guid.NewGuid(), runItem.Id, step, accountId, now)));
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return await GetRunAsync(workspaceId, run.Id, accountId, cancellationToken);
     }
 
@@ -1188,11 +1190,36 @@ public sealed class TestManagementService(
             x.Version);
     private static TestTagResponse ToTagResponse(TestTag x) =>
         new(x.Id, x.Name, x.Description, x.Status, x.Version);
-    private async Task<int> NextCaseNoAsync(Guid workspaceId, CancellationToken cancellationToken) =>
-        (await dbContext.Cases
-            .Where(x => x.TestWorkspaceId == workspaceId)
-            .Select(x => (int?)x.CaseNo)
-            .MaxAsync(cancellationToken) ?? 0) + 1;
+    private async Task<int> NextNumberAsync(
+        string counterType,
+        Guid scopeId,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsNpgsql())
+        {
+            return await dbContext.Database
+                .SqlQuery<int>(
+                    $"SELECT public.next_test_number({counterType}, {scopeId}) AS \"Value\"")
+                .SingleAsync(cancellationToken);
+        }
+
+        return counterType switch
+        {
+            "case" => (await dbContext.Cases
+                .Where(x => x.TestWorkspaceId == scopeId)
+                .MaxAsync(x => (int?)x.CaseNo, cancellationToken) ?? 0) + 1,
+            "plan" => (await dbContext.Plans
+                .Where(x => x.TestWorkspaceId == scopeId)
+                .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1,
+            "run" => (await dbContext.Runs
+                .Where(x => x.TestPlanId == scopeId)
+                .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(counterType),
+                counterType,
+                "Unsupported test number counter type."),
+        };
+    }
     private static TestPlanResponse ToPlanResponse(TestPlan x) =>
         new(
             x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",

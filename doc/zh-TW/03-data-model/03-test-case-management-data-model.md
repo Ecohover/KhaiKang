@@ -703,6 +703,34 @@ test_workspaces
 
 ---
 
+### test_number_counters
+
+#### 資料表規格
+
+| 項目 | 內容 |
+| --- | --- |
+| 資料表名稱 | `test_number_counters` |
+| 說明 | 保存 Test Case、Test Plan 與 Test Run 的 scope 內最後配置編號。 |
+| PK | `counter_type + scope_id` |
+| 備註 | `case`、`plan` 使用 Workspace ID 作為 scope；`run` 使用 Plan ID 作為 scope。 |
+
+#### 欄位規格
+
+| 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
+| --- | --- | --- | --- | --- | --- |
+| `counter_type` | 計數器類型 | `varchar(20)` | Y | 複合唯一 | 僅允許 `case`、`plan`、`run`。 |
+| `scope_id` | 計數範圍識別 | `uuid` | Y | 複合唯一 | Workspace ID 或 Plan ID。 |
+| `last_value` | 最後配置值 | `integer` | Y | N | 必須大於零。 |
+
+#### 配置規則
+
+- 建立 Case、Plan 或 Run 時，必須在寫入主資料的同一個 transaction 內呼叫 `next_test_number(counter_type, scope_id)`。
+- Function 使用原子的 `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`；相同 counter row 的並行請求由 PostgreSQL 依序配置，不同 Workspace 或 Plan 不互相鎖定。
+- 若主資料寫入失敗並 rollback，counter 更新也必須一併 rollback。
+- Case、Plan 與 Run 主表上的 scope 唯一約束仍保留為最後一道資料完整性保護。
+
+---
+
 ### test_run_items
 
 #### 資料表規格
