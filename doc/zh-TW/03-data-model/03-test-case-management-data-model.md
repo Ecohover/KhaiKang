@@ -37,6 +37,7 @@
 - `test_case_steps`
 - `test_tags`
 - `test_case_tags`
+- `test_case_attachments`
 
 ### 測試計畫
 
@@ -48,6 +49,7 @@
 - `test_runs`
 - `test_run_items`
 - `test_run_item_step_results`
+- `test_run_item_attachments`
 
 ### 待確認的未來方向
 
@@ -62,14 +64,16 @@ test_workspaces
   |- test_suites (tree)
   |    `- test_cases
   |         |- test_case_steps
-  |         `- test_case_tags -> test_tags
+  |         |- test_case_tags -> test_tags
+  |         `- test_case_attachments
   |
   |- test_plans
   |    `- test_plan_items -> test_cases
   |
   `- test_runs
        `- test_run_items
-            `- test_run_item_step_results
+            |- test_run_item_step_results
+            `- test_run_item_attachments
 ```
 
 ## 資料表責任
@@ -84,11 +88,13 @@ test_workspaces
 | `test_case_steps` | Entity | 保存測試案例中可排序的步驟與每步預期結果。 |
 | `test_tags` | Entity | 保存系統共用的測試標籤主資料。 |
 | `test_case_tags` | Mapping | 保存測試案例與測試標籤的多對多關聯。 |
+| `test_case_attachments` | Entity | 保存 Test Case 附件中繼資料與軟刪除狀態。 |
 | `test_plans` | Entity | 保存一次測試工作的計畫與目的。 |
 | `test_plan_items` | Entity | 保存使用者手動編排後的固定案例範圍與排序。 |
 | `test_runs` | Entity | 保存一次實際測試執行與整體測試報告。 |
 | `test_run_items` | Entity | 保存一次 Test Run 中每個案例的快照與結果。 |
 | `test_run_item_step_results` | Entity | 保存 Test Run Item 中每個測試步驟的實際結果。 |
+| `test_run_item_attachments` | Entity | 保存 Test Run Item 的執行證據附件中繼資料。 |
 
 ---
 
@@ -303,15 +309,17 @@ test_workspaces
 | 資料表名稱 | `test_cases` |
 | 說明 | 保存可重複使用的測試案例與其前置準備、整體預期結果。 |
 | PK | `id` |
-| FK | `test_suite_id -> test_suites.id` |
-| 備註 | 所屬 Test Workspace 由 `test_suite_id` 對應的 Suite 決定。細部測試步驟另存於 `test_case_steps`。 |
+| FK | `test_workspace_id -> test_workspaces.id`、`test_suite_id -> test_suites.id` |
+| 備註 | 直接保存 Workspace scope 以支援穩定案例編號與隔離約束；細部測試步驟另存於 `test_case_steps`。 |
 
 #### 欄位規格
 
 | 名稱 | 說明 | 型別 | 必填 | 唯一 | 備註 |
 | --- | --- | --- | --- | --- | --- |
 | `id` | 測試案例主鍵（`test_case`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
+| `test_workspace_id` | 測試工作區識別 | `uuid` | Y | N | 對應 `test_workspaces.id`，建立後不可跨 Workspace 移動。 |
 | `test_suite_id` | 測試套件識別 | `uuid` | Y | N | 對應 `test_suites.id`。 |
+| `case_no` | Workspace 內案例流水號 | `integer` | Y | N | 與 Workspace Prefix 組成人類可讀代碼，例如 `QA-TC12`。 |
 | `title` | 測試案例標題 | `varchar(200)` | Y | N | 對人可讀的主要名稱。 |
 | `description` | 測試案例說明 | `text` | N | N | 補充測試目的、範圍或注意事項。 |
 | `preconditions` | 前置準備 | `text` | N | N | 執行前必須完成的環境、資料或帳號準備。 |
@@ -332,8 +340,8 @@ test_workspaces
 | 分組 | 欄位 |
 | --- | --- |
 | 身份識別 | `id` |
-| 關聯欄位 | `test_suite_id` |
-| 基本資料 | `title`、`description`、`preconditions`、`overall_expected_result`、`sort_order` |
+| 關聯欄位 | `test_workspace_id`、`test_suite_id` |
+| 基本資料 | `case_no`、`title`、`description`、`preconditions`、`overall_expected_result`、`sort_order` |
 | 狀態資訊 | `status` |
 | 系統欄位 | `audit_info` |
 
@@ -341,7 +349,8 @@ test_workspaces
 
 - `id` 一律使用 UUID。
 - 測試案例必須隸屬於一個有效的 `test_suite_id`。
-- 測試案例的 Test Workspace 範圍由 `test_suite_id` 對應的 Suite 決定，不在本表重複保存 `test_workspace_id`。
+- `test_workspace_id` 必須與 `test_suite_id` 所屬 Workspace 相同；這個直接 scope 欄位用於隔離查詢與案例編號唯一約束。
+- `case_no` 建立後不可修改；顯示代碼由 Workspace Prefix 與 `case_no` 組成。
 - 新增 Test Case 時，業務邏輯應要求至少建立一筆 `test_case_steps`；主表不保存步驟內容。
 - `overall_expected_result` 可為空；各步驟預期結果由 `test_case_steps` 保存。
 - 停用案例不代表刪除；既有 Test Plan、Test Run 與快照歷程必須可追溯。
@@ -352,6 +361,7 @@ test_workspaces
 - 建立 `idx_test_cases_test_suite_id` 於 `test_suite_id`。
 - 建立 `idx_test_cases_test_suite_status` 於 `test_suite_id + status`。
 - 建立 `idx_test_cases_test_suite_sort_order` 於 `test_suite_id + sort_order`。
+- 建立 unique constraint `uq_test_cases_workspace_case_no` 於 `test_workspace_id + case_no`。
 
 #### 唯一約束建議
 
@@ -530,6 +540,7 @@ test_workspaces
 | --- | --- | --- | --- | --- | --- |
 | `id` | 測試計畫主鍵（`test_plan`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `test_workspace_id` | 測試工作區識別 | `uuid` | Y | N | 對應 `test_workspaces.id`。 |
+| `plan_no` | Workspace 內計畫流水號 | `integer` | Y | N | 與 Workspace Prefix 組成人類可讀計畫代碼。 |
 | `name` | 測試計畫名稱 | `varchar(200)` | Y | N | 對人可讀的主要名稱。 |
 | `description` | 測試計畫說明 | `text` | N | N | 補充測試目的、版本範圍或執行注意事項。 |
 | `status` | 測試計畫狀態 | `varchar(20)` | Y | N | 目前支援 `draft`、`active`、`archived`。 |
@@ -549,7 +560,7 @@ test_workspaces
 | --- | --- |
 | 身份識別 | `id` |
 | 關聯欄位 | `test_workspace_id` |
-| 基本資料 | `name`、`description` |
+| 基本資料 | `plan_no`、`name`、`description` |
 | 狀態資訊 | `status` |
 | 系統欄位 | `audit_info` |
 
@@ -557,6 +568,7 @@ test_workspaces
 
 - `id` 一律使用 UUID。
 - Test Plan 必須屬於一個有效的 `test_workspace_id`。
+- `plan_no` 在 Workspace 內唯一且建立後不可修改。
 - Test Plan 至少必須有一筆 `test_plan_items` 才能切換為 `active` 或建立 Test Run。
 - `draft` 與 `active` 狀態可調整 Item；修改只影響後續建立的 Test Run。
 - `archived` 狀態不得新增 Test Run 或修改 Item。
@@ -570,6 +582,7 @@ test_workspaces
 #### 唯一約束建議
 
 - MVP 不對 `name` 建立唯一約束，允許同一 Workspace 為不同版本或目的建立相近名稱的 Plan。
+- 建立 unique constraint `uq_test_plans_workspace_plan_no` 於 `test_workspace_id + plan_no`。
 
 ---
 
@@ -642,6 +655,7 @@ test_workspaces
 | --- | --- | --- | --- | --- | --- |
 | `id` | 測試執行主鍵（`test_run`） | `uuid` | Y | Y | Entity 主鍵，系統內部真正識別碼。 |
 | `test_plan_id` | 測試計畫識別 | `uuid` | Y | N | 對應 `test_plans.id`。 |
+| `run_no` | Plan 內執行流水號 | `integer` | Y | N | 與 Plan 代碼組成人類可讀 Run 代碼。 |
 | `name` | 測試執行名稱 | `varchar(200)` | Y | N | 建立時可由 Plan 名稱帶入，允許使用者調整以辨識本次執行。 |
 | `status` | 測試執行狀態 | `varchar(20)` | Y | N | 目前支援 `not_started`、`in_progress`、`completed`、`cancelled`。 |
 | `started_by_account_id` | 建立執行者識別 | `uuid` | Y | N | 對應 `accounts.id`，記錄建立本次 Run 的帳號。 |
@@ -665,13 +679,14 @@ test_workspaces
 | --- | --- |
 | 身份識別 | `id` |
 | 關聯欄位 | `test_plan_id`、`started_by_account_id` |
-| 基本資料 | `name`、`summary` |
+| 基本資料 | `run_no`、`name`、`summary` |
 | 狀態資訊 | `status`、`started_at`、`completed_at` |
 | 系統欄位 | `audit_info` |
 
 #### 補充規則
 
 - `id` 一律使用 UUID。
+- `run_no` 在同一 Test Plan 內唯一且建立後不可修改。
 - 只能由 `active` 的 Test Plan 建立新的 Test Run，且建立時 Plan 至少需有一個 Item。
 - 建立 Test Run 時，必須在同一個 transaction 內依 `test_plan_items` 建立 `test_run_items`，再依每個 Test Case 的 Step 建立 `test_run_item_step_results`。
 - Test Run 建立完成後，不可因 Test Plan 或 Test Case 的後續變更而增減其執行項目或修改快照。
@@ -684,6 +699,7 @@ test_workspaces
 - 建立 `idx_test_runs_started_by_account_id` 於 `started_by_account_id`。
 - 建立 `idx_test_runs_plan_status` 於 `test_plan_id + status`。
 - 建立 `idx_test_runs_completed_at` 於 `completed_at`，供近期測試報告排序。
+- 建立 unique constraint `uq_test_runs_plan_run_no` 於 `test_plan_id + run_no`。
 
 ---
 
@@ -734,7 +750,7 @@ test_workspaces
 - 案例內容一律讀取 `case_title`、`case_description`、`preconditions`、`overall_expected_result` 快照，不回頭讀取已變動的 Test Case。
 - `result_status` 初始值為 `not_run`。
 - MVP 由人工填寫結果；`passed`、`failed`、`blocked`、`skipped` 皆應記錄 `executed_by_account_id` 與 `executed_at`。
-- 案例層級最終結果由執行者確認。未來自動化執行可依步驟結果自動建議，但不改變本表作為最終結果的用途。
+- 案例有步驟時，應用層依步驟結果重新計算並保存案例結果；無步驟案例則直接保存使用者選擇的案例結果。
 
 #### Index 建議
 
@@ -782,7 +798,7 @@ test_workspaces
 - 建立 Test Run Item 時，必須依來源 Test Case 的步驟建立完整快照；後續不隨原始 Step 變動。
 - `result_status` 初始值為 `not_run`，其值域與 `test_run_items.result_status` 相同。
 - 每個 `test_run_item_id + step_no` 不得重複。
-- 案例層級結果可由執行者依步驟結果判斷後填寫；MVP 不強制資料庫自動推導，避免特殊情況無法標註 `blocked` 或 `skipped`。
+- 更新任一步驟後，應用層必須重新計算並保存案例層級結果；資料庫不使用 trigger 推導，避免把流程規則藏在 persistence layer。
 
 #### Index 建議
 
@@ -792,6 +808,16 @@ test_workspaces
 #### 唯一約束建議
 
 - 建立 unique constraint `uq_test_run_item_step_results_item_step_no` 於 `test_run_item_id + step_no`。
+
+---
+
+### test_case_attachments
+
+保存 Test Case 附件中繼資料。主要欄位為 `id`、`test_case_id`、`uploaded_by_account_id`、`original_file_name`、`storage_provider`、`storage_key`、`content_type`、`file_size`、`file_hash`、`is_deleted`、`deleted_at` 與共通 audit 欄位。實體檔案不存入資料庫；刪除為軟刪除，下載與列表必須排除 `is_deleted = true`。建立 `idx_test_case_attachments_case_deleted` 於 `test_case_id + is_deleted`。
+
+### test_run_item_attachments
+
+保存 Test Run Item 的執行證據附件中繼資料，欄位語意與 `test_case_attachments` 相同，父外鍵改為 `test_run_item_id -> test_run_items.id`。只有 `in_progress` Run 可新增或移除；`completed` Run 完全唯讀。建立 `idx_test_run_item_attachments_item_deleted` 於 `test_run_item_id + is_deleted`。
 
 ## 待確認的自動化執行方向
 

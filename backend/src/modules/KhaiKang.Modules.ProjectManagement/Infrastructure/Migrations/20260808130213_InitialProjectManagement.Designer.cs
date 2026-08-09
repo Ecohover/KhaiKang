@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ProjectManagementDbContext))]
-    [Migration("20260722044847_AddIssueManagement")]
-    partial class AddIssueManagement
+    [Migration("20260808130213_InitialProjectManagement")]
+    partial class InitialProjectManagement
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -139,6 +139,98 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasDatabaseName("idx_issues_project_status");
 
                     b.ToTable("issues", (string)null);
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("file_hash");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("storage_key");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("storage_provider");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<Guid>("UploadedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_attachments");
+
+                    b.HasIndex("IssueId")
+                        .HasDatabaseName("idx_issue_attachments_issue_id");
+
+                    b.HasIndex("UploadedByAccountId")
+                        .HasDatabaseName("idx_issue_attachments_uploaded_by_account_id");
+
+                    b.HasIndex("IssueId", "IsDeleted")
+                        .HasDatabaseName("idx_issue_attachments_issue_deleted");
+
+                    b.ToTable("issue_attachments", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssuePriority", b =>
@@ -1395,6 +1487,25 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                     b.Navigation("IssueType");
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueAttachment", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Domain.Issue", "Issue")
+                        .WithMany()
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_attachments_issue");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_attachments_uploaded_by_account");
+
+                    b.Navigation("Issue");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.Project", b =>

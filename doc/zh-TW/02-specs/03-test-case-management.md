@@ -122,6 +122,7 @@
 - 使用者必須為每一個有步驟的 Test Run Item 的所有 Test Run Item Step Result 記錄非 `not_run` 的結果，才能將 Test Run 設為 `completed`；沒有步驟的案例則以案例結果為準。前端應停用完成操作；後端也必須拒絕未完成項目的完成請求，避免直接呼叫 API 繞過畫面限制。
 - `cancelled` 不要求所有項目完成，且可由使用者重新開始並回到 `in_progress`，保留既有案例與步驟結果以便續測；只有 `completed` 的 Run、案例結果與步驟結果一律唯讀。
 - Test Run 建立後為 `not_started`，使用者必須明確觸發「開始執行」才能進入 `in_progress` 並編輯案例或步驟結果。執行中畫面以焦點底色標示目前處理的案例；使用者可切換焦點案例，但不得同時將多個案例標示為目前處理中。
+- Test Run 進入 `in_progress` 後即鎖定建立當下的案例與步驟快照，不允許變更執行範圍或快照結構。鎖定不綁定單一執行人；任何具備 Run 執行權限的有效 Workspace 成員都可共同填寫結果，系統仍逐筆保存實際操作人與時間。
 - 執行畫面必須以一致的結果視覺呈現：`not_run` 與 `skipped` 為中性灰、`passed` 為綠、`failed`／`blocked` 為紅；任一步驟不通過或受阻時，案例摘要即為不通過，不提供「部分通過」結果。
 - 結果色彩不只用於標籤與下拉欄位，也必須套用至整個步驟列與案例卡片的淡色底；案例卡的顏色依其步驟結果彙總計算。
 - 案例結果與步驟結果採自動儲存：選擇結果狀態時立即送出；步驟的實際結果在輸入框失去焦點時送出。執行畫面不提供額外的案例結果或步驟結果儲存按鈕。
@@ -214,7 +215,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - Test Workspace 可關聯多個 Project，Project 也可關聯多個 Workspace；關聯不建立 Issue 對 Case、Plan 或 Run 的細部追溯。
 - 有效 Workspace 成員皆可查看關聯專案的最小導覽資訊；只有有效的 `owner` 或 `manager` 可新增或移除關聯。
 - 建立關聯時，操作人必須同時具備該 Project 的 `project.read`，且 Project 必須為使用中；關聯本身不會授與 Project 或 Workspace 存取權。
-- Test Case 在目前 MVP 中以 UUID 作為穩定識別；對外案例編號與 Workspace Prefix 的規則屬於後續功能，確認資料遷移策略後再納入。
+- Test Case 以 UUID 作為內部主鍵，並提供穩定的人類可讀編號。Workspace 使用唯一 `prefix`，案例在 Workspace 內使用遞增 `case_no`，對外顯示為 `{PREFIX}-TC{case_no}`；移動 Suite 或修改標題不得改變案例編號。
 - `Test Run` 必須來自一份 `Test Plan`；MVP 不先提供無計畫的臨時執行流程。
 - `Test Run` 只能由使用者從測試管理頁面手動觸發；不支援 Issue、CI 或 AI 觸發。
 - 每個 Test Run Item 都可由使用者手動填寫結果。
@@ -225,6 +226,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - `Test Run Item` 建立時必須保存案例內容快照。
 - `Test Plan` 在 MVP 中只要求名稱與測試目的，不先加入目標版本、環境或負責人欄位。
 - `completed` 的 `Test Run` 與其結果完全唯讀。`cancelled` 的 Run 可重新開始並回到 `in_progress`，保留既有案例與步驟結果；若需新的獨立測試紀錄，使用者仍可建立新的 `Test Run`。
+- `in_progress` 的 Test Run 鎖定案例與步驟快照，但不建立單一執行人鎖；具執行權限的成員可共同更新結果。
 
 ## 安全與稽核
 

@@ -15,12 +15,15 @@ of truth.
   primary version. This includes `README.md`, `CONTRIBUTING.md`, `AGENTS.md`,
   architecture, engineering, deployment, and security guidance.
 - Traditional Chinese translations may accompany public engineering documents.
-- Existing product specs, data models, and planning documents under
-  `doc/zh-TW/` remain authoritative while their English versions are incomplete
-  or explicitly marked as drafts.
-- An English product spec becomes authoritative only after it is reviewed and
-  marked synchronized with the Traditional Chinese source. Do not infer current
-  behavior from an older translation.
+- Paired MVP product specs and data-model documents under `doc/zh-TW/` and
+  `doc/en/` are maintained together. Each synchronized English document states
+  its synchronization date and links to the Traditional Chinese counterpart.
+- Historical planning notes may remain Traditional-Chinese-only. They are not
+  part of bilingual MVP completeness unless the documentation maps identify
+  them as current release guidance.
+- When paired documents disagree, the canonical OpenAPI contract, accepted
+  behavior tests, and current implementation determine the shipped behavior;
+  both language versions must then be corrected in the same change.
 
 ## Documentation Hierarchy
 

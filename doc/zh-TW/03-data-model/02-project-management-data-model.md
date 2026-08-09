@@ -34,8 +34,8 @@
 - `issue_statuses`
 - `issue_priorities`
 - `issues`
-
-`issue_attachments` 依功能規格納入任務管理 MVP 的最後一個實作階段。
+- `issue_attachments`
+- `project_audit_events`
 
 以下資料表屬於延伸資料表，目前不列入 MVP 核心必做範圍，但先保留資料模型方向：
 
@@ -927,7 +927,13 @@
 
 ---
 
-### issue_comments
+### project_audit_events
+
+保存專案領域的不可變稽核事件。欄位包含 `id`、`actor_id -> accounts.id`、`actor_type`、`event_type`、`occurred_at`、`target_id` 與 `outcome`。事件用於追蹤 Project、Member、Role、Issue 與附件操作；不得寫入密碼、Cookie、檔案內容或完整敏感 request body。建立 `idx_project_audit_events_occurred_at` 供時間排序。
+
+---
+
+### issue_comments（MVP 未實作）
 
 #### 資料表規格
 
@@ -1044,7 +1050,7 @@
 
 ---
 
-### issue_relations
+### issue_relations（MVP 未實作）
 
 #### 資料表規格
 
@@ -1096,7 +1102,7 @@
 
 ---
 
-### issue_relation_types
+### issue_relation_types（MVP 未實作）
 
 #### 資料表規格
 

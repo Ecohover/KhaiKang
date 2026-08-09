@@ -37,7 +37,9 @@ Node.js 22 與 pnpm 10。
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet tool restore
 dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<your-local-password>"
-dotnet ef database update --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.Identity.Infrastructure.IdentityDbContext --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.ProjectManagement.Infrastructure.ProjectManagementDbContext --project backend/src/modules/KhaiKang.Modules.ProjectManagement --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.TestManagement.Infrastructure.TestManagementDbContext --project backend/src/modules/KhaiKang.Modules.TestManagement --startup-project backend/src/KhaiKang.Api
 dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
@@ -59,6 +61,7 @@ pnpm dev
 - [變更紀錄](./CHANGELOG.md)
 - [產品願景與 MVP 工作流程](./doc/zh-TW/01-overview/04-product-vision-and-mvp-workflow.md)
 - [文件地圖](./doc/zh-TW/01-overview/01-documentation-map.md)
+- [English Documentation Map](./doc/en/documentation-map.md)
 
 ## 授權
 

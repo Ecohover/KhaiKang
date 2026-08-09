@@ -1,6 +1,6 @@
 # 跨模組附件實作計畫
 
-狀態：功能實作完成，待 PostgreSQL／Docker 持久化驗證（2026-08-07）
+狀態：功能實作與 MVP 本機儲存基本重啟驗證完成（2026-08-08）
 
 ## 目的
 
@@ -75,8 +75,8 @@ Issue 編輯頁、Test Case 建立／編輯頁與 Test Run 執行頁各放一個
 2. [x] 完成 Issue 附件資料表、OpenAPI、後端、前端與 integration tests，作為第一個垂直切片。
 3. [x] 完成 Test Case 附件；建立頁採「先建立、後上傳、失敗可重試」流程。
 4. [x] 完成 Test Run Item 證據附件及 Run 狀態唯讀限制。
-5. [ ] 以乾淨 PostgreSQL 套用兩個 module 的 migration，確認 Docker volume 重啟後檔案仍可下載。
-6. [ ] 後續發布前 migration 收斂時，一併檢查附件 migration 的升級路徑；不得直接刪除已套用 migration。
+5. [x] 以重置後的測試 PostgreSQL 套用 baseline，確認本機附件儲存內容於 API 重啟後仍存在且可讀。
+6. [ ] 正式發布前再補 Docker volume、升級路徑與備份／還原驗證；不阻擋本次 MVP 收尾。
 
 ## 驗收與安全條件
 

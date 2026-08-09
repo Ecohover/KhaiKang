@@ -26,8 +26,9 @@
 7. [語詞總表](./04-domain-glossary.md)
 8. [使用者與登入規格](../02-specs/01-user-authentication.md)
 9. [專案管理規格](../02-specs/02-project-management.md)
-10. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-11. [階段規劃總覽](../04-planning/01-phase-overview.md)
+10. [測試案例管理規格](../02-specs/03-test-case-management.md)
+11. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+12. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -73,6 +74,7 @@
 目前包含：
 
 - [資料模型總覽](../03-data-model/01-data-model-overview.md)
+- [登入與使用者資料模型](../03-data-model/04-authentication-data-model.md)
 - [專案管理資料模型](../03-data-model/02-project-management-data-model.md)
 - [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md)
 - [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md)
@@ -105,3 +107,7 @@
 - `planning` 文件優先回答「現在做什麼，後面做什麼」
 
 同一份文件應盡量只承擔一種主要目的，避免閱讀者在同一頁面來回切換上下文。
+
+## 英文同步文件
+
+目前 MVP 的英文核心文件由 [English Documentation Map](../../en/documentation-map.md) 統一導覽，包含 Identity、Project、Test 規格、三個資料模型、UI Guideline、MVP 收尾與附件設計。歷史性實作計畫仍可只保留繁中版本，不視為 MVP 雙語缺頁。

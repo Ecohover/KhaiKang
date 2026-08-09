@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
-    [Migration("20260721075344_AddPermissionModel")]
-    partial class AddPermissionModel
+    [Migration("20260808130157_InitialIdentity")]
+    partial class InitialIdentity
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -514,6 +514,14 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .HasDatabaseName("ux_system_roles_normalized_name");
 
                     b.ToTable("system_roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("94fbc708-1764-4d11-a8e6-df5e786cb678"),
+                            Name = "User",
+                            NormalizedName = "USER"
+                        });
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.SystemRolePermission", b =>
