@@ -1,6 +1,6 @@
 # Documentation Map
 
-Status: synchronized with the Traditional Chinese MVP documentation on 2026-08-09.
+Status: synchronized with the Traditional Chinese MVP documentation on 2026-08-10.
 
 ## Purpose
 
@@ -36,6 +36,7 @@ This page is the English entry point for KhaiKang documentation. Current MVP pro
 
 - [Phase overview](./planning/phase-overview.md)
 - [MVP release closure](./planning/mvp-release-closure-plan.md)
+- [Release automation and delivery drill](./planning/release-automation.md)
 - [Cross-module attachments](./planning/cross-module-attachments.md)
 - [Backlog](./planning/backlog.md)
 

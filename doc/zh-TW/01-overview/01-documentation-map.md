@@ -96,6 +96,7 @@
 - [測試管理 MVP 實作計畫](../04-planning/05-test-management-implementation-plan.md)
 - [MVP 收尾與發布準備計畫](../04-planning/06-mvp-release-closure-plan.md)
 - [跨模組附件實作計畫](../04-planning/07-cross-module-attachments-implementation-plan.md)
+- [發布自動化與交付演練計畫](../04-planning/08-release-automation-plan.md)
 
 ## 文件使用原則
 

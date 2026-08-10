@@ -11,6 +11,7 @@ Read only the matching document:
 | Changes under `frontend/` | `.ai/frontend.md` |
 | Changes under `contract/` or public HTTP API changes | `.ai/contract.md` |
 | Build, test, formatting, or completion reporting | `.ai/verification.md` |
+| Release preparation, Git tags, GitHub Releases, Docker image publishing, or backup/restore drills | `.ai/release.md` |
 | Continuing unfinished work from another person or AI | The referenced handoff file based on `.ai/handoff-template.md` |
 | AI Agent, Prompt selection, Agent Runtime, or multi-Agent orchestration design | `doc/zh-TW/04-planning/04-ai-agent-orchestration-direction.md` |
 

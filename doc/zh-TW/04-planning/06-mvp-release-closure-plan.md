@@ -69,3 +69,4 @@ Test Run 進入 `in_progress` 後鎖定建立當下的案例與步驟快照，�
 ## MVP 後續工作
 
 - 完整桌面／手機人工驗收、CI、Playwright、自動匯入與 AI 測試均延後到 MVP 可用版本完成後。
+- 發布自動化與隔離備份／還原演練改由[發布自動化與交付演練計畫](./08-release-automation-plan.md)追蹤。
