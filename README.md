@@ -52,12 +52,12 @@ cd KhaiKang/deploy/compose
 cp .env.example .env
 # Edit .env and replace POSTGRES_PASSWORD with a long random value.
 docker compose pull
-docker compose up -d
+docker compose up -d --wait --wait-timeout 180
 ```
 
 Open `http://localhost:8080` and create the first system administrator. See
 [Docker deployment](./deploy/README.md) for upgrades, backups, HTTPS, and
-production guidance. Use a fixed release tag such as `0.1.0-rc.2` or a
+production guidance. Use a fixed release tag such as `0.1.0` or a
 `sha-...` image tag rather than `latest` for repeatable production deployments.
 
 For an internet-facing installation, use the included Caddy HTTPS override and
