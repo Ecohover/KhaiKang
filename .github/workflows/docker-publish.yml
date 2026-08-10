@@ -97,7 +97,11 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ steps.release-version.outputs.is_stable == 'true' }}
           labels: |
+            org.opencontainers.image.title=KhaiKang API
+            org.opencontainers.image.description=KhaiKang API for the self-hosted project and manual test management platform
+            org.opencontainers.image.source=https://github.com/Ecohover/KhaiKang
             org.opencontainers.image.version=${{ steps.release-version.outputs.version }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push API image
         uses: docker/build-push-action@v6
@@ -122,7 +126,11 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ steps.release-version.outputs.is_stable == 'true' }}
           labels: |
+            org.opencontainers.image.title=KhaiKang Web
+            org.opencontainers.image.description=KhaiKang web UI for the self-hosted project and manual test management platform
+            org.opencontainers.image.source=https://github.com/Ecohover/KhaiKang
             org.opencontainers.image.version=${{ steps.release-version.outputs.version }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push web image
         uses: docker/build-push-action@v6

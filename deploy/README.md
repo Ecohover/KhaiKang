@@ -137,3 +137,17 @@ Create the token in Docker Hub under **Account Settings → Personal access toke
 then add it in GitHub under **Repository Settings → Secrets and variables → Actions**.
 The token is used only by the publish workflow and is never added to an image or
 deployment `.env` file.
+
+## Docker Hub repository information
+
+Docker Hub repository metadata is separate from an image tag. Use these short
+descriptions, each within Docker Hub's 100-character limit:
+
+- `khaikang-api`: `KhaiKang API for the self-hosted project and manual test management platform.`
+- `khaikang-web`: `KhaiKang web UI for the self-hosted project and manual test management platform.`
+
+Paste [`docker-hub-overview.md`](./docker-hub-overview.md) into the Overview of
+both Docker Hub repositories. The GitHub Actions workflow pushes images directly,
+so Docker Hub does not automatically synchronize this file as an automated build
+would. Keep version-specific changes in GitHub Releases and keep the Docker Hub
+Overview focused on installation, tag policy, documentation, and support links.
