@@ -2162,7 +2162,7 @@ components:
           type: string
         version:
           type: string
-          examples: [0.1.0-rc.1]
+          examples: [0.1.0-rc.2]
         environment:
           type: string
         serverTime:

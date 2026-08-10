@@ -79,7 +79,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Use an immutable release tag such as `0.1.0-rc.1` or the Git SHA tag published
+Use an immutable release tag such as `0.1.0-rc.2` or the Git SHA tag published
 with each build for a precise rollback. Do not deploy `rc` or `latest` when a
 repeatable rollback is required.
 
@@ -87,11 +87,11 @@ repeatable rollback is required.
 
 `VERSION` at the repository root is the product version source of truth. It
 uses semantic versioning without the Git `v` prefix. The first release candidate
-is therefore stored as `0.1.0-rc.1` and tagged in Git as `v0.1.0-rc.1`.
+is therefore stored as `0.1.0-rc.2` and tagged in Git as `v0.1.0-rc.2`.
 
 The Docker workflow publishes these tags:
 
-- a version tag such as `0.1.0-rc.1` when a matching Git tag is pushed;
+- a version tag such as `0.1.0-rc.2` when a matching Git tag is pushed;
 - `sha-<commit>` for an immutable source reference;
 - `rc` for builds from the `rc` acceptance branch;
 - `latest` for builds from the stable `main` branch and stable version tags.
@@ -105,8 +105,8 @@ A formal release does not need another branch: merge the accepted RC into
 The Git tag and `VERSION` must match. For example:
 
 ```sh
-git tag -a v0.1.0-rc.1 -m "KhaiKang v0.1.0-rc.1"
-git push origin v0.1.0-rc.1
+git tag -a v0.1.0-rc.2 -m "KhaiKang v0.1.0-rc.2"
+git push origin v0.1.0-rc.2
 ```
 
 On Windows, inspect or build the exact local image tags with:

@@ -26,7 +26,7 @@ docker compose up -d
 開啟 `http://localhost:8080`，建立第一個系統管理員帳號。
 
 升級、備份、HTTPS 與正式環境的做法請見[ Docker 部署說明](./deploy/README.md)。正式環境
-建議使用固定的版本 tag（例如 `0.1.0-rc.1`）或 `sha-...`，而不是 `latest`。
+建議使用固定的版本 tag（例如 `0.1.0-rc.2`）或 `sha-...`，而不是 `latest`。
 
 ### 從原始碼執行
 

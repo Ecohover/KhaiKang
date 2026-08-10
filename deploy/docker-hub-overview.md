@@ -19,7 +19,7 @@ PostgreSQL directly to the public internet.
 
 | Tag | Meaning |
 | --- | --- |
-| `0.1.0-rc.1` | Immutable first MVP release candidate. |
+| `0.1.0-rc.2` | Current immutable MVP release candidate. |
 | `rc` | Latest build accepted into the RC branch; it can move. |
 | `sha-<commit>` | Immutable build for an exact Git commit. |
 | `latest` | Latest stable release from `main`; it never points to an RC build. |
@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: ecohover/khaikang-api:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.1}
+    image: ecohover/khaikang-api:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.2}
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__KhaiKang: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
@@ -72,7 +72,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ecohover/khaikang-web:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.1}
+    image: ecohover/khaikang-web:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.2}
     depends_on:
       - api
     ports:
@@ -91,7 +91,7 @@ volumes:
 POSTGRES_DB=khaikang
 POSTGRES_USER=khaikang
 POSTGRES_PASSWORD=REPLACE_WITH_A_LONG_RANDOM_PASSWORD
-KHAIKANG_IMAGE_TAG=0.1.0-rc.1
+KHAIKANG_IMAGE_TAG=0.1.0-rc.2
 KHAIKANG_HTTP_PORT=8080
 # Leave false for localhost. Use true only when HTTPS is terminated in front of web.
 KHAIKANG_REQUIRE_HTTPS=false
@@ -117,7 +117,7 @@ Open `http://localhost:8080` and initialize the first system administrator.
 
 - Keep `.env` private. Never add passwords or tokens to an image or source repository.
 - Back up the `postgres-data`, `data-protection-keys`, and `attachments` volumes together.
-- Use a fixed release tag such as `0.1.0-rc.1` or `sha-...` for repeatable upgrades and rollback.
+- Use a fixed release tag such as `0.1.0-rc.2` or `sha-...` for repeatable upgrades and rollback.
 - For a public domain, terminate TLS in front of the web service and set
   `KHAIKANG_REQUIRE_HTTPS=true`. The repository includes a Caddy example:
   <https://github.com/Ecohover/KhaiKang/tree/main/deploy>.

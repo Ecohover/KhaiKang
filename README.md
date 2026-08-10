@@ -57,7 +57,7 @@ docker compose up -d
 
 Open `http://localhost:8080` and create the first system administrator. See
 [Docker deployment](./deploy/README.md) for upgrades, backups, HTTPS, and
-production guidance. Use a fixed release tag such as `0.1.0-rc.1` or a
+production guidance. Use a fixed release tag such as `0.1.0-rc.2` or a
 `sha-...` image tag rather than `latest` for repeatable production deployments.
 
 For an internet-facing installation, use the included Caddy HTTPS override and
