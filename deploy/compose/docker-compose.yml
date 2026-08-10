@@ -16,6 +16,26 @@ services:
       retries: 12
     restart: unless-stopped
 
+  storage-init:
+    image: ${KHAIKANG_API_IMAGE}:${KHAIKANG_IMAGE_TAG}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        : "$${APP_UID:?The API image must define APP_UID}"
+        mkdir -p /var/lib/khaikang/data-protection /var/lib/khaikang/attachments
+        chown "$${APP_UID}:$${APP_UID}" \
+          /var/lib/khaikang/data-protection \
+          /var/lib/khaikang/attachments
+        stat -c '%u:%g %n' \
+          /var/lib/khaikang/data-protection \
+          /var/lib/khaikang/attachments
+    volumes:
+      - data-protection-keys:/var/lib/khaikang/data-protection
+      - attachments:/var/lib/khaikang/attachments
+    restart: "no"
+
   api:
     image: ${KHAIKANG_API_IMAGE}:${KHAIKANG_IMAGE_TAG}
     environment:
@@ -30,17 +50,40 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
     volumes:
       - data-protection-keys:/var/lib/khaikang/data-protection
       - attachments:/var/lib/khaikang/attachments
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080 &&
+          printf 'GET /health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *" 200 "* ]]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
     restart: unless-stopped
 
   web:
     image: ${KHAIKANG_WEB_IMAGE}:${KHAIKANG_IMAGE_TAG}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "${KHAIKANG_HTTP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/api/v1/system/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
     restart: unless-stopped
 
 volumes:

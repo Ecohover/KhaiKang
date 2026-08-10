@@ -10,8 +10,8 @@ KhaiKang is Kanban-first and Scrum-compatible. AI can assist at every workflow s
 
 ## What is included today
 
-- Project workspaces, members, settings, and issue management.
-- Test suites, versioned test cases, test plans, and recorded test runs.
+- Projects, members, fixed roles, issue management, and attachments.
+- Test workspaces, suites, stable-numbered test cases, plans, manual runs, and evidence attachments.
 - A Vue web application, .NET API, PostgreSQL persistence, and OpenAPI contract.
 - Self-hosted Docker Compose deployment using published Docker Hub images.
 
@@ -52,13 +52,13 @@ cd KhaiKang/deploy/compose
 cp .env.example .env
 # Edit .env and replace POSTGRES_PASSWORD with a long random value.
 docker compose pull
-docker compose up -d
+docker compose up -d --wait --wait-timeout 180
 ```
 
 Open `http://localhost:8080` and create the first system administrator. See
 [Docker deployment](./deploy/README.md) for upgrades, backups, HTTPS, and
-production guidance. Use a fixed `sha-...` image tag rather than `latest` for
-repeatable production deployments.
+production guidance. Use a fixed release tag such as `0.1.0` or a
+`sha-...` image tag rather than `latest` for repeatable production deployments.
 
 For an internet-facing installation, use the included Caddy HTTPS override and
 set `KHAIKANG_REQUIRE_HTTPS=true` only after TLS is working. Do not expose the
@@ -73,7 +73,9 @@ PostgreSQL, Node.js 22, and pnpm 10.
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet tool restore
 dotnet user-secrets set --project backend/src/KhaiKang.Api "ConnectionStrings:KhaiKang" "Host=localhost;Port=5432;Database=khaikang;Username=khaikang;Password=<your-local-password>"
-dotnet ef database update --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.Identity.Infrastructure.IdentityDbContext --project backend/src/modules/KhaiKang.Modules.Identity --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.ProjectManagement.Infrastructure.ProjectManagementDbContext --project backend/src/modules/KhaiKang.Modules.ProjectManagement --startup-project backend/src/KhaiKang.Api
+dotnet ef database update --context KhaiKang.Modules.TestManagement.Infrastructure.TestManagementDbContext --project backend/src/modules/KhaiKang.Modules.TestManagement --startup-project backend/src/KhaiKang.Api
 dotnet run --project backend/src/KhaiKang.Api/KhaiKang.Api.csproj
 ```
 
@@ -112,6 +114,7 @@ See [frontend/README.md](./frontend/README.md) for its workspace commands.
 - [Contributing](./CONTRIBUTING.md)
 - [Coding Agent Guidelines](./AGENTS.md)
 - [Documentation Guidelines](./doc/documentation-guidelines.md)
+- [English Documentation Map](./doc/en/documentation-map.md)
 - [Development Guidelines](./doc/en/development-guidelines.md)
 - [AI and OpenAPI Development Workflow](./doc/en/ai-openapi-development-workflow.md)
 - [Canonical OpenAPI Contract](./contract/openapi/khaikang.v1.yaml)

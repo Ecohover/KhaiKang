@@ -224,6 +224,20 @@ export interface TestWorkspaceResponse {
   version: number
 }
 
+export interface LinkTestWorkspaceProjectRequest {
+  projectId: string
+}
+
+export interface TestWorkspaceProjectResponse {
+  id: string
+  projectId: string
+  code: string
+  name: string
+  status: 'active' | 'inactive'
+  linkedAt: string
+  version: number
+}
+
 export interface CreateTestWorkspaceRequest {
   name: string
   prefix?: string | null
@@ -377,6 +391,18 @@ export interface TestCaseResponse {
 export interface TestCaseAttachmentResponse {
   id: string
   testCaseId: string
+  originalFileName: string
+  contentType: string
+  fileSize: number
+  fileHash: string
+  uploadedByAccountId: string
+  uploadedByUsername: string
+  createdAt: string
+}
+
+export interface TestRunItemAttachmentResponse {
+  id: string
+  testRunItemId: string
   originalFileName: string
   contentType: string
   fileSize: number

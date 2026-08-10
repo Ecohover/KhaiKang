@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.Identity.Contracts;
+using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Domain;
 using KhaiKang.Modules.TestManagement.Infrastructure;
@@ -25,6 +26,7 @@ public sealed record TestManagementResult<T>(
 public sealed class TestManagementService(
     TestManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
+    IProjectDirectory projectDirectory,
     TimeProvider timeProvider)
 {
     private static readonly string[] Roles = ["owner", "manager", "tester", "viewer"];
@@ -81,6 +83,132 @@ public sealed class TestManagementService(
                 x.AccountId == accountId && x.Status == "active")
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<TestManagementResult<IReadOnlyList<TestWorkspaceProjectResponse>>> ListWorkspaceProjectsAsync(
+        Guid workspaceId,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        var links = await dbContext.WorkspaceProjects
+            .AsNoTracking()
+            .Where(link => link.TestWorkspaceId == workspaceId)
+            .ToArrayAsync(cancellationToken);
+        var projects = await projectDirectory.GetByIdsAsync(
+            links.Select(link => link.ProjectId).ToArray(), cancellationToken);
+        var response = links
+            .Where(link => projects.ContainsKey(link.ProjectId))
+            .Select(link => ToWorkspaceProjectResponse(link, projects[link.ProjectId]))
+            .OrderBy(link => link.Name)
+            .ThenBy(link => link.Code)
+            .ToArray();
+        return new(TestManagementOutcome.Succeeded, response);
+    }
+
+    public async Task<TestManagementResult<TestWorkspaceProjectResponse>> LinkWorkspaceProjectAsync(
+        Guid workspaceId,
+        Guid accountId,
+        LinkTestWorkspaceProjectRequest request,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        {
+            return new(TestManagementOutcome.Forbidden);
+        }
+
+        var project = await projectDirectory.FindAccessibleAsync(
+            request.ProjectId, accountId, cancellationToken);
+        if (project is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (project.Status != "active")
+        {
+            return new(TestManagementOutcome.Conflict, Code: "project_not_active");
+        }
+
+        if (await dbContext.WorkspaceProjects.AnyAsync(
+            link => link.TestWorkspaceId == workspaceId && link.ProjectId == request.ProjectId,
+            cancellationToken))
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_already_linked");
+        }
+
+        var link = new TestWorkspaceProject(
+            Guid.NewGuid(), workspaceId, request.ProjectId, accountId, timeProvider.GetUtcNow());
+        dbContext.WorkspaceProjects.Add(link);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                ConstraintName: "uq_test_workspace_projects_workspace_project",
+            })
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_already_linked");
+        }
+
+        return new(
+            TestManagementOutcome.Succeeded,
+            ToWorkspaceProjectResponse(link, project));
+    }
+
+    public async Task<TestManagementResult<object>> UnlinkWorkspaceProjectAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid accountId,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        var access = await AccessAsync(workspaceId, accountId, cancellationToken);
+        if (access is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        {
+            return new(TestManagementOutcome.Forbidden);
+        }
+
+        var link = await dbContext.WorkspaceProjects.SingleOrDefaultAsync(
+            item => item.TestWorkspaceId == workspaceId && item.ProjectId == projectId,
+            cancellationToken);
+        if (link is null)
+        {
+            return new(TestManagementOutcome.NotFound);
+        }
+
+        if (link.Version != version)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_version_conflict");
+        }
+
+        dbContext.WorkspaceProjects.Remove(link);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_version_conflict");
+        }
+
+        return new(TestManagementOutcome.Succeeded, new object());
     }
 
     public async Task<TestManagementResult<TestWorkspaceResponse>> CreateWorkspaceAsync(
@@ -513,12 +641,13 @@ public sealed class TestManagementService(
         var tags = await ActiveTagsAsync(request.TagIds, cancellationToken);
         if (tags is null) return new(TestManagementOutcome.Invalid, Code: "test_tag_not_found");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
         var testCase = new TestCase(
             Guid.NewGuid(),
             workspaceId,
             suite.Id,
-            await NextCaseNoAsync(workspaceId, cancellationToken),
+            await NextNumberAsync("case", workspaceId, cancellationToken),
             request.Title.Trim(),
             Clean(request.Description),
             Clean(request.Preconditions),
@@ -544,6 +673,7 @@ public sealed class TestManagementService(
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
@@ -705,10 +835,9 @@ public sealed class TestManagementService(
         if (cases is null)
             return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var planNo = (await dbContext.Plans
-            .Where(x => x.TestWorkspaceId == workspaceId)
-            .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1;
+        var planNo = await NextNumberAsync("plan", workspaceId, cancellationToken);
         var name = PlanName(request.Name, now);
         var plan = new TestPlan(
             Guid.NewGuid(), workspaceId, planNo, name, Clean(request.Description),
@@ -720,6 +849,7 @@ public sealed class TestManagementService(
                 Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
     }
 
@@ -806,10 +936,9 @@ public sealed class TestManagementService(
         if (plan.Items.Any(x => x.TestCase.Status != "active"))
             return new(TestManagementOutcome.Conflict, Code: "plan_contains_inactive_case");
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var runNo = (await dbContext.Runs
-            .Where(x => x.TestPlanId == plan.Id)
-            .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1;
+        var runNo = await NextNumberAsync("run", plan.Id, cancellationToken);
         var run = new TestRun(
             Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now);
         dbContext.Runs.Add(run);
@@ -824,6 +953,7 @@ public sealed class TestManagementService(
                     Guid.NewGuid(), runItem.Id, step, accountId, now)));
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return await GetRunAsync(workspaceId, run.Id, accountId, cancellationToken);
     }
 
@@ -1022,6 +1152,17 @@ public sealed class TestManagementService(
             : value.Trim();
     private static TestWorkspaceResponse ToWorkspaceResponse(TestWorkspace x, string role) =>
         new(x.Id, x.Name, x.Prefix, x.Description, x.Status, role, x.CreatedAt, x.UpdatedAt, x.Version);
+    private static TestWorkspaceProjectResponse ToWorkspaceProjectResponse(
+        TestWorkspaceProject link,
+        ProjectDirectoryEntry project) =>
+        new(
+            link.Id,
+            link.ProjectId,
+            project.Code,
+            project.Name,
+            project.Status,
+            link.CreatedAt,
+            link.Version);
     private static TestSuiteResponse ToSuiteResponse(TestSuite x, int depth) =>
         new(x.Id, x.ParentId, x.Name, x.Description, x.SortOrder, x.Status, depth, x.Version);
     private static TestCaseResponse ToCaseResponse(TestCase x) =>
@@ -1049,11 +1190,36 @@ public sealed class TestManagementService(
             x.Version);
     private static TestTagResponse ToTagResponse(TestTag x) =>
         new(x.Id, x.Name, x.Description, x.Status, x.Version);
-    private async Task<int> NextCaseNoAsync(Guid workspaceId, CancellationToken cancellationToken) =>
-        (await dbContext.Cases
-            .Where(x => x.TestWorkspaceId == workspaceId)
-            .Select(x => (int?)x.CaseNo)
-            .MaxAsync(cancellationToken) ?? 0) + 1;
+    private async Task<int> NextNumberAsync(
+        string counterType,
+        Guid scopeId,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsNpgsql())
+        {
+            return await dbContext.Database
+                .SqlQuery<int>(
+                    $"SELECT public.next_test_number({counterType}, {scopeId}) AS \"Value\"")
+                .SingleAsync(cancellationToken);
+        }
+
+        return counterType switch
+        {
+            "case" => (await dbContext.Cases
+                .Where(x => x.TestWorkspaceId == scopeId)
+                .MaxAsync(x => (int?)x.CaseNo, cancellationToken) ?? 0) + 1,
+            "plan" => (await dbContext.Plans
+                .Where(x => x.TestWorkspaceId == scopeId)
+                .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1,
+            "run" => (await dbContext.Runs
+                .Where(x => x.TestPlanId == scopeId)
+                .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(counterType),
+                counterType,
+                "Unsupported test number counter type."),
+        };
+    }
     private static TestPlanResponse ToPlanResponse(TestPlan x) =>
         new(
             x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",

@@ -124,7 +124,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第三階段：列表、看板與查詢
 
-狀態：進行中（分頁基礎完成，待依 MVP 收尾計畫完成驗收）
+狀態：功能與自動驗證已完成；完整人工驗收延後（2026-08-09）
 
 已完成：
 
@@ -146,7 +146,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第四階段：稽核與併發安全
 
-狀態：待 MVP 收尾驗收
+狀態：核心實作與自動驗證已完成；完整角色矩陣人工驗收延後
 
 範圍：
 
@@ -158,7 +158,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第五階段：附件管理
 
-狀態：待附件儲存提供者決策後開始（MVP 必要）
+狀態：已完成（2026-08-07），本機儲存基本重啟驗證已通過
 
 範圍：
 
@@ -171,7 +171,7 @@ Comment、Tag、Relation、Watcher 與 Transition 仍維持延伸能力，不納
 
 ### 第六階段：MVP 完整驗收
 
-狀態：待前述階段完成；跨模組順序見收尾與發布準備計畫
+狀態：MVP 基本自動驗證已完成；完整桌面與手機人工驗收延後
 
 範圍：
 
@@ -220,6 +220,6 @@ HTTP contract：
 ## 風險與注意事項
 
 - OpenAPI、C# 與 TypeScript 都是維護中的正式來源檔，必須同一階段同步。
-- 目前工作區包含尚未提交的專案管理與權限功能，實作時不得覆蓋或拆散既有變更。
+- 相關專案管理、權限、migration 與文件變更已於 `a483fb1` 提交並推送；本項工作區風險已解除。
 - 第一階段不新增資料表，原則上不需要 migration；若 EF model snapshot 發生變化，必須先確認是否為非預期變更。
 - SQLite 整合測試可驗證 HTTP 與授權流程，但 PostgreSQL-specific 的並行流水號行為留到第四階段使用 PostgreSQL 驗證。

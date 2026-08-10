@@ -72,6 +72,68 @@ public static class TestManagementEndpointExtensions
         }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
           .WithName("UpdateTestWorkspace").Produces<TestWorkspaceResponse>();
 
+        workspaces.MapGet("/{workspaceId:guid}/projects", async (
+            Guid workspaceId,
+            ClaimsPrincipal principal,
+            TestManagementService service,
+            CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            return Map(await service.ListWorkspaceProjectsAsync(workspaceId, accountId, token));
+        }).WithName("ListTestWorkspaceProjects")
+          .Produces<IReadOnlyList<TestWorkspaceProjectResponse>>();
+
+        workspaces.MapPost("/{workspaceId:guid}/projects", async (
+            Guid workspaceId,
+            LinkTestWorkspaceProjectRequest request,
+            ClaimsPrincipal principal,
+            TestManagementService service,
+            CancellationToken token) =>
+        {
+            if (request.ProjectId == Guid.Empty)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["projectId"] = ["A valid project id is required."],
+                });
+            }
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.LinkWorkspaceProjectAsync(
+                workspaceId, accountId, request, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.Created(
+                    $"/api/v1/test-workspaces/{workspaceId}/projects/{request.ProjectId}",
+                    result.Value)
+                : Map(result);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("LinkTestWorkspaceProject")
+          .Produces<TestWorkspaceProjectResponse>(201);
+
+        workspaces.MapDelete("/{workspaceId:guid}/projects/{projectId:guid}", async (
+            Guid workspaceId,
+            Guid projectId,
+            int version,
+            ClaimsPrincipal principal,
+            TestManagementService service,
+            CancellationToken token) =>
+        {
+            if (version < 1)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["version"] = ["Version must be greater than zero."],
+                });
+            }
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var result = await service.UnlinkWorkspaceProjectAsync(
+                workspaceId, projectId, accountId, version, token);
+            return result.Outcome == TestManagementOutcome.Succeeded
+                ? Results.NoContent()
+                : Map(result);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
+          .WithName("UnlinkTestWorkspaceProject")
+          .Produces(204);
+
         workspaces.MapGet("/{workspaceId:guid}/members", async (
             Guid workspaceId, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>

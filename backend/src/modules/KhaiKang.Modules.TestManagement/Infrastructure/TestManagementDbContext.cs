@@ -8,6 +8,7 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
 {
     public DbSet<TestWorkspace> Workspaces => Set<TestWorkspace>();
     public DbSet<TestWorkspaceMember> Members => Set<TestWorkspaceMember>();
+    public DbSet<TestWorkspaceProject> WorkspaceProjects => Set<TestWorkspaceProject>();
     public DbSet<TestSuite> Suites => Set<TestSuite>();
     public DbSet<TestCase> Cases => Set<TestCase>();
     public DbSet<TestStep> CaseSteps => Set<TestStep>();
@@ -27,6 +28,11 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         account.ToTable("accounts", table => table.ExcludeFromMigrations());
         account.HasKey(x => x.Id);
         account.Property(x => x.Id).HasColumnName("id");
+
+        var projectReference = modelBuilder.Entity<ProjectReference>();
+        projectReference.ToTable("projects", table => table.ExcludeFromMigrations());
+        projectReference.HasKey(x => x.Id);
+        projectReference.Property(x => x.Id).HasColumnName("id");
 
         var workspace = modelBuilder.Entity<TestWorkspace>();
         workspace.ToTable("test_workspaces");
@@ -62,6 +68,25 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         member.HasOne<AccountReference>().WithMany()
             .HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_test_workspace_members_account");
+
+        var workspaceProject = modelBuilder.Entity<TestWorkspaceProject>();
+        workspaceProject.ToTable("test_workspace_projects");
+        workspaceProject.HasKey(x => x.Id).HasName("pk_test_workspace_projects");
+        workspaceProject.Property(x => x.Id).HasColumnName("id");
+        workspaceProject.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
+        workspaceProject.Property(x => x.ProjectId).HasColumnName("project_id");
+        Audit(workspaceProject);
+        workspaceProject.HasIndex(x => x.ProjectId)
+            .HasDatabaseName("idx_test_workspace_projects_project_id");
+        workspaceProject.HasIndex(x => new { x.TestWorkspaceId, x.ProjectId })
+            .IsUnique()
+            .HasDatabaseName("uq_test_workspace_projects_workspace_project");
+        workspaceProject.HasOne(x => x.Workspace).WithMany(x => x.Projects)
+            .HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_workspace_projects_workspace");
+        workspaceProject.HasOne<ProjectReference>().WithMany()
+            .HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_workspace_projects_project");
 
         var suite = modelBuilder.Entity<TestSuite>();
         suite.ToTable("test_suites");

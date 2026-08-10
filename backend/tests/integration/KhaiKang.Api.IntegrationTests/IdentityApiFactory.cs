@@ -25,15 +25,12 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
         Path.GetTempPath(),
         "khaikang-integration-tests",
         Guid.NewGuid().ToString("N"));
-    private readonly string? _previousConnectionString;
     private readonly ServiceProvider _sqliteServices = new ServiceCollection()
         .AddEntityFrameworkSqlite()
         .BuildServiceProvider();
 
     public IdentityApiFactory()
     {
-        _previousConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__KhaiKang");
-        Environment.SetEnvironmentVariable("ConnectionStrings__KhaiKang", TestConnectionString);
         _connection.Open();
     }
 
@@ -53,6 +50,7 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:KhaiKang", TestConnectionString);
         builder.UseSetting("Attachments:LocalRoot", _attachmentRoot);
         builder.ConfigureServices(services =>
         {
@@ -99,7 +97,6 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
             _connection.Dispose();
             _sqliteServices.Dispose();
             if (Directory.Exists(_attachmentRoot)) Directory.Delete(_attachmentRoot, recursive: true);
-            Environment.SetEnvironmentVariable("ConnectionStrings__KhaiKang", _previousConnectionString);
         }
     }
 }

@@ -27,6 +27,7 @@ public sealed class TestWorkspace
     public Guid? UpdatedByAccountId { get; private set; }
     public int Version { get; private set; } = 1;
     public ICollection<TestWorkspaceMember> Members { get; } = [];
+    public ICollection<TestWorkspaceProject> Projects { get; } = [];
     public ICollection<TestSuite> Suites { get; } = [];
 
     public void Update(string name, string? description, string status, Guid actorId, DateTimeOffset now)

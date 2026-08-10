@@ -298,10 +298,8 @@ public sealed class IssueService(
             return new(IssueMutationOutcome.InvalidAssignee);
         }
 
-        var issueNo = (await dbContext.Issues
-            .Where(issue => issue.ProjectId == projectId)
-            .Select(issue => (int?)issue.IssueNo)
-            .MaxAsync(cancellationToken) ?? 0) + 1;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var issueNo = await NextIssueNoAsync(projectId, cancellationToken);
         var now = timeProvider.GetUtcNow();
         var issue = new Issue(
             Guid.NewGuid(),
@@ -328,6 +326,7 @@ public sealed class IssueService(
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
@@ -347,6 +346,25 @@ public sealed class IssueService(
                 initialStatus,
                 priority,
                 accounts));
+    }
+
+    private async Task<int> NextIssueNoAsync(
+        Guid projectId,
+        CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return (await dbContext.Issues
+                .Where(issue => issue.ProjectId == projectId)
+                .Select(issue => (int?)issue.IssueNo)
+                .MaxAsync(cancellationToken) ?? 0) + 1;
+        }
+
+        const string counterType = "issue";
+        return await dbContext.Database
+            .SqlQuery<int>(
+                $"SELECT public.next_project_number({counterType}, {projectId}) AS \"Value\"")
+            .SingleAsync(cancellationToken);
     }
 
     public async Task<IssueMutationResult> ChangeStatusAsync(

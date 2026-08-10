@@ -1,5 +1,6 @@
 using KhaiKang.Modules.ProjectManagement.Application;
 using KhaiKang.CommonUtils.Storage;
+using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.ProjectManagement.Controllers;
 using KhaiKang.Modules.ProjectManagement.Endpoints;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
@@ -38,6 +39,7 @@ public static class ProjectManagementModuleExtensions
             return new LocalFileStorage(options.LocalRoot);
         });
         services.AddScoped<ProjectManagementService>();
+        services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IssueService>();
         services.AddScoped<IssueAttachmentService>();
         services.AddControllers()

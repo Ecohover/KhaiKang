@@ -2,8 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, ChevronRight, Edit3, FileCheck2, Folder, FolderOpen, FolderPlus, FolderTree, GripVertical, Layers, LayoutDashboard, List, Plus, Save, Trash2, UserPlus } from '@lucide/vue'
-import { UiButton } from '@khaikang/ui'
+import { ChevronDown, ChevronRight, Edit3, ExternalLink, FileCheck2, Folder, FolderKanban, FolderOpen, FolderPlus, FolderTree, GripVertical, Layers, LayoutDashboard, Link2, List, Plus, Save, Trash2, Unlink, UserPlus } from '@lucide/vue'
+import { UiButton, UiEmptyState, UiSelect, UiStatusBadge } from '@khaikang/ui'
 import ResourceMemberManager from '../components/ResourceMemberManager.vue'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
@@ -15,7 +15,7 @@ import SharedSearchField from '../components/SharedSearchField.vue'
 import SharedViewTabs from '../components/SharedViewTabs.vue'
 import TestCaseEditForm from '../components/TestCaseEditForm.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
-import type { TestCaseResponse, TestSuiteResponse, TestTagResponse, TestWorkspaceMemberResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
+import type { ProjectResponse, TestCaseResponse, TestSuiteResponse, TestTagResponse, TestWorkspaceMemberResponse, TestWorkspaceProjectResponse, TestWorkspaceResponse, TestWorkspaceRole } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
@@ -24,12 +24,16 @@ const { t, d } = useI18n()
 const workspaceId = computed(() => String(route.params.workspaceId))
 const workspace = ref<TestWorkspaceResponse>()
 const members = ref<TestWorkspaceMemberResponse[]>([])
+const linkedProjects = ref<TestWorkspaceProjectResponse[]>([])
+const projects = ref<ProjectResponse[]>([])
 const suites = ref<TestSuiteResponse[]>([])
 const cases = ref<TestCaseResponse[]>([])
 const tags = ref<TestTagResponse[]>([])
 const loading = ref(true)
 const saving = ref(false)
+const linkingProject = ref(false)
 const error = ref('')
+const selectedProjectId = ref('')
 
 const selectedSuiteId = ref<string | null>(null)
 const selectedCaseId = ref<string | null>(null)
@@ -53,6 +57,13 @@ const memberRole = ref<TestWorkspaceRole>('tester')
 const { showCreated, showUpdated } = useSaveNotice()
 
 const canManage = computed(() => ['owner', 'manager'].includes(workspace.value?.currentUserRole ?? ''))
+const canManageProjectLinks = computed(() => canManage.value && workspace.value?.status === 'active')
+const availableProjects = computed(() => {
+  const linkedIds = new Set(linkedProjects.value.map((link) => link.projectId))
+  return projects.value
+    .filter((project) => project.status === 'active' && !linkedIds.has(project.id))
+    .sort((left, right) => left.code.localeCompare(right.code))
+})
 const suiteView = ref<'tree' | 'list'>('tree')
 const caseQuery = ref('')
 const caseStatusFilter = ref<'active' | 'inactive' | ''>('')
@@ -469,20 +480,26 @@ function handleEmbeddedCaseCancel(): void {
 
 async function load(): Promise<void> {
   loading.value = true
-  const [workspaceResult, memberResult, suiteResult, caseResult, tagResult] = await Promise.all([
+  const [workspaceResult, memberResult, suiteResult, caseResult, tagResult, linkedProjectResult, projectResult] = await Promise.all([
     apiClient.getTestWorkspace(workspaceId.value),
     apiClient.listTestWorkspaceMembers(workspaceId.value),
     apiClient.listTestSuites(workspaceId.value),
     apiClient.listTestCases(workspaceId.value),
     apiClient.listTestTags(),
+    apiClient.listTestWorkspaceProjects(workspaceId.value),
+    apiClient.listProjects(),
   ])
   workspace.value = workspaceResult.data
   members.value = memberResult.data ?? []
   suites.value = suiteResult.data ?? []
   cases.value = caseResult.data ?? []
   tags.value = tagResult.data?.filter((tag) => tag.status === 'active') ?? []
+  linkedProjects.value = (linkedProjectResult.data ?? [])
+    .sort((left, right) => left.code.localeCompare(right.code))
+  projects.value = projectResult.data ?? []
   error.value = problemMessage(
-    workspaceResult.error ?? memberResult.error ?? suiteResult.error ?? caseResult.error,
+    workspaceResult.error ?? memberResult.error ?? suiteResult.error ?? caseResult.error
+      ?? linkedProjectResult.error ?? projectResult.error,
     workspace.value ? '' : t('tests.workspace.loadFailed'),
   )
 
@@ -499,6 +516,48 @@ async function load(): Promise<void> {
   }
 
   loading.value = false
+}
+
+async function linkProject(): Promise<void> {
+  if (!selectedProjectId.value) return
+  linkingProject.value = true
+  error.value = ''
+  const result = await apiClient.linkTestWorkspaceProject(
+    workspaceId.value,
+    { projectId: selectedProjectId.value },
+    await secureHeaders(),
+  )
+  if (result.data) {
+    linkedProjects.value = [...linkedProjects.value, result.data]
+      .sort((left, right) => left.code.localeCompare(right.code))
+    selectedProjectId.value = ''
+    showCreated(t('tests.workspace.projectLinkRecord'), result.data.name)
+  } else {
+    error.value = problemMessage(result.error, t('tests.workspace.projectLinkFailed'))
+  }
+  linkingProject.value = false
+}
+
+async function unlinkProject(link: TestWorkspaceProjectResponse): Promise<void> {
+  linkingProject.value = true
+  error.value = ''
+  const result = await apiClient.unlinkTestWorkspaceProject(
+    workspaceId.value,
+    link.projectId,
+    link.version,
+    await secureHeaders(),
+  )
+  if (!result.error) {
+    linkedProjects.value = linkedProjects.value.filter((item) => item.id !== link.id)
+    showUpdated(t('tests.workspace.projectLinkRecord'), link.name)
+  } else {
+    error.value = problemMessage(result.error, t('tests.workspace.projectUnlinkFailed'))
+  }
+  linkingProject.value = false
+}
+
+function openProject(link: TestWorkspaceProjectResponse): void {
+  void router.push({ name: 'project-detail', params: { projectId: link.projectId } })
 }
 
 async function addMember(): Promise<void> {
@@ -646,20 +705,73 @@ onMounted(load)
       ]"
     />
 
-    <!-- TAB 0: HOME PLACEHOLDER -->
+    <!-- TAB 0: LINKED PROJECTS -->
     <SharedCardSection
       v-if="tab === 'home'"
-      :icon="LayoutDashboard"
-      :title="t('tests.workspace.homeTitle')"
-      :description="t('tests.workspace.homeDescription')"
+      :icon="FolderKanban"
+      :title="t('tests.workspace.projectsTitle')"
+      :description="t('tests.workspace.projectsDescription')"
     >
-      <div class="home-placeholder-box">
-        <div class="placeholder-icon-wrap">
-          <LayoutDashboard :size="36" />
+      <template v-if="canManageProjectLinks" #headerRight>
+        <div class="project-link-controls">
+          <UiSelect
+            v-model="selectedProjectId"
+            :disabled="linkingProject || availableProjects.length === 0"
+            :aria-label="t('tests.workspace.selectProject')"
+          >
+            <option value="">
+              {{ availableProjects.length
+                ? t('tests.workspace.selectProject')
+                : t('tests.workspace.noAvailableProjects') }}
+            </option>
+            <option v-for="project in availableProjects" :key="project.id" :value="project.id">
+              {{ project.code }} · {{ project.name }}
+            </option>
+          </UiSelect>
+          <UiButton
+            :loading="linkingProject"
+            :disabled="!selectedProjectId"
+            @click="linkProject"
+          >
+            <Link2 :size="16" />{{ t('tests.workspace.linkProject') }}
+          </UiButton>
         </div>
-        <h4>{{ t('tests.workspace.homePlaceholderTitle') }}</h4>
-        <p>{{ t('tests.workspace.homePlaceholderDescription') }}</p>
+      </template>
+
+      <div v-if="linkedProjects.length" class="linked-project-list">
+        <article v-for="project in linkedProjects" :key="project.id" class="linked-project-card">
+          <div class="linked-project-identity">
+            <span class="linked-project-icon"><FolderKanban :size="20" /></span>
+            <div>
+              <code>{{ project.code }}</code>
+              <strong>{{ project.name }}</strong>
+              <small>{{ t('tests.workspace.linkedAt', { date: formatDate(project.linkedAt) }) }}</small>
+            </div>
+          </div>
+          <div class="linked-project-actions">
+            <UiStatusBadge :variant="project.status === 'active' ? 'success' : 'inactive'">
+              {{ t(`common.status.${project.status}`) }}
+            </UiStatusBadge>
+            <UiButton variant="secondary" @click="openProject(project)">
+              <ExternalLink :size="15" />{{ t('tests.workspace.openProject') }}
+            </UiButton>
+            <UiButton
+              v-if="canManageProjectLinks"
+              variant="ghost"
+              :disabled="linkingProject"
+              @click="unlinkProject(project)"
+            >
+              <Unlink :size="15" />{{ t('tests.workspace.unlinkProject') }}
+            </UiButton>
+          </div>
+        </article>
       </div>
+      <UiEmptyState
+        v-else
+        :icon="FolderKanban"
+        :title="t('tests.workspace.noProjects')"
+        :description="t('tests.workspace.noProjectsDescription')"
+      />
     </SharedCardSection>
 
     <!-- VIEW TABS FOR SUITES (分頁標籤列) -->
@@ -2088,88 +2200,79 @@ input, textarea, select { min-width: 0; padding: 10px 11px; font: inherit; backg
   gap: 12px;
 }
 
-/* TEST HOME PLACEHOLDER PANEL */
-.test-home-panel {
+.project-link-controls,
+.linked-project-actions {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: #ffffff;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-link-controls :deep(.ui-select) {
+  width: min(340px, 38vw);
+}
+
+.linked-project-list {
+  display: grid;
+  gap: 10px;
+}
+
+.linked-project-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--kk-surface-subtle);
   border: 1px solid var(--kk-border);
   border-radius: 8px;
-  padding: 24px;
-  width: 100%;
-  box-sizing: border-box;
 }
 
-.home-header {
-  border-bottom: 1px solid var(--kk-border);
-  padding-bottom: 16px;
-}
-
-.home-title-group {
+.linked-project-identity {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 12px;
 }
 
-.home-icon {
+.linked-project-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
   color: var(--kk-accent);
-}
-
-.home-title-group h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--kk-text);
-}
-
-.home-title-group p {
-  margin: 2px 0 0;
-  font-size: 0.85rem;
-  color: var(--kk-text-muted);
-}
-
-.home-placeholder-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  background: #f9fafb;
-  border: 1.5px dashed var(--kk-border);
+  background: var(--kk-accent-soft);
   border-radius: 8px;
-  text-align: center;
 }
 
-.placeholder-icon-wrap {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #eef7f2;
-  color: #15803d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
+.linked-project-identity > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
 
-.home-placeholder-box h4 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
+.linked-project-identity code {
+  color: var(--kk-accent);
+  font-size: .76rem;
   font-weight: 700;
-  color: var(--kk-text);
 }
 
-.home-placeholder-box p {
-  margin: 0;
-  font-size: 0.88rem;
+.linked-project-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linked-project-identity small {
   color: var(--kk-text-muted);
-  max-width: 460px;
-  line-height: 1.5;
 }
 
 @media (max-width: 900px) {
   .suite-split-layout { grid-template-columns: 1fr; }
   .two-column { grid-template-columns: 1fr; }
+  .project-link-controls,
+  .linked-project-card,
+  .linked-project-actions { align-items: stretch; flex-direction: column; }
+  .project-link-controls :deep(.ui-select) { width: 100%; }
 }
 </style>

@@ -8,13 +8,7 @@
 
 ## 目前重點
 
-目前優先處理的主題：
-
-- 使用者與登入
-- 專案管理
-- 專案管理資料模型
-- 測試案例管理
-- 語詞總表與文件結構整理
+目前優先處理的主題是穩定版 `v0.1.0` 晉級：完成 Release Note、版號一致性與經審閱的 `rc` 到 `main` 流程。不可變 `sha-0fd82c0` API／Web images 已通過全新 volumes、完整 MVP smoke、附件雜湊、Test Run snapshot 與重啟持久化驗證。備份／還原自動化在真正保存使用者資料前仍須完成，但明確延後於這次 MVP 晉級；完整桌面／手機驗收、Playwright 與 AI 能力亦延後。
 
 ## 目前可閱讀文件
 
@@ -22,30 +16,27 @@
 | --- | --- | --- | --- |
 | overview | 架構總覽 | Ready | [架構總覽](../01-overview/02-architecture-overview.md) |
 | overview | 語詞總表 | Ready | [語詞總表](../01-overview/04-domain-glossary.md) |
-| spec | 使用者與登入 | Draft | [使用者與登入規格](../02-specs/01-user-authentication.md) |
-| spec | 專案管理 | Draft | [專案管理規格](../02-specs/02-project-management.md) |
-| spec | 測試案例管理 | Draft | [測試案例管理規格](../02-specs/03-test-case-management.md) |
-| data-model | 專案管理資料模型 | Draft | [專案管理資料模型](../03-data-model/02-project-management-data-model.md) |
-| data-model | 測試案例管理資料模型 | Draft | [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md) |
-| data-model | Audit Metadata | Draft | [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md) |
-| planning | 任務管理 MVP 實作計畫 | Active | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
+| spec | 使用者與登入 | Synchronized | [使用者與登入規格](../02-specs/01-user-authentication.md) |
+| spec | 專案管理 | Synchronized | [專案管理規格](../02-specs/02-project-management.md) |
+| spec | 測試案例管理 | Synchronized | [測試案例管理規格](../02-specs/03-test-case-management.md) |
+| data-model | 專案管理資料模型 | Synchronized | [專案管理資料模型](../03-data-model/02-project-management-data-model.md) |
+| data-model | 測試案例管理資料模型 | Synchronized | [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md) |
+| data-model | Audit Metadata | Synchronized | [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md) |
+| planning | 任務管理 MVP 實作計畫 | Closure | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
 | planning | AI Agent Orchestration 設計方向 | Direction | [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) |
-| planning | 測試管理 MVP 實作計畫 | Active | [測試管理 MVP 實作計畫](./05-test-management-implementation-plan.md) |
-| planning | MVP 收尾與發布準備計畫 | Active | [MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md) |
+| planning | 測試管理 MVP 實作計畫 | Closure | [測試管理 MVP 實作計畫](./05-test-management-implementation-plan.md) |
+| planning | MVP 收尾與發布準備計畫 | Accepted boundary | [MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md) |
+| planning | 發布自動化與交付演練計畫 | Active | [發布自動化與交付演練計畫](./08-release-automation-plan.md) |
 
 ## 近期範圍
 
-目前 MVP 收尾順序以[收尾與發布準備計畫](./06-mvp-release-closure-plan.md)為準，近期聚焦：
+目前工作順序以[發布自動化與交付演練計畫](./08-release-automation-plan.md)為準；[MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md)保留已確認的 MVP 邊界。近期聚焦：
 
-- 本機使用者登入
-- 專案建立與成員管理
-- 預設專案角色
-- Issue 建立、指派、自由流轉、附件與完成
-- Issue 列表／看板查詢與手機操作收尾
-- 附件儲存提供者決策及附件管理
-- Test Workspace 與多個 Project 關聯
-- PostgreSQL migration 現階段整理及發布前再整理
-- 專案與測試管理的端到端驗收
+- 完成 `v0.1.0` Release Note 與版號一致性
+- 以 PR 將已驗收 `rc` 晉級到 `main`
+- 保留不可變 SHA image、workflow run 與 smoke 證據
+- PostgreSQL 與附件 volume 備份／隔離還原演練延後至保存真實使用者資料前
+- 中英文發布文件與實測證據同步
 
 ## 後續階段
 

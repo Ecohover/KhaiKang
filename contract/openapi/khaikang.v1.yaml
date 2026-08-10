@@ -1015,6 +1015,69 @@ paths:
               schema: { $ref: '#/components/schemas/TestWorkspaceResponse' }
         '403': { description: Only an Owner can update workspace settings. }
         '409': { description: Name or version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/projects:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Test Management]
+      operationId: ListTestWorkspaceProjects
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Projects linked to the workspace and visible to all active workspace members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TestWorkspaceProjectResponse' }
+        '404': { description: Workspace is not visible to the current account. }
+    post:
+      tags: [Test Management]
+      operationId: LinkTestWorkspaceProject
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkTestWorkspaceProjectRequest' }
+      responses:
+        '201':
+          description: Project linked to the workspace.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestWorkspaceProjectResponse' }
+        '403': { description: Current workspace role cannot manage project links or the workspace is inactive. }
+        '404': { description: Workspace is unavailable or the project is not visible to the current account. }
+        '409': { description: Project is inactive or already linked. }
+  /api/v1/test-workspaces/{workspaceId}/projects/{projectId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: projectId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Test Management]
+      operationId: UnlinkTestWorkspaceProject
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Project unlinked from the workspace. }
+        '403': { description: Current workspace role cannot manage project links or the workspace is inactive. }
+        '404': { description: Workspace or project link does not exist. }
+        '409': { description: Link version conflict. }
   /api/v1/test-workspaces/{workspaceId}/members:
     parameters:
       - name: workspaceId
@@ -1509,6 +1572,81 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TestRunResponse' }
         '409': { description: Run is terminal or version conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestRunItemAttachments
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active evidence attachments linked to the test run item.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestRunItemAttachmentResponse' } }
+        '404': { description: Run item, run, or workspace is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: UploadTestRunItemAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Evidence attachment stored and linked to the test run item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunItemAttachmentResponse' }
+        '403': { description: Current role cannot execute the test run. }
+        '404': { description: Run item, run, or workspace not found. }
+        '409': { description: Workspace is inactive or run is not in progress. }
+        '413': { description: File exceeds the configured size limit. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments/{attachmentId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Test Management]
+      operationId: DeleteTestRunItemAttachment
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '204': { description: Evidence attachment soft-deleted. }
+        '403': { description: Current role cannot execute the test run. }
+        '404': { description: Attachment, run item, run, or workspace not found. }
+        '409': { description: Workspace is inactive or run is not in progress. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/attachments/{attachmentId}/content:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: attachmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: inline, in: query, required: false, schema: { type: boolean, default: false } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestRunItemAttachmentContent
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Evidence attachment bytes; images may be rendered inline.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { description: Attachment, run item, run, or workspace not found. }
+        '503': { description: Attachment storage is unavailable. }
   /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}/steps/{stepId}:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1598,6 +1736,7 @@ components:
       required: [name]
       properties:
         name: { type: string, maxLength: 200 }
+        prefix: { type: [string, 'null'], pattern: '^[A-Za-z][A-Za-z0-9]{1,9}$' }
         description: { type: [string, 'null'], maxLength: 4000 }
     UpdateTestWorkspaceRequest:
       allOf:
@@ -1610,16 +1749,35 @@ components:
     TestWorkspaceResponse:
       type: object
       additionalProperties: false
-      required: [id, name, description, status, currentUserRole, createdAt, updatedAt, version]
+      required: [id, name, prefix, description, status, currentUserRole, createdAt, updatedAt, version]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        prefix: { type: string }
         description: { type: [string, 'null'] }
         status: { type: string, enum: [active, inactive] }
         currentUserRole: { $ref: '#/components/schemas/TestWorkspaceRole' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    LinkTestWorkspaceProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId]
+      properties:
+        projectId: { type: string, format: uuid }
+    TestWorkspaceProjectResponse:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, code, name, status, linkedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, inactive] }
+        linkedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
     AddTestWorkspaceMemberRequest:
       type: object
       additionalProperties: false
@@ -1794,6 +1952,20 @@ components:
       properties:
         id: { type: string, format: uuid }
         testCaseId: { type: string, format: uuid }
+        originalFileName: { type: string, maxLength: 255 }
+        contentType: { type: string, maxLength: 200 }
+        fileSize: { type: integer, format: int64, minimum: 1 }
+        fileHash: { type: string, minLength: 64, maxLength: 64 }
+        uploadedByAccountId: { type: string, format: uuid }
+        uploadedByUsername: { type: string }
+        createdAt: { type: string, format: date-time }
+    TestRunItemAttachmentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testRunItemId, originalFileName, contentType, fileSize, fileHash, uploadedByAccountId, uploadedByUsername, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        testRunItemId: { type: string, format: uuid }
         originalFileName: { type: string, maxLength: 255 }
         contentType: { type: string, maxLength: 200 }
         fileSize: { type: integer, format: int64, minimum: 1 }
@@ -1984,10 +2156,13 @@ components:
     SystemInfoResponse:
       type: object
       additionalProperties: false
-      required: [serviceName, environment, serverTime]
+      required: [serviceName, version, environment, serverTime]
       properties:
         serviceName:
           type: string
+        version:
+          type: string
+          examples: [0.1.0]
         environment:
           type: string
         serverTime:

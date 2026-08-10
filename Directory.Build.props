@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <KhaiKangVersionFile>$(MSBuildThisFileDirectory)VERSION</KhaiKangVersionFile>
+    <KhaiKangVersion Condition="Exists('$(KhaiKangVersionFile)')">$([System.IO.File]::ReadAllText('$(KhaiKangVersionFile)').Trim())</KhaiKangVersion>
+    <KhaiKangVersion Condition="'$(KhaiKangVersion)' == ''">0.0.0-dev</KhaiKangVersion>
+    <Version>$(KhaiKangVersion)</Version>
+    <PackageVersion>$(KhaiKangVersion)</PackageVersion>
+    <InformationalVersion>$(KhaiKangVersion)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

@@ -1019,6 +1019,55 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.ToTable("test_workspace_members", (string)null);
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestWorkspaceProject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TestWorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_workspace_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_test_workspace_projects");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("idx_test_workspace_projects_project_id");
+
+                    b.HasIndex("TestWorkspaceId", "ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_test_workspace_projects_workspace_project");
+
+                    b.ToTable("test_workspace_projects", (string)null);
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Infrastructure.AccountReference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1029,6 +1078,21 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("accounts", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Infrastructure.ProjectReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("projects", null, t =>
                         {
                             t.ExcludeFromMigrations();
                         });
@@ -1243,6 +1307,25 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestWorkspaceProject", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.ProjectReference", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_workspace_projects_project");
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", "Workspace")
+                        .WithMany("Projects")
+                        .HasForeignKey("TestWorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_test_workspace_projects_workspace");
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCase", b =>
                 {
                     b.Navigation("Steps");
@@ -1273,6 +1356,8 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", b =>
                 {
                     b.Navigation("Members");
+
+                    b.Navigation("Projects");
 
                     b.Navigation("Suites");
                 });

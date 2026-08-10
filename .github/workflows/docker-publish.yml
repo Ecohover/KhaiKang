@@ -2,7 +2,8 @@ name: Publish Docker Images
 
 on:
   push:
-    branches: [main]
+    branches: [main, rc]
+    tags: ["v*.*.*"]
 
 permissions:
   contents: read
@@ -13,6 +14,37 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: release-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "VERSION is not a supported semantic version: $version" >&2
+            exit 1
+          fi
+
+          image_tag=rc
+          is_stable=false
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [[ "$tag_version" != "$version" ]]; then
+              echo "Git tag $GITHUB_REF_NAME does not match VERSION ($version)." >&2
+              exit 1
+            fi
+            image_tag="$version"
+            if [[ "$version" != *-* ]]; then
+              is_stable=true
+            fi
+          elif [[ "$GITHUB_REF_NAME" == "main" ]]; then
+            image_tag=latest
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "is_stable=$is_stable" >> "$GITHUB_OUTPUT"
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
@@ -61,8 +93,15 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/khaikang-api
           tags: |
-            type=raw,value=latest
+            type=raw,value=${{ steps.release-version.outputs.image_tag }}
             type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ steps.release-version.outputs.is_stable == 'true' }}
+          labels: |
+            org.opencontainers.image.title=KhaiKang API
+            org.opencontainers.image.description=KhaiKang API for the self-hosted project and manual test management platform
+            org.opencontainers.image.source=https://github.com/Ecohover/KhaiKang
+            org.opencontainers.image.version=${{ steps.release-version.outputs.version }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push API image
         uses: docker/build-push-action@v6
@@ -72,6 +111,8 @@ jobs:
           push: true
           tags: ${{ steps.api-meta.outputs.tags }}
           labels: ${{ steps.api-meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.release-version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -81,8 +122,15 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/khaikang-web
           tags: |
-            type=raw,value=latest
+            type=raw,value=${{ steps.release-version.outputs.image_tag }}
             type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ steps.release-version.outputs.is_stable == 'true' }}
+          labels: |
+            org.opencontainers.image.title=KhaiKang Web
+            org.opencontainers.image.description=KhaiKang web UI for the self-hosted project and manual test management platform
+            org.opencontainers.image.source=https://github.com/Ecohover/KhaiKang
+            org.opencontainers.image.version=${{ steps.release-version.outputs.version }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -92,5 +140,7 @@ jobs:
           push: true
           tags: ${{ steps.web-meta.outputs.tags }}
           labels: ${{ steps.web-meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.release-version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -31,11 +31,11 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 已確認決策：
 
 - MVP 僅支援手動測試。
-- Test Workspace 暫時獨立於 Project。
+- Test Workspace 與 Project 採多對多導覽關聯，但關聯不取代 Workspace 成員權限。
 - Workspace 使用 `owner`、`manager`、`tester`、`viewer` 四種固定角色。
 - 同一帳號在一個 Workspace 中只有一個有效角色。
 - Suite 樹最多五層。
-- Test Case 目前使用 UUID 作為穩定識別；對外案例編號列為後續功能，需先確認資料遷移策略。
+- Test Case 使用 UUID 作為內部主鍵，並已提供 Workspace Prefix 與 Workspace 內穩定案例流水號。
 - Test Plan 第一版只要求名稱與測試目的。
 - `completed` Test Run 完全唯讀；`cancelled` Run 可重新開始並保留既有結果，另可建立新 Run 作為獨立重測紀錄。
 
@@ -54,7 +54,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第二階段：Test Workspace 與 Test Suite
 
-狀態：已實作並通過自動驗證，待畫面驗收（2026-07-25）
+狀態：已實作並通過自動驗證；完整畫面驗收延後（2026-08-09）
 
 範圍：
 
@@ -75,7 +75,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第三階段：Test Case、Step 與 Tag
 
-狀態：已實作，待回歸測試與畫面驗收（2026-08-04）
+狀態：已實作並通過回歸測試；完整畫面驗收延後（2026-08-09）
 
 已完成：
 
@@ -104,7 +104,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第四階段：Test Plan
 
-狀態：核心功能已完成，待端到端驗收（2026-08-05）
+狀態：核心功能與自動驗證已完成；完整端到端驗收延後（2026-08-09）
 
 範圍：
 
@@ -123,7 +123,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第五階段：Test Run 與手動執行
 
-狀態：已實作，待補回歸測試與畫面驗收（2026-08-04）
+狀態：已實作並通過回歸測試；完整畫面驗收延後（2026-08-09）
 
 範圍：
 
@@ -143,7 +143,7 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 ## 第六階段：稽核與 MVP 完整驗收
 
-狀態：待 MVP 收尾驗收
+狀態：MVP 基本自動驗證已完成；完整人工驗收延後
 
 範圍：
 
@@ -153,14 +153,14 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 - OpenAPI、C# 與 TypeScript operation 逐項對照。
 - 後端 restore、build、format、test。
 - 前端 type-check、test、build。
-- 桌面與手機主要流程人工驗收。
-- Test Run 是否需要指派執行人仍待產品決策；MVP 先記錄實際建立者與結果操作者。
+- 桌面與手機主要流程人工驗收延後至 MVP 可用版本後。
+- Test Run 進入 `in_progress` 後鎖定快照結構，但不指定單一執行人；保存每筆結果的實際操作者。
 
 ## 後續階段
 
 MVP 完成後再規劃：
 
-- Project、Issue 與測試資產關聯。
+- Issue 與 Case／Plan／Run 的細部追溯關聯。
 - 失敗結果一鍵建立 Bug。
 - Test Environment、Repository 與 Execution Agent。
 - Playwright 與 CI 結果匯入。

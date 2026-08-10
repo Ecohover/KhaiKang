@@ -34,8 +34,8 @@
 - `issue_statuses`
 - `issue_priorities`
 - `issues`
-
-`issue_attachments` 依功能規格納入任務管理 MVP 的最後一個實作階段。
+- `issue_attachments`
+- `project_audit_events`
 
 以下資料表屬於延伸資料表，目前不列入 MVP 核心必做範圍，但先保留資料模型方向：
 
@@ -907,6 +907,13 @@
 
 - 建立 unique constraint `uq_issues_project_issue_no` 於 `project_id + issue_no`。
 
+#### Issue 流水號配置
+
+- PostgreSQL baseline 建立 `project_number_counters`，以 `counter_type + scope_id` 作為複合主鍵；MVP 的 `issue` counter 以 `project_id` 作為 scope。
+- 建立 Issue 時，在同一個 transaction 內呼叫 `next_project_number('issue', project_id)` 並寫入 Issue。
+- Function 使用原子的 `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING` 配置下一個編號；相同 Project 的並行建立會依序取得不同編號，不同 Project 不互相鎖定。
+- 唯一約束仍保留為最後一道資料完整性保護。
+
 ---
 
 #### Issue Mapping 設計原則
@@ -927,7 +934,13 @@
 
 ---
 
-### issue_comments
+### project_audit_events
+
+保存專案領域的不可變稽核事件。欄位包含 `id`、`actor_id -> accounts.id`、`actor_type`、`event_type`、`occurred_at`、`target_id` 與 `outcome`。事件用於追蹤 Project、Member、Role、Issue 與附件操作；不得寫入密碼、Cookie、檔案內容或完整敏感 request body。建立 `idx_project_audit_events_occurred_at` 供時間排序。
+
+---
+
+### issue_comments（MVP 未實作）
 
 #### 資料表規格
 
@@ -1044,7 +1057,7 @@
 
 ---
 
-### issue_relations
+### issue_relations（MVP 未實作）
 
 #### 資料表規格
 
@@ -1096,7 +1109,7 @@
 
 ---
 
-### issue_relation_types
+### issue_relation_types（MVP 未實作）
 
 #### 資料表規格
 

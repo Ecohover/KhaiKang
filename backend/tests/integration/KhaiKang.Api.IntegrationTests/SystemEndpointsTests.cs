@@ -3,12 +3,11 @@ using System.Net.Http.Json;
 using KhaiKang.Api.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class SystemEndpointsTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class SystemEndpointsTests(IdentityApiFactory factory)
+    : IClassFixture<IdentityApiFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -22,6 +21,7 @@ public sealed class SystemEndpointsTests(WebApplicationFactory<Program> factory)
 
         Assert.NotNull(systemInfo);
         Assert.Equal("KhaiKang.Api", systemInfo.ServiceName);
+        Assert.Equal("0.1.0", systemInfo.Version);
     }
 
     [Fact]
