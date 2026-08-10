@@ -7,6 +7,10 @@ file follows the spirit of [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- A repository-wide `VERSION` source of truth for backend assemblies, frontend
+  display, Docker labels, and release image tags.
+- A simple `rc` to `main` publishing flow with matching semantic Git tags such
+  as `v0.1.0-rc.1`.
 - Docker Hub publishing from verified commits merged into `main`.
 - Docker Compose deployment documentation and optional Caddy HTTPS example.
 

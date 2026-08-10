@@ -79,13 +79,52 @@ docker compose pull
 docker compose up -d
 ```
 
-Use the Git SHA tag published with each main build for a precise rollback.
+Use an immutable release tag such as `0.1.0-rc.1` or the Git SHA tag published
+with each build for a precise rollback. Do not deploy `rc` or `latest` when a
+repeatable rollback is required.
+
+## Versioning and image tags
+
+`VERSION` at the repository root is the product version source of truth. It
+uses semantic versioning without the Git `v` prefix. The first release candidate
+is therefore stored as `0.1.0-rc.1` and tagged in Git as `v0.1.0-rc.1`.
+
+The Docker workflow publishes these tags:
+
+- a version tag such as `0.1.0-rc.1` when a matching Git tag is pushed;
+- `sha-<commit>` for an immutable source reference;
+- `rc` for builds from the `rc` acceptance branch;
+- `latest` for builds from the stable `main` branch and stable version tags.
+
+The initial project uses only two long-lived branches: `rc` for acceptance and
+`main` for stable releases. Maintenance branches for older minor versions can
+be introduced later when external users depend on more than one release line.
+A formal release does not need another branch: merge the accepted RC into
+`main`, change `VERSION` to the stable value, and create the version tag there.
+
+The Git tag and `VERSION` must match. For example:
+
+```sh
+git tag -a v0.1.0-rc.1 -m "KhaiKang v0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+```
+
+On Windows, inspect or build the exact local image tags with:
+
+```powershell
+.\deploy\Build-Images.ps1 -PrintOnly
+.\deploy\Build-Images.ps1
+```
+
+Add `-Push` only after signing in to the intended Docker registry. The script
+refuses a dirty working tree by default so that an immutable SHA tag always
+identifies the image source.
 
 ## Publishing images from GitHub Actions
 
-The publish workflow only runs after a commit reaches `main`. It verifies the
-backend and frontend, builds the images, then logs in to Docker Hub and pushes
-the images. Pull requests do not build or publish Docker images.
+The publish workflow runs for `rc`, `main`, and semantic Git tags. It
+verifies the backend and frontend, builds the images, then logs in to Docker Hub
+and pushes the images. Pull requests do not publish Docker images.
 
 Repository maintainers must configure these GitHub Actions secrets:
 

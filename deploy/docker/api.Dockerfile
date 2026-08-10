@@ -1,7 +1,8 @@
+ARG APP_VERSION=0.0.0-dev
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY Directory.Packages.props ./
+COPY VERSION Directory.Build.props Directory.Packages.props ./
 COPY backend/NuGet.config backend/
 COPY backend/src backend/src
 COPY contract contract
@@ -13,7 +14,10 @@ RUN dotnet publish backend/src/KhaiKang.Api/KhaiKang.Api.csproj \
     --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG APP_VERSION
 WORKDIR /app
+
+LABEL org.opencontainers.image.version=$APP_VERSION
 
 USER root
 RUN mkdir -p /var/lib/khaikang/data-protection \

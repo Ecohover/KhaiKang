@@ -9,6 +9,7 @@ using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,8 +71,13 @@ var system = app.MapGroup("/api/v1/system")
 
 system.MapGet("/info", (IHostEnvironment environment) =>
 {
+    var version = typeof(Program).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion ?? "0.0.0-dev";
+
     return Results.Ok(new SystemInfoResponse(
         "KhaiKang.Api",
+        version,
         environment.EnvironmentName,
         DateTimeOffset.UtcNow));
 })

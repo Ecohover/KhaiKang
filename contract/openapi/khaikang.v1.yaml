@@ -2156,10 +2156,13 @@ components:
     SystemInfoResponse:
       type: object
       additionalProperties: false
-      required: [serviceName, environment, serverTime]
+      required: [serviceName, version, environment, serverTime]
       properties:
         serviceName:
           type: string
+        version:
+          type: string
+          examples: [0.1.0-rc.1]
         environment:
           type: string
         serverTime:

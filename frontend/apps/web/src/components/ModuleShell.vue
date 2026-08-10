@@ -7,6 +7,7 @@ import { LogOut, Menu, X } from '@lucide/vue'
 import { UiButton } from '@khaikang/ui'
 import { useI18n } from 'vue-i18n'
 import SaveNoticeHost from './SaveNoticeHost.vue'
+import { appVersion } from '../version'
 
 export interface ShellModuleItem { id: string; label: string; to: RouteLocationRaw; icon: Component }
 export interface ShellNavigationItem { label: string; to: RouteLocationRaw; icon: Component }
@@ -37,7 +38,7 @@ watch(() => route.fullPath, () => { mobileNavigationOpen.value = false })
     <button v-if="mobileNavigationOpen" class="navigation-backdrop" type="button" :aria-label="labels.closeNavigation" @click="mobileNavigationOpen = false" />
     <aside class="application-sidebar" :class="{ 'is-open': mobileNavigationOpen }">
       <div class="application-sidebar__brand">
-        <span aria-hidden="true">K</span><div><strong>KhaiKang</strong><small>{{ activeModuleLabel }}</small></div>
+        <span aria-hidden="true">K</span><div><strong>KhaiKang</strong><small>{{ activeModuleLabel }} · v{{ appVersion }}</small></div>
         <button class="application-sidebar__close" type="button" :aria-label="labels.closeNavigation" @click="mobileNavigationOpen = false"><X :size="20" /></button>
       </div>
       <nav class="application-navigation" :aria-label="navigationLabel">

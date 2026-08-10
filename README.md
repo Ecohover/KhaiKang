@@ -57,8 +57,8 @@ docker compose up -d
 
 Open `http://localhost:8080` and create the first system administrator. See
 [Docker deployment](./deploy/README.md) for upgrades, backups, HTTPS, and
-production guidance. Use a fixed `sha-...` image tag rather than `latest` for
-repeatable production deployments.
+production guidance. Use a fixed release tag such as `0.1.0-rc.1` or a
+`sha-...` image tag rather than `latest` for repeatable production deployments.
 
 For an internet-facing installation, use the included Caddy HTTPS override and
 set `KHAIKANG_REQUIRE_HTTPS=true` only after TLS is working. Do not expose the

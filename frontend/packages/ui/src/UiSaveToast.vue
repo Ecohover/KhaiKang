@@ -28,7 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const visible = ref(true)
-let closeTimer: ReturnType<typeof window.setTimeout> | undefined
+let closeTimer: number | undefined
 
 onMounted(() => {
   if (props.autoClose && props.autoCloseDelay > 0) {
