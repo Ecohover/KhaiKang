@@ -1,6 +1,7 @@
 # 發布自動化與交付演練計畫
 
-狀態：2026-08-10 已確認實作方向；自動化與隔離交付演練尚未完成。英文同步文件：
+狀態：2026-08-10 已完成部署就緒判斷與可執行 MVP smoke 流程的本機驗證；
+發布準備／發布命令與備份還原自動化已明確延後。英文同步文件：
 [Release Automation and Delivery Drill Plan](../../en/planning/release-automation.md)。
 
 ## 目的
@@ -27,6 +28,18 @@
 - 自動部署到正式主機。
 - 歷史安全性維護分支。
 - Object Storage、image signing、正式弱點政策或額外 SBOM 政策。
+
+## 目前 MVP 交付決策
+
+- 目前發布路徑沿用既有 GitHub Actions Docker workflow 與
+  `deploy/Build-Images.ps1`。
+- `Prepare-Release.ps1` 與 `Publish-Release.ps1` 延後到專案需要比現有人工關卡
+  更完整、可重複的受保護發布命令時再實作。
+- 備份／還原腳本與 release-set manifest 延後到 stable release 準備階段，或真正
+  保存使用者資料前完成。
+- 文件不得把上述延後能力描述為已完成的正式維運能力。
+- 部署就緒判斷、Compose 自動 volume ownership 與可執行 MVP smoke test 保留在
+  目前 RC 範圍。
 
 ## 分支與版本模型
 
@@ -135,6 +148,26 @@ Docker workflow 繼續作為遠端打包器：
 6. 還原到第二組唯一命名的資源。
 7. 確認還原後的資料、Test Run snapshots、附件原始檔名與下載內容。
 8. 檢查解析後的名稱，再只移除明確命名的 disposable drill resources。
+
+目前 `deploy/Test-MvpSmoke.ps1` 與 Compose health／初始化鏈已涵蓋步驟 1 至 4。
+依目前 MVP 交付決策，步驟 5 至 7 明確延後；清理仍由操作人員在檢查精確的
+disposable project name 後執行。
+
+## 目前實作證據
+
+- `docker compose up -d --wait --wait-timeout 180` 會依序等待 PostgreSQL、API
+  migration 與 health，再確認 Web 到 API 的 proxy 路徑。
+- 一次性的 `storage-init` 只掛載 data-protection 與附件 volumes，並將擁有者設為
+  API image 的非 root `APP_UID`；部署主機不需要人工 `chown`。
+- 2026-08-10 已用發布的 `ecohover/khaikang-api:0.1.0-rc.2` 與
+  `ecohover/khaikang-web:0.1.0-rc.2`，搭配更新後 Compose，在全新 volumes 完成
+  MVP smoke。
+- Project／Issue、Workspace 關聯兩個 Project、Suite／Tag／Case／Plan／Run、
+  三種附件範圍、Test Run snapshot、結果紀錄、完成執行與重啟持久化皆通過。
+- 更新後的 API Dockerfile 亦已在本機成功建置，且全新附件 volume 可由 UID 1654
+  寫入。
+- 這批 source 變更仍需發布成下一個不可變 RC image，並以相同 smoke 命令重跑，
+  才能視為已發布 RC 的驗收結果。
 
 ## 驗收條件
 

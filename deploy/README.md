@@ -15,10 +15,11 @@ published images through `compose/docker-compose.yml`.
    ```sh
    cd deploy/compose
    docker compose pull
-   docker compose up -d
+   docker compose up -d --wait --wait-timeout 180
    ```
 
-5. Open `http://localhost:8080` and initialize the first system administrator.
+5. Run `docker compose ps` and confirm PostgreSQL, API, and Web are healthy.
+6. Open `http://localhost:8080` and initialize the first system administrator.
 
 The same example is available in a Docker Hub-ready format at
 [`docker-hub-overview.md`](./docker-hub-overview.md).
@@ -30,6 +31,8 @@ The same example is available in a Docker Hub-ready format at
 - `data-protection-keys` encrypts and validates authentication cookies. Keep it with
   the database backup; deleting it signs out every user and invalidates existing
   protected data.
+- `attachments` stores Issue, Test Case, and Test Run files. Keep it with the
+  database backup so attachment metadata and file content stay consistent.
 - `KHAIKANG_REQUIRE_HTTPS` must remain `false` only for localhost or other trusted
   HTTP testing. Set it to `true` only after users reach KhaiKang through HTTPS;
   secure session, refresh, and CSRF cookies will then be required by the browser.
@@ -38,6 +41,61 @@ The same example is available in a Docker Hub-ready format at
   through a separate controlled process.
 - For internet-facing deployment, use the included Caddy HTTPS override below.
   Do not expose PostgreSQL or the API service directly.
+
+## Readiness and volume permissions
+
+Compose waits for PostgreSQL first, then for the API migrations and
+`/health/live`, and finally for the Web proxy to reach `/api/v1/system/info`.
+Use `docker compose up -d --wait --wait-timeout 180` in deployment automation;
+the command exits non-zero when the stack does not become ready.
+
+The short-lived `storage-init` service mounts only the data-protection and
+attachment volumes, sets their owner to the API image's non-root `APP_UID`, and
+then exits. An `Exited (0)` state for this service is expected. The API itself
+continues to run as the non-root application user. Deployment hosts do not need
+manual `chown` commands for new or existing Compose-managed volumes.
+
+Inspect readiness or initialization failures with:
+
+```sh
+docker compose ps
+docker compose logs storage-init
+docker compose logs api
+```
+
+## MVP smoke test
+
+[`Test-MvpSmoke.ps1`](./Test-MvpSmoke.ps1) exercises the externally visible MVP
+flow against a fresh disposable database:
+
+- initial setup and administrator login;
+- two Projects linked to one Workspace;
+- Project Issue, Suite, Tag, Case, Plan, and Run creation;
+- Issue, Case, and Run attachment upload/download with SHA-256 comparison;
+- Test Run snapshot stability after the source Case changes;
+- step and Case result recording and Run completion;
+- optional PostgreSQL, API, and Web restart followed by persistence checks.
+
+The script intentionally refuses a database that has already been initialized.
+Use a unique Compose project name and port so existing developer data is not
+touched:
+
+```powershell
+cd deploy/compose
+$env:KHAIKANG_HTTP_PORT = "18082"
+docker compose --project-name khaikang-mvp-smoke up -d --wait --wait-timeout 180
+..\Test-MvpSmoke.ps1 `
+  -BaseUrl http://localhost:18082 `
+  -ExpectedVersion X.Y.Z-rc.N `
+  -ComposeProjectName khaikang-mvp-smoke
+```
+
+After reviewing the exact project name and retaining any required evidence,
+remove only that disposable stack with:
+
+```powershell
+docker compose --project-name khaikang-mvp-smoke down --volumes
+```
 
 ## HTTPS with Caddy
 
@@ -63,7 +121,7 @@ Start the base stack together with the Caddy override:
 
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.https.yml pull
-docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --wait --wait-timeout 180
 ```
 
 Caddy obtains and renews the TLS certificate automatically. Never set
@@ -76,7 +134,7 @@ Set `KHAIKANG_IMAGE_TAG` in `.env` to the required published image tag, then run
 
 ```sh
 docker compose pull
-docker compose up -d
+docker compose up -d --wait --wait-timeout 180
 ```
 
 Use an immutable release tag such as `0.1.0-rc.2` or the Git SHA tag published

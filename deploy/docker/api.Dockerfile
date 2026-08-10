@@ -20,7 +20,9 @@ WORKDIR /app
 LABEL org.opencontainers.image.version=$APP_VERSION
 
 USER root
-RUN mkdir -p /var/lib/khaikang/data-protection \
+RUN mkdir -p \
+        /var/lib/khaikang/data-protection \
+        /var/lib/khaikang/attachments \
     && chown -R $APP_UID:$APP_UID /var/lib/khaikang
 
 COPY --from=build /app/publish ./
