@@ -15,20 +15,20 @@
     "vue": "^3.5.40"
   },
   "devDependencies": {
-    "@types/dompurify": "3.0.5",
-    "typescript": "5.9.3",
+    "@types/dompurify": "3.2.0",
+    "typescript": "7.0.2",
     "vitest": "4.1.10",
-    "vue": "3.5.40",
-    "vue-tsc": "3.3.7"
+    "vue": "3.5.41",
+    "vue-tsc": "3.3.9"
   },
   "dependencies": {
-    "@lucide/vue": "1.24.0",
+    "@lucide/vue": "1.29.0",
     "@tiptap/extension-image": "3.29.2",
     "@tiptap/extension-link": "3.29.2",
     "@tiptap/markdown": "3.29.2",
     "@tiptap/starter-kit": "3.29.2",
     "@tiptap/vue-3": "3.29.2",
-    "dompurify": "3.2.6",
-    "marked": "15.0.12"
+    "dompurify": "3.4.13",
+    "marked": "18.0.9"
   }
 }
