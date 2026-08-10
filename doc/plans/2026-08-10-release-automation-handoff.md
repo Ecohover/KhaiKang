@@ -26,33 +26,44 @@ Out of scope for this handoff:
 
 ## Current State
 
-- Working branch: `ecohover/chore/rc2-release-drill`.
-- Base commit: `32eb196 fix: stabilize rc release verification`.
+- Working branch: `ecohover/chore/deployment-readiness-smoke`.
+- Base commit: `eaebcc8` on `rc`.
 - Current release: `v0.1.0-rc.2`.
 - The existing `.github/workflows/docker-publish.yml` publishes `rc`, `latest`,
   semantic-version, and SHA tags according to the current branch/tag rules.
-- The formal English and Traditional Chinese plans and `.ai/release.md` routing
-  context have been drafted in the working tree.
-- Preparation, publication, backup, and restore scripts are not implemented yet.
+- Compose now has an API migration-aware healthcheck, an end-to-end Web/API
+  healthcheck, and a one-shot non-root volume ownership initializer.
+- `deploy/Test-MvpSmoke.ps1` covers Project/Issue, multi-Project Workspace links,
+  Case/Plan/Run, all attachment scopes, Run snapshots, result completion, and
+  optional restart persistence.
+- Preparation, publication, backup, and restore scripts are not implemented and
+  are explicitly deferred by the current MVP delivery decision.
 - No real release is authorized by this handoff.
 
 ## Verification
 
-- Run `git diff --check` after document changes.
-- Check all relative links in the files listed under **Context To Load**.
-- Before reporting implementation complete, follow [`.ai/verification.md`](../../.ai/verification.md)
-  and record the actual command results here.
+- `docker compose config --quiet` passed for the updated Compose definition.
+- Published immutable RC2 images reached healthy state from fresh PostgreSQL,
+  attachment, and data-protection volumes without a host `chown`.
+- `deploy/Test-MvpSmoke.ps1` passed the full MVP flow and restarted PostgreSQL,
+  API, and Web before rechecking records, snapshots, and attachment hashes.
+- The updated API Dockerfile built as
+  `khaikang-api:deployment-readiness-smoke`; a fresh mounted attachment volume
+  was owned by and writable as UID 1654.
+- Run the repository verification and documentation checks again after the final
+  documentation edits, following [`.ai/verification.md`](../../.ai/verification.md).
 
 ## Remaining Work
 
-1. Remove non-historical hard-coded current-version examples.
-2. Add a release-note template and `deploy/Prepare-Release.ps1`.
-3. Add PR verification that cannot publish images.
-4. Add guarded `deploy/Publish-Release.ps1` with validation-only mode.
-5. Add backup/restore scripts and a release-set manifest.
-6. Run the isolated `v0.1.0-rc.2` deployment, restart, backup, and restore drill.
-7. Update both formal plans and this handoff with command output and remaining risks.
-8. Commit or publish only when the user explicitly requests it.
+1. Finish repository verification and open a reviewed PR to `rc` when authorized.
+2. Publish the next immutable RC image only after explicit authorization.
+3. Rerun `deploy/Test-MvpSmoke.ps1` against that immutable image and record its
+   tag, digests, Compose project name, and generated record IDs.
+4. Before stable release or real user data, add backup/restore scripts, a
+   release-set manifest, and an isolated restore drill.
+5. Add `Prepare-Release.ps1` and guarded `Publish-Release.ps1` when manual owner
+   gates are no longer sufficient.
+6. Commit, push, tag, or publish only when the user explicitly requests it.
 
 ## Context To Load
 

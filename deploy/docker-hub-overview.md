@@ -52,6 +52,26 @@ services:
       retries: 12
     restart: unless-stopped
 
+  storage-init:
+    image: ecohover/khaikang-api:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.2}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        : "$${APP_UID:?The API image must define APP_UID}"
+        mkdir -p /var/lib/khaikang/data-protection /var/lib/khaikang/attachments
+        chown "$${APP_UID}:$${APP_UID}" \
+          /var/lib/khaikang/data-protection \
+          /var/lib/khaikang/attachments
+        stat -c '%u:%g %n' \
+          /var/lib/khaikang/data-protection \
+          /var/lib/khaikang/attachments
+    volumes:
+      - data-protection-keys:/var/lib/khaikang/data-protection
+      - attachments:/var/lib/khaikang/attachments
+    restart: "no"
+
   api:
     image: ecohover/khaikang-api:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.2}
     environment:
@@ -66,17 +86,40 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
     volumes:
       - data-protection-keys:/var/lib/khaikang/data-protection
       - attachments:/var/lib/khaikang/attachments
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080 &&
+          printf 'GET /health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *" 200 "* ]]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
     restart: unless-stopped
 
   web:
     image: ecohover/khaikang-web:${KHAIKANG_IMAGE_TAG:-0.1.0-rc.2}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "${KHAIKANG_HTTP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/api/v1/system/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
     restart: unless-stopped
 
 volumes:
@@ -101,10 +144,12 @@ Start KhaiKang:
 
 ```sh
 docker compose pull
-docker compose up -d
+docker compose up -d --wait --wait-timeout 180
 ```
 
 Open `http://localhost:8080` and initialize the first system administrator.
+`storage-init` exits successfully after assigning the named volumes to the API's
+non-root user; no deployment-host `chown` command is required.
 
 ## Documentation and support
 
@@ -118,6 +163,8 @@ Open `http://localhost:8080` and initialize the first system administrator.
 - Keep `.env` private. Never add passwords or tokens to an image or source repository.
 - Back up the `postgres-data`, `data-protection-keys`, and `attachments` volumes together.
 - Use a fixed release tag such as `0.1.0-rc.2` or `sha-...` for repeatable upgrades and rollback.
+- Run the repository's `deploy/Test-MvpSmoke.ps1` against a uniquely named,
+  fresh Compose project before accepting an immutable release image.
 - For a public domain, terminate TLS in front of the web service and set
   `KHAIKANG_REQUIRE_HTTPS=true`. The repository includes a Caddy example:
   <https://github.com/Ecohover/KhaiKang/tree/main/deploy>.

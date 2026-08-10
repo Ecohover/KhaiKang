@@ -1,7 +1,8 @@
 # Release Automation and Delivery Drill Plan
 
-Status: accepted implementation plan as of 2026-08-10; automation and the
-isolated delivery drill are not yet complete. Traditional Chinese counterpart:
+Status: deployment readiness and the executable MVP smoke flow were implemented
+and locally verified on 2026-08-10. Release preparation/publication and
+backup/restore automation are explicitly deferred. Traditional Chinese counterpart:
 [發布自動化與交付演練計畫](../../zh-TW/04-planning/08-release-automation-plan.md).
 
 ## Purpose
@@ -32,6 +33,18 @@ does not authorize an agent or script to perform a real release by itself.
 - Historical security-maintenance branches.
 - Object storage, image signing, vulnerability-policy enforcement, or SBOM
   policy beyond metadata already produced by the image build.
+
+## Current MVP Delivery Decision
+
+- Keep the existing GitHub Actions Docker workflow and `deploy/Build-Images.ps1`
+  as the current publication path.
+- Defer `Prepare-Release.ps1` and `Publish-Release.ps1` until the project needs a
+  guarded repeatable release command beyond the current manual owner gates.
+- Defer backup/restore scripts and the release-set manifest until stable-release
+  preparation or before real user data is hosted.
+- Do not describe those deferred capabilities as completed production operations.
+- Keep readiness, automatic Compose volume ownership, and the executable MVP
+  smoke test in the current RC scope.
 
 ## Branch and Version Model
 
@@ -152,6 +165,29 @@ data:
    and downloadable file content.
 8. Remove only the explicitly named disposable drill resources after their
    resolved names are reviewed.
+
+Steps 1 through 4 are now covered by `deploy/Test-MvpSmoke.ps1` and the Compose
+health/initialization chain. Steps 5 through 7 remain intentionally deferred by
+the current MVP delivery decision. Cleanup remains an explicit operator action
+so the exact disposable project name can be reviewed first.
+
+## Current Implementation Evidence
+
+- `docker compose up -d --wait --wait-timeout 180` now waits for PostgreSQL,
+  API migrations and health, then the Web-to-API proxy path.
+- The one-shot `storage-init` service assigns only the data-protection and
+  attachment volumes to the API image's non-root `APP_UID`; no host `chown` is
+  required.
+- The published `ecohover/khaikang-api:0.1.0-rc.2` and
+  `ecohover/khaikang-web:0.1.0-rc.2` images passed a fresh-volume MVP smoke flow
+  with the updated Compose definition on 2026-08-10.
+- Project/Issue, two Project-to-Workspace links, Suite/Tag/Case/Plan/Run, all
+  three attachment scopes, Test Run snapshots, result recording, completion,
+  and restart persistence passed.
+- The updated API Dockerfile was also built locally and its fresh attachment
+  volume was writable as UID 1654.
+- A new immutable RC image must still be published and rerun through the same
+  smoke command before these source changes are accepted as a released RC.
 
 ## Acceptance Criteria
 
