@@ -29,3 +29,4 @@ Status: core implementation and baseline verification complete as of 2026-08-09.
 - Core implementation, baseline migration replacement, synchronized documentation, automated checks, and the basic local restart-persistence check are complete and committed.
 - A short setup/login, Project/Issue, Workspace/Case/Plan/Run, and attachment smoke pass is sufficient when producing a new usable build; full desktop/mobile acceptance is deferred.
 - Production Docker-volume, upgrade-path, and backup/restore verification remain release-hardening work, not a blocker for the local MVP milestone.
+- Release automation and the isolated backup/restore drill are now tracked in the [Release Automation and Delivery Drill Plan](./release-automation.md).

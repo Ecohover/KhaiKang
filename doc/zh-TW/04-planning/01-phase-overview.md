@@ -8,7 +8,7 @@
 
 ## 目前重點
 
-目前優先處理的主題是 MVP 發布收尾：核心 smoke test、baseline migration 與雙語文件同步；完整人工驗收、CI、Playwright 與 AI 能力延後。
+目前優先處理的主題是 RC 發布強化：發布準備／發布自動化、Pull Request 驗證、已發布 image 核心 smoke test、Docker volume 持久化，以及 PostgreSQL＋附件的隔離備份／還原演練。完整桌面／手機驗收、Playwright 與 AI 能力延後。
 
 ## 目前可閱讀文件
 
@@ -25,20 +25,19 @@
 | planning | 任務管理 MVP 實作計畫 | Closure | [任務管理 MVP 實作計畫](./03-issue-management-implementation-plan.md) |
 | planning | AI Agent Orchestration 設計方向 | Direction | [AI Agent Orchestration 設計方向](./04-ai-agent-orchestration-direction.md) |
 | planning | 測試管理 MVP 實作計畫 | Closure | [測試管理 MVP 實作計畫](./05-test-management-implementation-plan.md) |
-| planning | MVP 收尾與發布準備計畫 | Active | [MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md) |
+| planning | MVP 收尾與發布準備計畫 | Accepted boundary | [MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md) |
+| planning | 發布自動化與交付演練計畫 | Active | [發布自動化與交付演練計畫](./08-release-automation-plan.md) |
 
 ## 近期範圍
 
-目前 MVP 收尾順序以[收尾與發布準備計畫](./06-mvp-release-closure-plan.md)為準，近期聚焦：
+目前工作順序以[發布自動化與交付演練計畫](./08-release-automation-plan.md)為準；[MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md)保留已確認的 MVP 邊界。近期聚焦：
 
-- 本機使用者登入
-- 專案建立與成員管理
-- 預設專案角色
-- Issue 建立、指派、自由流轉、附件與完成
-- Issue 列表／看板與附件核心 smoke test
-- Test Workspace、Project 關聯與手動 Run 核心 smoke test
-- 三個 PostgreSQL baseline migration review
-- 中英文 MVP 文件同步與提交
+- Release Note 與版本準備自動化
+- PR 驗證與 Docker 發布責任分離
+- 受保護的一鍵 tag／GitHub Release／Docker image 發布
+- 使用 `v0.1.0-rc.2` image 的全新環境核心 smoke test
+- PostgreSQL 與附件 volume 備份／隔離還原演練
+- 中英文發布文件與實測證據同步
 
 ## 後續階段
 
