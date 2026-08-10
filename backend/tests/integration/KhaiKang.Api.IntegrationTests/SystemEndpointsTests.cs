@@ -21,7 +21,7 @@ public sealed class SystemEndpointsTests(IdentityApiFactory factory)
 
         Assert.NotNull(systemInfo);
         Assert.Equal("KhaiKang.Api", systemInfo.ServiceName);
-        Assert.Equal("0.1.0-rc.2", systemInfo.Version);
+        Assert.Equal("0.1.0", systemInfo.Version);
     }
 
     [Fact]

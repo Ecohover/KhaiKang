@@ -137,19 +137,19 @@ docker compose pull
 docker compose up -d --wait --wait-timeout 180
 ```
 
-Use an immutable release tag such as `0.1.0-rc.2` or the Git SHA tag published
+Use an immutable release tag such as `0.1.0` or the Git SHA tag published
 with each build for a precise rollback. Do not deploy `rc` or `latest` when a
 repeatable rollback is required.
 
 ## Versioning and image tags
 
 `VERSION` at the repository root is the product version source of truth. It
-uses semantic versioning without the Git `v` prefix. The first release candidate
-is therefore stored as `0.1.0-rc.2` and tagged in Git as `v0.1.0-rc.2`.
+uses semantic versioning without the Git `v` prefix. The first stable release is
+stored as `0.1.0` and tagged in Git as `v0.1.0`.
 
 The Docker workflow publishes these tags:
 
-- a version tag such as `0.1.0-rc.2` when a matching Git tag is pushed;
+- a version tag such as `0.1.0` when a matching Git tag is pushed;
 - `sha-<commit>` for an immutable source reference;
 - `rc` for builds from the `rc` acceptance branch;
 - `latest` for builds from the stable `main` branch and stable version tags.
@@ -157,14 +157,15 @@ The Docker workflow publishes these tags:
 The initial project uses only two long-lived branches: `rc` for acceptance and
 `main` for stable releases. Maintenance branches for older minor versions can
 be introduced later when external users depend on more than one release line.
-A formal release does not need another branch: merge the accepted RC into
-`main`, change `VERSION` to the stable value, and create the version tag there.
+A formal release does not need another long-lived branch: prepare and review the
+stable `VERSION` on `rc`, merge the accepted `rc` into `main`, and create the
+matching version tag there.
 
 The Git tag and `VERSION` must match. For example:
 
 ```sh
-git tag -a v0.1.0-rc.2 -m "KhaiKang v0.1.0-rc.2"
-git push origin v0.1.0-rc.2
+git tag -a v0.1.0 -m "KhaiKang v0.1.0"
+git push origin v0.1.0
 ```
 
 On Windows, inspect or build the exact local image tags with:

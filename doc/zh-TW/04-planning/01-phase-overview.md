@@ -8,7 +8,7 @@
 
 ## 目前重點
 
-目前優先處理的主題是 RC 發布強化：發布準備／發布自動化、Pull Request 驗證、已發布 image 核心 smoke test、Docker volume 持久化，以及 PostgreSQL＋附件的隔離備份／還原演練。完整桌面／手機驗收、Playwright 與 AI 能力延後。
+目前優先處理的主題是穩定版 `v0.1.0` 晉級：完成 Release Note、版號一致性與經審閱的 `rc` 到 `main` 流程。不可變 `sha-0fd82c0` API／Web images 已通過全新 volumes、完整 MVP smoke、附件雜湊、Test Run snapshot 與重啟持久化驗證。備份／還原自動化在真正保存使用者資料前仍須完成，但明確延後於這次 MVP 晉級；完整桌面／手機驗收、Playwright 與 AI 能力亦延後。
 
 ## 目前可閱讀文件
 
@@ -32,11 +32,10 @@
 
 目前工作順序以[發布自動化與交付演練計畫](./08-release-automation-plan.md)為準；[MVP 收尾與發布準備計畫](./06-mvp-release-closure-plan.md)保留已確認的 MVP 邊界。近期聚焦：
 
-- Release Note 與版本準備自動化
-- PR 驗證與 Docker 發布責任分離
-- 受保護的一鍵 tag／GitHub Release／Docker image 發布
-- 使用 `v0.1.0-rc.2` image 的全新環境核心 smoke test
-- PostgreSQL 與附件 volume 備份／隔離還原演練
+- 完成 `v0.1.0` Release Note 與版號一致性
+- 以 PR 將已驗收 `rc` 晉級到 `main`
+- 保留不可變 SHA image、workflow run 與 smoke 證據
+- PostgreSQL 與附件 volume 備份／隔離還原演練延後至保存真實使用者資料前
 - 中英文發布文件與實測證據同步
 
 ## 後續階段
