@@ -95,6 +95,7 @@ test_workspaces
 | `test_run_items` | Entity | 保存一次 Test Run 中每個案例的快照與結果。 |
 | `test_run_item_step_results` | Entity | 保存 Test Run Item 中每個測試步驟的實際結果。 |
 | `test_run_item_attachments` | Entity | 保存 Test Run Item 的執行證據附件中繼資料。 |
+| 測試追溯資料 | Mapping／欄位 | 保存 Case 的需求關聯、Plan 的測試 Issue、Run 快照及 Run–Bug 來源；詳細定義見[獨立資料模型](./05-issue-test-traceability-data-model.md)。 |
 
 ---
 
@@ -167,7 +168,7 @@ test_workspaces
 | 說明 | 保存 Test Workspace 與 Project 的多對多關聯，供導覽與範圍辨識使用。 |
 | PK | `id` |
 | FK | `test_workspace_id -> test_workspaces.id`、`project_id -> projects.id` |
-| 備註 | 不取代 Workspace 成員權限，也不建立 Issue、Test Case、Plan 或 Run 的細部追溯。 |
+| 備註 | 不取代 Workspace 成員權限；它是 Trace Link 的範圍前置條件，但本身不等同細部追溯。 |
 
 #### 欄位規格
 
@@ -183,6 +184,7 @@ test_workspaces
 - 同一個 `test_workspace_id + project_id` 不得重複。
 - 關聯建立或移除不影響既有 Test Plan、Test Run 與快照。
 - Workspace 資產存取仍只依 Workspace 成員與固定角色判斷；Project 成員資格不自動授與 Workspace 存取權。
+- 有效的 Case、Plan、Run 或 Bug 追溯會依賴本表的 `test_workspace_id + project_id`，因此移除 Project 關聯前必須先解除有效追溯。
 
 #### Index 與唯一約束建議
 

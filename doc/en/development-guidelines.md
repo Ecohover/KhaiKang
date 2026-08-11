@@ -218,6 +218,14 @@ summary.
   isolation or operational needs justify the added migration complexity.
 - Every schema change requires a migration and a rollback or recovery
   consideration.
+- Before a feature branch is merged, consolidate its unpublished schema work
+  into one final migration per affected `DbContext`; do not retain incremental
+  development migrations for the same context.
+- When a branch changes independently owned module contexts, each affected
+  context may keep one migration and must preserve the established application
+  order. Multiple migrations for one context require a documented exception,
+  such as an already-deployed migration, staged data movement, or an
+  operationally phased rollout.
 - Seed only stable system reference data. Do not hide environment-specific or
   user data in migrations.
 - Transactions belong at the application use-case boundary. Do not hold a

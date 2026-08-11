@@ -14,6 +14,7 @@
 - Issue、Test Case 與 Test Run Item 附件：上傳、列表、下載與軟刪除；第一版使用本機 `IFileStorage`，容器部署時可掛載 Docker volume。
 - Test Workspace、Suite、Case、Plan、Run 與手動結果的完整閉環。
 - Test Workspace 與多個 Project 的關聯。
+- 固定 Issue 關聯，以及 Case 需求、Plan 測試 Issue、Run 快照與 Run 開立 Bug 的基本追溯。
 - PostgreSQL migration 整理、實際套用與發布前驗證。
 - 專案與測試管理的核心流程 smoke check，以及必要的授權、併發與合約自動驗證；完整桌面與手機人工驗收延後。
 
@@ -21,7 +22,7 @@
 
 - Test Plan 依 Tag 或搜尋結果批次加入案例。
 - Test Plan 硬刪除；以封存取代。
-- Issue Tag、子任務、關聯、留言、Watcher／通知。
+- Issue Tag、子任務、留言、Watcher／通知，以及可自訂的關聯類型。
 - 自訂角色、工作流、自訂欄位。
 - CI、Jenkins、Playwright、外部結果匯入與 AI 自動化。
 
@@ -43,7 +44,7 @@ Test Run 進入 `in_progress` 後鎖定建立當下的案例與步驟快照，�
 
 ### Test Workspace 與 Project 關聯
 
-一個 Test Workspace 可以關聯多個 Project，一個 Project 也可以關聯多個 Test Workspace。採關聯表而非把單一 `project_id` 放進 Workspace 主表；本 MVP 只提供關聯與列表導覽，不新增 Issue 對 Case／Plan 的細部追溯。
+一個 Test Workspace 可以關聯多個 Project，一個 Project 也可以關聯多個 Test Workspace。採關聯表而非把單一 `project_id` 放進 Workspace 主表；關聯本身只提供導覽與授權範圍，Case／Plan／Run 的追溯資料由獨立關聯與快照保存。
 
 ## 目前工作順序
 

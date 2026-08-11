@@ -114,14 +114,49 @@ public sealed record TestCaseResponse(
 public sealed record CreateTestPlanRequest(
     string? Name,
     string? Description,
-    IReadOnlyList<Guid> CaseIds);
+    IReadOnlyList<Guid> CaseIds,
+    Guid? TestIssueId = null);
 
 public sealed record UpdateTestPlanRequest(
     string? Name,
     string? Description,
     string Status,
     int Version,
-    IReadOnlyList<Guid> CaseIds);
+    IReadOnlyList<Guid> CaseIds,
+    Guid? TestIssueId = null);
+
+public sealed record TestTraceIssueResponse(
+    Guid Id,
+    Guid ProjectId,
+    string ProjectCode,
+    int IssueNo,
+    string Key,
+    string Title,
+    string TypeCode,
+    string StatusCode);
+
+public sealed record LinkTestCaseRequirementIssueRequest(Guid RequirementIssueId);
+
+public sealed record TestCaseRequirementLinkResponse(
+    Guid Id,
+    Guid TestCaseId,
+    TestTraceIssueResponse Issue,
+    DateTimeOffset CreatedAt,
+    int Version);
+
+public sealed record CreateTestRunBugRequest(
+    Guid ProjectId,
+    string Title,
+    string? PriorityCode,
+    string? Description,
+    Guid? AssigneeAccountId);
+
+public sealed record TestRunBugLinkResponse(
+    Guid Id,
+    Guid TestRunId,
+    TestTraceIssueResponse Issue,
+    DateTimeOffset CreatedAt,
+    int Version);
 
 public sealed record TestPlanItemResponse(
     Guid Id,
@@ -140,7 +175,8 @@ public sealed record TestPlanResponse(
     IReadOnlyList<TestPlanItemResponse> Items,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int Version);
+    int Version,
+    TestTraceIssueResponse? TestIssue = null);
 
 public sealed record CreateTestRunRequest(Guid PlanId, string Name);
 public sealed record UpdateTestRunStatusRequest(string Status, string? Summary, int Version);
@@ -195,4 +231,5 @@ public sealed record TestRunResponse(
     IReadOnlyList<TestRunItemResponse> Items,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int Version);
+    int Version,
+    TestTraceIssueResponse? TestIssue = null);

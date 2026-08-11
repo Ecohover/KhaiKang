@@ -212,7 +212,7 @@ MVP 建議每個 `Test Run Item` 支援：
 - 每個 `Test Case` 在 MVP 中必須且只能屬於一個 `Test Suite`。
 - `Test Suite` 可以形成最多五層的樹狀結構；移動套件或案例不得改變既有 Test Plan 的項目範圍。
 - 只有具備該 Test Workspace 存取權的成員可以查看或操作測試管理資料。
-- Test Workspace 可關聯多個 Project，Project 也可關聯多個 Workspace；關聯不建立 Issue 對 Case、Plan 或 Run 的細部追溯。
+- Test Workspace 可關聯多個 Project，Project 也可關聯多個 Workspace；Workspace–Project 關聯本身只提供導覽與範圍前置條件。Case 需求關聯、Plan 測試 Issue、Run 快照與 Bug 來源由獨立的 [Issue 與測試資產追溯規格](./04-issue-test-traceability.md) 定義。
 - 有效 Workspace 成員皆可查看關聯專案的最小導覽資訊；只有有效的 `owner` 或 `manager` 可新增或移除關聯。
 - 建立關聯時，操作人必須同時具備該 Project 的 `project.read`，且 Project 必須為使用中；關聯本身不會授與 Project 或 Workspace 存取權。
 - Test Case 以 UUID 作為內部主鍵，並提供穩定的人類可讀編號。Workspace 使用唯一 `prefix`，案例在 Workspace 內使用遞增 `case_no`，對外顯示為 `{PREFIX}-TC{case_no}`；移動 Suite 或修改標題不得改變案例編號。
@@ -258,7 +258,6 @@ MVP 建議每個 `Test Run Item` 支援：
 ## 未決問題
 
 - 初期是否只允許一個預設 Test Environment、Test Repository 與 Test Execution Agent。
-- 測試案例是否需要直接關聯一張或多張 Issue。
 - 未來是否支援由 Test Issue 觸發 Test Run，並回寫測試摘要到 Issue。
 - 測試結果失敗時，是否需要提供一鍵建立 Bug Issue。
 - 未來 CI 匯入結果時，是否建立新的 `Test Run` 或寫入既有執行。

@@ -119,6 +119,7 @@ KhaiKang.CommonUtils.Web
 - 初期直接使用明確的 `DbContext` 與 feature query/use case；不預設建立 generic repository 或 unit-of-work wrapper。
 - Entity 與 EF Core configuration 由所屬功能模組管理；其他模組不得直接修改其 table。
 - Schema 變更必須有 migration；正式啟動流程不得使用 `EnsureCreated` 代替 migration。
+- 功能分支準備合併主線前，每個受影響的 `DbContext` 只保留一份尚未發布的最終 migration。同一 context 若需保留多份，必須是已部署 migration、分階段資料搬移或分段上線等特殊情境，並在 pull request 記錄原因。
 - Read-only query 應使用 projection，並在不需要 tracking 時使用 `AsNoTracking`。
 - 避免 N+1 query、無界限 collection 與先載入完整 entity 再丟棄大部分欄位。
 - Database transaction 以 application use case 為邊界，不跨外部 network call 長時間持有。

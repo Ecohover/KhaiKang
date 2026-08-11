@@ -12,7 +12,7 @@ Test Workspace -> Suite -> Case -> Plan -> Run -> Manual Result
 
 It includes Workspace membership, fixed roles, Project links, Suite trees, Cases and Steps, global Tags, fixed Plan items, Run snapshots, manual case/step results, and attachments for Cases and Run Items.
 
-CI, Playwright, repositories, environments, execution agents, external result import, AI generation/execution, and Issue-triggered Runs are deferred.
+CI, Playwright, repositories, environments, execution agents, external result import, AI generation/execution, and Issue-triggered Runs are deferred. Direct Issue links are implemented by the accepted [Issue-Test Traceability specification](./issue-test-traceability.md).
 
 ## Workspace and Access
 
@@ -20,6 +20,7 @@ CI, Playwright, repositories, environments, execution agents, external result im
 - The creator becomes Owner. Fixed roles are Owner, Manager, Tester, and Viewer.
 - Assets are collaboratively maintained; they do not have per-owner ACLs.
 - A Workspace may link to multiple Projects and a Project may link to multiple Workspaces. Links support navigation only and grant no access by themselves.
+- The Workspace-Project link is the prerequisite for traceability; it does not itself create an Issue/Case, Plan, or Run link.
 
 ## Suite, Case, and Tag
 

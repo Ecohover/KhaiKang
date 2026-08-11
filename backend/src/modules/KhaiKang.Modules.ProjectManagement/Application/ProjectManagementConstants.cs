@@ -16,6 +16,7 @@ public static class ProjectManagementConstants
     public const string IssueStatusChangePermission = "issue.status.change";
     public const string IssueUpdatePermission = "issue.update";
     public const string IssueAssigneeChangePermission = "issue.assignee.change";
+    public const string IssueRelationCreatePermission = "issue.relation.create";
     public const string IssueAttachmentUploadPermission = "issue.attachment.upload";
     public const string IssueAttachmentDeletePermission = "issue.attachment.delete";
     public const string PermissionClaimType = "permission";

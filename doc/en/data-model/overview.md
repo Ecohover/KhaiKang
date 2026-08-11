@@ -13,3 +13,5 @@ Each context has one unpublished-MVP baseline migration. The contexts share Post
 Entity keys are UUIDs. Human-readable scoped numbers are separate integer columns. Database identifiers use `snake_case`. Timestamps use UTC `timestamp with time zone`. Mutable resources use optimistic integer `version` fields.
 
 Deferred tables such as Issue comments, relations, tags, watchers, transitions, CI repositories/environments/agents, and AI execution records are not present in the MVP baseline.
+
+The active [Issue-Test Traceability model](./issue-test-traceability.md) assigns basic Issue relations to Project Management and test-specific trace records to Test Management. Its implementation is being added after the current migration baseline.

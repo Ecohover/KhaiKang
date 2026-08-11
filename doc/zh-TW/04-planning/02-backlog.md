@@ -9,12 +9,14 @@
 ## 產品功能待處理
 
 - Issue tag
-- Issue parent / sub-task
+- Issue tag、留言、watcher 與通知
 - 自訂角色
 - 自訂工作流規則
 - 自訂欄位模板
 
 `Test Workspace` 與 `Project` 的多對多關聯已移入[目前 MVP 收尾計畫](./06-mvp-release-closure-plan.md)，不再列為後續 backlog。
+
+基本 Issue 關聯與需求到測試的追溯已依[正式規格](../02-specs/04-issue-test-traceability.md)與[實作計畫](./09-issue-test-traceability-implementation-plan.md)完成。Run Item 細部證據、跨 Run Bug 重現與追溯報表仍保留後續討論。
 
 ## 自訂欄位設計方向待處理
 

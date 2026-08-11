@@ -11,13 +11,17 @@ public sealed class TestPlan
         string name,
         string? description,
         Guid actorId,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Guid? testIssueProjectId = null,
+        Guid? testIssueId = null)
     {
         Id = id;
         TestWorkspaceId = workspaceId;
         PlanNo = planNo;
         Name = name;
         Description = description;
+        TestIssueProjectId = testIssueProjectId;
+        TestIssueId = testIssueId;
         Status = "draft";
         CreatedAt = UpdatedAt = now;
         CreatedByAccountId = UpdatedByAccountId = actorId;
@@ -29,6 +33,8 @@ public sealed class TestPlan
     public int PlanNo { get; private set; }
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
+    public Guid? TestIssueProjectId { get; private set; }
+    public Guid? TestIssueId { get; private set; }
     public string Status { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedByAccountId { get; private set; }
@@ -38,9 +44,17 @@ public sealed class TestPlan
     public ICollection<TestPlanItem> Items { get; } = [];
     public TestWorkspace Workspace { get; private set; } = null!;
 
-    public void Update(string name, string? description, string status, Guid actorId, DateTimeOffset now)
+    public void Update(
+        string name,
+        string? description,
+        string status,
+        Guid actorId,
+        DateTimeOffset now,
+        Guid? testIssueProjectId = null,
+        Guid? testIssueId = null)
     {
         Name = name; Description = description; Status = status;
+        TestIssueProjectId = testIssueProjectId; TestIssueId = testIssueId;
         UpdatedAt = now; UpdatedByAccountId = actorId; Version++;
     }
 }

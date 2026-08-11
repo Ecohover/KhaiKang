@@ -47,6 +47,8 @@
 
 這些表可於後續需求明確後再補。
 
+Issue 對 Issue 的固定關聯由 Project Management 的 `issue_relation_types` 與 `issue_relations` 擁有；Case 需求關聯、Plan 測試 Issue、Run 快照及 Run–Bug 來源則由 Test Management 擁有。詳細欄位與約束見 [Issue 與測試資產追溯資料模型](./05-issue-test-traceability-data-model.md)。
+
 ## AI 預留資料表
 
 以下資料表先保留設計位置，但不在目前版本定義細節欄位：
@@ -921,6 +923,7 @@
 - `issue_type_id`、`issue_status_id`、`issue_priority_id`、`reporter_account_id`、`assignee_account_id` 都屬於單一外鍵關聯，不應另外拆成 mapping table。
 - 只有在一張 Issue 同時需要對應多筆資料時，才建議使用 mapping table。
 - 目前不建議建立泛用 `issue_mappings`，因為會讓資料語意模糊，後續也難做資料約束與索引優化。
+- Issue 對 Issue 的方向與從屬關聯保存在 `issue_relations`；測試專用 Case、Plan、Run 與 Bug 追溯仍保存在 Test Management，不混用同一張泛用關聯表。
 
 目前較合理的 Issue 關聯拆表方向如下：
 

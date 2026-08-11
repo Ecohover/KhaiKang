@@ -156,6 +156,8 @@ Application 與 Domain 不得引用 ASP.NET Core、HTTP status 或 `ProblemDetai
 - Modular monolith 使用一個 database，各模組擁有自己的 entity 與 EF Core configuration。
 - 初期使用一個 application `DbContext`；只有模組隔離或營運需求足以抵銷 migration 複雜度時才拆分。
 - 每次 schema 變更都必須有 migration，並考慮 rollback 或資料復原方式。
+- 功能分支準備合併主線前，尚未發布的 schema 異動必須依每個受影響的 `DbContext` 收斂為一份最終 migration；開發途中產生的同一 context 增量 migration 不保留。
+- 同一分支若修改多個模組各自擁有的 `DbContext`，每個 context 可各保留一份 migration，並維持既定套用順序。只有 migration 已部署、需要分階段資料搬移或營運上必須分段上線等特殊理由，才可在同一 context 保留多份，且必須在 pull request 說明原因。
 - Seed 只放穩定的系統參考資料，不在 migration 隱藏環境或使用者資料。
 - Transaction 以 application use case 為邊界，不得跨外部網路呼叫長時間持有 database transaction。
 

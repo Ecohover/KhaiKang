@@ -133,6 +133,7 @@ KhaiKang.CommonUtils.Web
 - Start with an explicit `DbContext` and feature queries/use cases. Do not add a generic repository or unit-of-work wrapper by default.
 - A feature module owns its entities and EF Core configuration. Other modules do not modify its tables directly.
 - Schema changes require migrations. Production startup MUST NOT substitute `EnsureCreated` for migrations.
+- Before merging a feature branch, keep only one unpublished final migration per affected `DbContext`. Multiple migrations for one context require a documented exception such as an already-deployed migration, staged data movement, or an operationally phased rollout.
 - Read-only queries SHOULD project required data and use `AsNoTracking` when tracking is unnecessary.
 - Avoid N+1 queries, unbounded collections, and loading complete entities only to discard most fields.
 - Database transactions align with application use cases and do not remain open across external network calls.
