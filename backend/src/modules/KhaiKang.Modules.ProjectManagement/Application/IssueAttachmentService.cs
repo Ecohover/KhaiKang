@@ -76,17 +76,21 @@ public sealed class IssueAttachmentService(
         await fileStorage.WriteAsync(storageKey, bufferedContent, cancellationToken);
 
         var now = timeProvider.GetUtcNow();
-        var attachment = new IssueAttachment(
-            attachmentId,
-            issueId,
-            accountId,
-            safeFileName,
-            fileStorage.Provider,
-            storageKey,
-            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            bufferedContent.Length,
-            fileHash,
-            now);
+        var attachment = IssueAttachment.Create(
+            new IssueAttachmentCreation
+            {
+                Id = attachmentId,
+                IssueId = issueId,
+                OriginalFileName = safeFileName,
+                StorageProvider = fileStorage.Provider,
+                StorageKey = storageKey,
+                ContentType = string.IsNullOrWhiteSpace(contentType)
+                    ? "application/octet-stream"
+                    : contentType,
+                FileSize = bufferedContent.Length,
+                FileHash = fileHash,
+            },
+            new ChangeContext(accountId, now));
         dbContext.IssueAttachments.Add(attachment);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -145,7 +149,7 @@ public sealed class IssueAttachmentService(
         if (attachment is null || attachment.IsDeleted) return new(IssueAttachmentOutcome.NotFound);
         if (attachment.Issue.Project.Status == ProjectStatus.Inactive) return new(IssueAttachmentOutcome.ProjectInactive);
 
-        attachment.MarkDeleted(accountId, timeProvider.GetUtcNow());
+        attachment.MarkDeleted(new ChangeContext(accountId, timeProvider.GetUtcNow()));
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(IssueAttachmentOutcome.Succeeded);
     }

@@ -8,7 +8,7 @@ public sealed class IssueAttachmentTests
         new(2026, 8, 11, 9, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Constructor_CapturesStorageMetadataAndUploaderAudit()
+    public void Create_CapturesStorageMetadataAndUploaderAudit()
     {
         var issueId = Guid.NewGuid();
         var uploaderId = Guid.NewGuid();
@@ -35,8 +35,8 @@ public sealed class IssueAttachmentTests
         var actorId = Guid.NewGuid();
         var deletedAt = CreatedAt.AddMinutes(5);
 
-        attachment.MarkDeleted(actorId, deletedAt);
-        attachment.MarkDeleted(Guid.NewGuid(), deletedAt.AddMinutes(5));
+        attachment.MarkDeleted(new ChangeContext(actorId, deletedAt));
+        attachment.MarkDeleted(new ChangeContext(Guid.NewGuid(), deletedAt.AddMinutes(5)));
 
         Assert.True(attachment.IsDeleted);
         Assert.Equal(deletedAt, attachment.DeletedAt);
@@ -49,16 +49,18 @@ public sealed class IssueAttachmentTests
         Guid? issueId = null,
         Guid? uploaderId = null)
     {
-        return new IssueAttachment(
-            Guid.NewGuid(),
-            issueId ?? Guid.NewGuid(),
-            uploaderId ?? Guid.NewGuid(),
-            "evidence.png",
-            "local",
-            "issues/storage-key",
-            "image/png",
-            128,
-            "sha256",
-            CreatedAt);
+        return IssueAttachment.Create(
+            new IssueAttachmentCreation
+            {
+                Id = Guid.NewGuid(),
+                IssueId = issueId ?? Guid.NewGuid(),
+                OriginalFileName = "evidence.png",
+                StorageProvider = "local",
+                StorageKey = "issues/storage-key",
+                ContentType = "image/png",
+                FileSize = 128,
+                FileHash = "sha256",
+            },
+            new ChangeContext(uploaderId ?? Guid.NewGuid(), CreatedAt));
     }
 }
