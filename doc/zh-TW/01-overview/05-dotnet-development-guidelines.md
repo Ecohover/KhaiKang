@@ -125,6 +125,7 @@ KhaiKang.CommonUtils.Web
 - PostgreSQL 是 system of record，EF Core 是預設 data access technology。
 - 初期直接使用明確的 `DbContext` 與 feature query/use case；不預設建立 generic repository 或 unit-of-work wrapper。
 - 封閉的 enum 或 Value Object 必須以穩定英文 code 寫入資料庫，不得儲存 enum 整數值或語系化顯示文字。轉換只存在於 persistence 與 transport boundary；已持久化的 code 若要重新命名，屬於資料契約變更，必須有明確 migration 或相容方案。
+- 穩定 code 的字串值必須在所屬 mapping type 集中宣告為具語意的 `private const string`，並由序列化與解析共用；不得在多個分支重複 literal，也不得以 enum 名稱、大小寫轉換或 reflection 自動推導持久化 code。
 - 由資料表管理的分類資料必須分開保存穩定英文 `code` 與使用者顯示用 `name`。業務資料以分類主鍵關聯；API 在需要機器可讀識別時回傳穩定 code。
 - EF Core 查詢應保持明確且容易順讀。Collection use case 原則上依序呈現正規化、過濾、排序、計數、分頁、投影與執行；當 predicate 或排序規則遮蔽主流程時，抽成 feature-local 且能表達意圖的方法，不以 generic query-options abstraction 隱藏一般 EF 行為。
 - Entity 與 EF Core configuration 由所屬功能模組管理；其他模組不得直接修改其 table。

@@ -327,7 +327,12 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         entity.Property(x => x.Code).HasColumnName("code").HasMaxLength(50);
         entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
         entity.Property(x => x.Description).HasColumnName("description");
-        entity.Property(x => x.Category).HasColumnName("category").HasMaxLength(20);
+        entity.Property(x => x.Category)
+            .HasColumnName("category")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => ProjectManagementCodes.ParseIssueStatusCategory(value));
         entity.Property(x => x.IsSystem).HasColumnName("is_system");
         entity.Property(x => x.IsActive).HasColumnName("is_active");
         entity.Property(x => x.SortOrder).HasColumnName("sort_order");

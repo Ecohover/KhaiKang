@@ -177,7 +177,7 @@ public sealed class IssueService(
                 item.Code,
                 item.Name,
                 item.Description,
-                item.Category))
+                item.Category.ToCode()))
             .ToArrayAsync(cancellationToken);
         var priorities = await dbContext.IssuePriorities.AsNoTracking()
             .Where(item => item.IsActive)
@@ -301,20 +301,22 @@ public sealed class IssueService(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var issueNo = await NextIssueNoAsync(projectId, cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var issue = new Issue(
-            Guid.NewGuid(),
-            projectId,
-            issueNo,
-            request.Title.Trim(),
-            Normalize(request.Description),
-            Normalize(request.UserStory),
-            Normalize(request.DefinitionOfDone),
-            issueType.Id,
-            initialStatus.Id,
-            priority.Id,
-            accountId,
-            request.AssigneeAccountId,
-            now);
+        var context = new ChangeContext(accountId, now);
+        var creation = new IssueCreation
+        {
+            Id = Guid.NewGuid(),
+            ProjectId = projectId,
+            IssueNo = issueNo,
+            Title = request.Title.Trim(),
+            Description = Normalize(request.Description),
+            UserStory = Normalize(request.UserStory),
+            DefinitionOfDone = Normalize(request.DefinitionOfDone),
+            IssueTypeId = issueType.Id,
+            IssueStatusId = initialStatus.Id,
+            IssuePriorityId = priority.Id,
+            AssigneeAccountId = request.AssigneeAccountId,
+        };
+        var issue = Issue.Create(creation, context);
         dbContext.Issues.Add(issue);
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
@@ -416,7 +418,10 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
-        issue.ChangeStatus(status.Id, status.Code, accountId, now);
+        issue.ChangeStatus(
+            status.Id,
+            status.Category,
+            new ChangeContext(accountId, now));
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
             accountId,
@@ -501,16 +506,18 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
-        issue.UpdateDetails(
-            request.Title.Trim(),
-            Normalize(request.Description),
-            Normalize(request.UserStory),
-            Normalize(request.DefinitionOfDone),
-            Normalize(request.CompletionSummary),
-            issueType.Id,
-            priority.Id,
-            accountId,
-            now);
+        var change = new IssueDetailsChange
+        {
+            Title = request.Title.Trim(),
+            Description = Normalize(request.Description),
+            UserStory = Normalize(request.UserStory),
+            DefinitionOfDone = Normalize(request.DefinitionOfDone),
+            CompletionSummary = Normalize(request.CompletionSummary),
+            IssueTypeId = issueType.Id,
+            IssuePriorityId = priority.Id,
+        };
+        var context = new ChangeContext(accountId, now);
+        issue.UpdateDetails(change, context);
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
             accountId,
@@ -588,7 +595,9 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
-        issue.ChangeAssignee(request.AssigneeAccountId, accountId, now);
+        issue.ChangeAssignee(
+            request.AssigneeAccountId,
+            new ChangeContext(accountId, now));
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
             accountId,

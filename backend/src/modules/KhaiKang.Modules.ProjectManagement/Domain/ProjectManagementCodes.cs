@@ -2,28 +2,44 @@ namespace KhaiKang.Modules.ProjectManagement.Domain;
 
 public static class ProjectManagementCodes
 {
+    private const string ProjectActiveCode = "active";
+    private const string ProjectInactiveCode = "inactive";
+    private const string ProjectMemberActiveCode = "active";
+    private const string ProjectMemberRemovedCode = "removed";
+    private const string TodoCode = "todo";
+    private const string DoingCode = "doing";
+    private const string DoneCode = "done";
+
     public static string ToCode(this ProjectStatus status) => status switch
     {
-        ProjectStatus.Active => "active",
-        ProjectStatus.Inactive => "inactive",
+        ProjectStatus.Active => ProjectActiveCode,
+        ProjectStatus.Inactive => ProjectInactiveCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this ProjectMemberStatus status) => status switch
     {
-        ProjectMemberStatus.Active => "active",
-        ProjectMemberStatus.Removed => "removed",
+        ProjectMemberStatus.Active => ProjectMemberActiveCode,
+        ProjectMemberStatus.Removed => ProjectMemberRemovedCode,
         _ => throw UnknownValue(status),
+    };
+
+    public static string ToCode(this IssueStatusCategory category) => category switch
+    {
+        IssueStatusCategory.Todo => TodoCode,
+        IssueStatusCategory.Doing => DoingCode,
+        IssueStatusCategory.Done => DoneCode,
+        _ => throw UnknownValue(category),
     };
 
     public static ProjectStatus ParseProjectStatus(string code)
     {
-        if (CodeEquals(code, "active"))
+        if (CodeEquals(code, ProjectActiveCode))
         {
             return ProjectStatus.Active;
         }
 
-        if (CodeEquals(code, "inactive"))
+        if (CodeEquals(code, ProjectInactiveCode))
         {
             return ProjectStatus.Inactive;
         }
@@ -33,17 +49,37 @@ public static class ProjectManagementCodes
 
     public static ProjectMemberStatus ParseProjectMemberStatus(string code)
     {
-        if (CodeEquals(code, "active"))
+        if (CodeEquals(code, ProjectMemberActiveCode))
         {
             return ProjectMemberStatus.Active;
         }
 
-        if (CodeEquals(code, "removed"))
+        if (CodeEquals(code, ProjectMemberRemovedCode))
         {
             return ProjectMemberStatus.Removed;
         }
 
         throw UnsupportedDatabaseValue<ProjectMemberStatus>(code);
+    }
+
+    public static IssueStatusCategory ParseIssueStatusCategory(string code)
+    {
+        if (CodeEquals(code, TodoCode))
+        {
+            return IssueStatusCategory.Todo;
+        }
+
+        if (CodeEquals(code, DoingCode))
+        {
+            return IssueStatusCategory.Doing;
+        }
+
+        if (CodeEquals(code, DoneCode))
+        {
+            return IssueStatusCategory.Done;
+        }
+
+        throw UnsupportedDatabaseValue<IssueStatusCategory>(code);
     }
 
     private static bool CodeEquals(string actualCode, string expectedCode) =>

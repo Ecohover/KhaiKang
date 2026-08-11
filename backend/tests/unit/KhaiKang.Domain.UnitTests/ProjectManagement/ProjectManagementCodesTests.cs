@@ -23,4 +23,16 @@ public sealed class ProjectManagementCodesTests
         Assert.Equal(code, status.ToCode());
         Assert.Equal(status, ProjectManagementCodes.ParseProjectMemberStatus(code));
     }
+
+    [Theory]
+    [InlineData(IssueStatusCategory.Todo, "todo")]
+    [InlineData(IssueStatusCategory.Doing, "doing")]
+    [InlineData(IssueStatusCategory.Done, "done")]
+    public void IssueStatusCategory_RoundTripsStableDatabaseCode(
+        IssueStatusCategory category,
+        string code)
+    {
+        Assert.Equal(code, category.ToCode());
+        Assert.Equal(category, ProjectManagementCodes.ParseIssueStatusCategory(code));
+    }
 }

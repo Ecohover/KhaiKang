@@ -32,20 +32,22 @@ public sealed class IssueTests
         var reporterId = Guid.NewGuid();
         var assigneeId = Guid.NewGuid();
 
-        var issue = new Issue(
-            id,
-            projectId,
-            42,
-            "Initial title",
-            "Initial description",
-            "Initial user story",
-            "Initial definition",
-            typeId,
-            statusId,
-            priorityId,
-            reporterId,
-            assigneeId,
-            CreatedAt);
+        var issue = Issue.Create(
+            new IssueCreation
+            {
+                Id = id,
+                ProjectId = projectId,
+                IssueNo = 42,
+                Title = "Initial title",
+                Description = "Initial description",
+                UserStory = "Initial user story",
+                DefinitionOfDone = "Initial definition",
+                IssueTypeId = typeId,
+                IssueStatusId = statusId,
+                IssuePriorityId = priorityId,
+                AssigneeAccountId = assigneeId,
+            },
+            new ChangeContext(reporterId, CreatedAt));
 
         Assert.Equal(id, issue.Id);
         Assert.Equal(projectId, issue.ProjectId);
@@ -71,7 +73,10 @@ public sealed class IssueTests
         var occurredAt = CreatedAt.AddHours(1);
         var completedStatusId = Guid.NewGuid();
 
-        issue.ChangeStatus(completedStatusId, "completed", actorId, occurredAt);
+        issue.ChangeStatus(
+            completedStatusId,
+            IssueStatusCategory.Done,
+            new ChangeContext(actorId, occurredAt));
 
         Assert.Equal(completedStatusId, issue.IssueStatusId);
         Assert.Equal(occurredAt, issue.CompletedAt);
@@ -86,15 +91,13 @@ public sealed class IssueTests
         var issue = CreateIssue();
         issue.ChangeStatus(
             Guid.NewGuid(),
-            "completed",
-            Guid.NewGuid(),
-            CreatedAt.AddHours(1));
+            IssueStatusCategory.Done,
+            new ChangeContext(Guid.NewGuid(), CreatedAt.AddHours(1)));
 
         issue.ChangeStatus(
             Guid.NewGuid(),
-            "in_progress",
-            Guid.NewGuid(),
-            CreatedAt.AddHours(2));
+            IssueStatusCategory.Doing,
+            new ChangeContext(Guid.NewGuid(), CreatedAt.AddHours(2)));
 
         Assert.Null(issue.CompletedAt);
         Assert.Equal(3, issue.Version);
@@ -113,15 +116,17 @@ public sealed class IssueTests
         var originalReporterId = issue.ReporterAccountId;
 
         issue.UpdateDetails(
-            "Updated title",
-            "Updated description",
-            "Updated user story",
-            "Updated definition",
-            "Updated result",
-            typeId,
-            priorityId,
-            actorId,
-            occurredAt);
+            new IssueDetailsChange
+            {
+                Title = "Updated title",
+                Description = "Updated description",
+                UserStory = "Updated user story",
+                DefinitionOfDone = "Updated definition",
+                CompletionSummary = "Updated result",
+                IssueTypeId = typeId,
+                IssuePriorityId = priorityId,
+            },
+            new ChangeContext(actorId, occurredAt));
 
         Assert.Equal("Updated title", issue.Title);
         Assert.Equal("Updated description", issue.Description);
@@ -148,12 +153,10 @@ public sealed class IssueTests
 
         issue.ChangeAssignee(
             assigneeId,
-            Guid.NewGuid(),
-            CreatedAt.AddMinutes(10));
+            new ChangeContext(Guid.NewGuid(), CreatedAt.AddMinutes(10)));
         issue.ChangeAssignee(
             null,
-            unassignActorId,
-            unassignedAt);
+            new ChangeContext(unassignActorId, unassignedAt));
 
         Assert.Null(issue.AssigneeAccountId);
         Assert.Equal(unassignActorId, issue.UpdatedByAccountId);
@@ -165,19 +168,19 @@ public sealed class IssueTests
         Guid? reporterId = null,
         Guid? assigneeId = null)
     {
-        return new Issue(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            1,
-            "Initial title",
-            null,
-            null,
-            null,
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            reporterId ?? Guid.NewGuid(),
-            assigneeId,
-            CreatedAt);
+        var actualReporterId = reporterId ?? Guid.NewGuid();
+        return Issue.Create(
+            new IssueCreation
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = Guid.NewGuid(),
+                IssueNo = 1,
+                Title = "Initial title",
+                IssueTypeId = Guid.NewGuid(),
+                IssueStatusId = Guid.NewGuid(),
+                IssuePriorityId = Guid.NewGuid(),
+                AssigneeAccountId = assigneeId,
+            },
+            new ChangeContext(actualReporterId, CreatedAt));
     }
 }

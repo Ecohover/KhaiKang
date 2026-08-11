@@ -1,3 +1,5 @@
+using KhaiKang.Modules.ProjectManagement.Domain;
+
 namespace KhaiKang.Modules.ProjectManagement.Application;
 
 internal static class IssueCatalog
@@ -15,10 +17,10 @@ internal static class IssueCatalog
 
     public static readonly IssueStatusDefinition[] Statuses =
     [
-        new(CreatedStatusId, "created", "Created", "表示任務已建立，尚未正式進入處理。", "todo", 1),
-        new(Guid.Parse("343e8e3c-4baa-41a3-bd3e-7840ae938244"), "in_progress", "In Progress", "表示任務目前正在處理中。", "doing", 2),
-        new(Guid.Parse("b48dfc2c-1084-45ff-8c93-ac7d9613943b"), "verifying", "Verifying", "表示任務目前正在驗證中。", "doing", 3),
-        new(Guid.Parse("62059722-9c39-4bce-b805-2490cdb6fe77"), "completed", "Completed", "表示任務已完成。", "done", 4),
+        new(CreatedStatusId, "created", "Created", "表示任務已建立，尚未正式進入處理。", IssueStatusCategory.Todo, 1),
+        new(Guid.Parse("343e8e3c-4baa-41a3-bd3e-7840ae938244"), "in_progress", "In Progress", "表示任務目前正在處理中。", IssueStatusCategory.Doing, 2),
+        new(Guid.Parse("b48dfc2c-1084-45ff-8c93-ac7d9613943b"), "verifying", "Verifying", "表示任務目前正在驗證中。", IssueStatusCategory.Doing, 3),
+        new(Guid.Parse("62059722-9c39-4bce-b805-2490cdb6fe77"), "completed", "Completed", "表示任務已完成。", IssueStatusCategory.Done, 4),
     ];
 
     public static readonly IssuePriorityDefinition[] Priorities =
@@ -42,7 +44,7 @@ internal sealed record IssueStatusDefinition(
     string Code,
     string Name,
     string Description,
-    string Category,
+    IssueStatusCategory Category,
     int SortOrder);
 
 internal sealed record IssuePriorityDefinition(

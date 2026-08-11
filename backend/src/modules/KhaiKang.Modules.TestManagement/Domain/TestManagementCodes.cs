@@ -2,73 +2,97 @@ namespace KhaiKang.Modules.TestManagement.Domain;
 
 public static class TestManagementCodes
 {
+    private const string AssetActiveCode = "active";
+    private const string AssetInactiveCode = "inactive";
+    private const string WorkspaceMemberActiveCode = "active";
+    private const string WorkspaceMemberRemovedCode = "removed";
+    private const string WorkspaceRoleOwnerCode = "owner";
+    private const string WorkspaceRoleManagerCode = "manager";
+    private const string WorkspaceRoleTesterCode = "tester";
+    private const string WorkspaceRoleViewerCode = "viewer";
+    private const string PlanDraftCode = "draft";
+    private const string PlanActiveCode = "active";
+    private const string PlanArchivedCode = "archived";
+    private const string RunNotStartedCode = "not_started";
+    private const string RunInProgressCode = "in_progress";
+    private const string RunCompletedCode = "completed";
+    private const string RunCancelledCode = "cancelled";
+    private const string ResultNotRunCode = "not_run";
+    private const string ResultPassedCode = "passed";
+    private const string ResultFailedCode = "failed";
+    private const string ResultBlockedCode = "blocked";
+    private const string ResultSkippedCode = "skipped";
+    private const string CaseNumberCode = "case";
+    private const string PlanNumberCode = "plan";
+    private const string RunNumberCode = "run";
+
     public static string ToCode(this TestAssetStatus status) => status switch
     {
-        TestAssetStatus.Active => "active",
-        TestAssetStatus.Inactive => "inactive",
+        TestAssetStatus.Active => AssetActiveCode,
+        TestAssetStatus.Inactive => AssetInactiveCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this TestWorkspaceMemberStatus status) => status switch
     {
-        TestWorkspaceMemberStatus.Active => "active",
-        TestWorkspaceMemberStatus.Removed => "removed",
+        TestWorkspaceMemberStatus.Active => WorkspaceMemberActiveCode,
+        TestWorkspaceMemberStatus.Removed => WorkspaceMemberRemovedCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this TestWorkspaceRole role) => role switch
     {
-        TestWorkspaceRole.Owner => "owner",
-        TestWorkspaceRole.Manager => "manager",
-        TestWorkspaceRole.Tester => "tester",
-        TestWorkspaceRole.Viewer => "viewer",
+        TestWorkspaceRole.Owner => WorkspaceRoleOwnerCode,
+        TestWorkspaceRole.Manager => WorkspaceRoleManagerCode,
+        TestWorkspaceRole.Tester => WorkspaceRoleTesterCode,
+        TestWorkspaceRole.Viewer => WorkspaceRoleViewerCode,
         _ => throw UnknownValue(role),
     };
 
     public static string ToCode(this TestPlanStatus status) => status switch
     {
-        TestPlanStatus.Draft => "draft",
-        TestPlanStatus.Active => "active",
-        TestPlanStatus.Archived => "archived",
+        TestPlanStatus.Draft => PlanDraftCode,
+        TestPlanStatus.Active => PlanActiveCode,
+        TestPlanStatus.Archived => PlanArchivedCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this TestRunStatus status) => status switch
     {
-        TestRunStatus.NotStarted => "not_started",
-        TestRunStatus.InProgress => "in_progress",
-        TestRunStatus.Completed => "completed",
-        TestRunStatus.Cancelled => "cancelled",
+        TestRunStatus.NotStarted => RunNotStartedCode,
+        TestRunStatus.InProgress => RunInProgressCode,
+        TestRunStatus.Completed => RunCompletedCode,
+        TestRunStatus.Cancelled => RunCancelledCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this TestResultStatus status) => status switch
     {
-        TestResultStatus.NotRun => "not_run",
-        TestResultStatus.Passed => "passed",
-        TestResultStatus.Failed => "failed",
-        TestResultStatus.Blocked => "blocked",
-        TestResultStatus.Skipped => "skipped",
+        TestResultStatus.NotRun => ResultNotRunCode,
+        TestResultStatus.Passed => ResultPassedCode,
+        TestResultStatus.Failed => ResultFailedCode,
+        TestResultStatus.Blocked => ResultBlockedCode,
+        TestResultStatus.Skipped => ResultSkippedCode,
         _ => throw UnknownValue(status),
     };
 
     public static string ToCode(this TestNumberType numberType) => numberType switch
     {
-        TestNumberType.Case => "case",
-        TestNumberType.Plan => "plan",
-        TestNumberType.Run => "run",
+        TestNumberType.Case => CaseNumberCode,
+        TestNumberType.Plan => PlanNumberCode,
+        TestNumberType.Run => RunNumberCode,
         _ => throw UnknownValue(numberType),
     };
 
     public static bool TryParseAssetStatus(string? code, out TestAssetStatus status)
     {
-        if (CodeEquals(code, "active"))
+        if (CodeEquals(code, AssetActiveCode))
         {
             status = TestAssetStatus.Active;
             return true;
         }
 
-        if (CodeEquals(code, "inactive"))
+        if (CodeEquals(code, AssetInactiveCode))
         {
             status = TestAssetStatus.Inactive;
             return true;
@@ -82,13 +106,13 @@ public static class TestManagementCodes
         string? code,
         out TestWorkspaceMemberStatus status)
     {
-        if (CodeEquals(code, "active"))
+        if (CodeEquals(code, WorkspaceMemberActiveCode))
         {
             status = TestWorkspaceMemberStatus.Active;
             return true;
         }
 
-        if (CodeEquals(code, "removed"))
+        if (CodeEquals(code, WorkspaceMemberRemovedCode))
         {
             status = TestWorkspaceMemberStatus.Removed;
             return true;
@@ -100,25 +124,25 @@ public static class TestManagementCodes
 
     public static bool TryParseWorkspaceRole(string? code, out TestWorkspaceRole role)
     {
-        if (CodeEquals(code, "owner"))
+        if (CodeEquals(code, WorkspaceRoleOwnerCode))
         {
             role = TestWorkspaceRole.Owner;
             return true;
         }
 
-        if (CodeEquals(code, "manager"))
+        if (CodeEquals(code, WorkspaceRoleManagerCode))
         {
             role = TestWorkspaceRole.Manager;
             return true;
         }
 
-        if (CodeEquals(code, "tester"))
+        if (CodeEquals(code, WorkspaceRoleTesterCode))
         {
             role = TestWorkspaceRole.Tester;
             return true;
         }
 
-        if (CodeEquals(code, "viewer"))
+        if (CodeEquals(code, WorkspaceRoleViewerCode))
         {
             role = TestWorkspaceRole.Viewer;
             return true;
@@ -130,19 +154,19 @@ public static class TestManagementCodes
 
     public static bool TryParsePlanStatus(string? code, out TestPlanStatus status)
     {
-        if (CodeEquals(code, "draft"))
+        if (CodeEquals(code, PlanDraftCode))
         {
             status = TestPlanStatus.Draft;
             return true;
         }
 
-        if (CodeEquals(code, "active"))
+        if (CodeEquals(code, PlanActiveCode))
         {
             status = TestPlanStatus.Active;
             return true;
         }
 
-        if (CodeEquals(code, "archived"))
+        if (CodeEquals(code, PlanArchivedCode))
         {
             status = TestPlanStatus.Archived;
             return true;
@@ -154,25 +178,25 @@ public static class TestManagementCodes
 
     public static bool TryParseRunStatus(string? code, out TestRunStatus status)
     {
-        if (CodeEquals(code, "not_started"))
+        if (CodeEquals(code, RunNotStartedCode))
         {
             status = TestRunStatus.NotStarted;
             return true;
         }
 
-        if (CodeEquals(code, "in_progress"))
+        if (CodeEquals(code, RunInProgressCode))
         {
             status = TestRunStatus.InProgress;
             return true;
         }
 
-        if (CodeEquals(code, "completed"))
+        if (CodeEquals(code, RunCompletedCode))
         {
             status = TestRunStatus.Completed;
             return true;
         }
 
-        if (CodeEquals(code, "cancelled"))
+        if (CodeEquals(code, RunCancelledCode))
         {
             status = TestRunStatus.Cancelled;
             return true;
@@ -184,31 +208,31 @@ public static class TestManagementCodes
 
     public static bool TryParseResultStatus(string? code, out TestResultStatus status)
     {
-        if (CodeEquals(code, "not_run"))
+        if (CodeEquals(code, ResultNotRunCode))
         {
             status = TestResultStatus.NotRun;
             return true;
         }
 
-        if (CodeEquals(code, "passed"))
+        if (CodeEquals(code, ResultPassedCode))
         {
             status = TestResultStatus.Passed;
             return true;
         }
 
-        if (CodeEquals(code, "failed"))
+        if (CodeEquals(code, ResultFailedCode))
         {
             status = TestResultStatus.Failed;
             return true;
         }
 
-        if (CodeEquals(code, "blocked"))
+        if (CodeEquals(code, ResultBlockedCode))
         {
             status = TestResultStatus.Blocked;
             return true;
         }
 
-        if (CodeEquals(code, "skipped"))
+        if (CodeEquals(code, ResultSkippedCode))
         {
             status = TestResultStatus.Skipped;
             return true;

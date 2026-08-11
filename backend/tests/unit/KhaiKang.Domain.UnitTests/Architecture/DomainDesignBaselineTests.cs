@@ -16,9 +16,6 @@ public sealed class DomainDesignBaselineTests
         "KhaiKang.Modules.Identity.Domain.AuditEvent::.ctor/7",
         "KhaiKang.Modules.Identity.Domain.LoginSession::.ctor/5",
         "KhaiKang.Modules.Identity.Domain.SystemRolePermission::.ctor/5",
-        "KhaiKang.Modules.ProjectManagement.Domain.Issue::.ctor/13",
-        "KhaiKang.Modules.ProjectManagement.Domain.Issue::ChangeStatus/4",
-        "KhaiKang.Modules.ProjectManagement.Domain.Issue::UpdateDetails/9",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueAttachment::.ctor/10",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueRelation::.ctor/7",
         "KhaiKang.Modules.ProjectManagement.Domain.Project::.ctor/6",
@@ -59,7 +56,6 @@ public sealed class DomainDesignBaselineTests
         "KhaiKang.Modules.Identity.Domain.Account",
         "KhaiKang.Modules.Identity.Domain.Permission",
         "KhaiKang.Modules.Identity.Domain.SystemRolePermission",
-        "KhaiKang.Modules.ProjectManagement.Domain.Issue",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueAttachment",
         "KhaiKang.Modules.ProjectManagement.Domain.IssuePriority",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueRelation",
@@ -110,7 +106,7 @@ public sealed class DomainDesignBaselineTests
     public void DomainTypes_DoNotAddRepeatedAuditPropertyDeclarations()
     {
         var currentDebt = DomainTypes()
-            .Where(DeclaresCompleteAuditMetadata)
+            .Where(type => !type.IsAbstract && DeclaresCompleteAuditMetadata(type))
             .Select(type => type.FullName!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();

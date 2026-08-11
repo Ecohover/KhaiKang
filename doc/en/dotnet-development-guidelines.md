@@ -139,6 +139,7 @@ KhaiKang.CommonUtils.Web
 - PostgreSQL is the system of record and EF Core is the default data-access technology.
 - Start with an explicit `DbContext` and feature queries/use cases. Do not add a generic repository or unit-of-work wrapper by default.
 - Persist a closed enum or value-object set as a stable English code, never as its numeric enum value or localized display text. Conversion belongs at the persistence and transport boundaries. Renaming a persisted code is a data-contract change and requires an explicit migration or compatibility plan.
+- Declare each stable code string once as an intention-revealing `private const string` in its owning mapping type and reuse it for serialization and parsing. Do not repeat literals across branches or derive persisted codes automatically from enum names, casing rules, or reflection.
 - A database-managed classification table keeps a stable English `code` separate from its user-facing `name`. Business rows reference the classification key; APIs expose the stable code where clients need machine-readable identity.
 - Keep EF Core queries explicit and readable. A collection use case SHOULD make normalization, filtering, ordering, counting, paging, projection, and execution visible in that order. Extract feature-local, intention-revealing methods when a predicate or ordering rule obscures the main flow; do not hide ordinary EF behavior behind a generic query-options abstraction.
 - A feature module owns its entities and EF Core configuration. Other modules do not modify its tables directly.

@@ -1,40 +1,29 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class Issue
+public sealed class Issue : AuditableEntity
 {
     private Issue() { }
 
-    public Issue(
-        Guid id,
-        Guid projectId,
-        int issueNo,
-        string title,
-        string? description,
-        string? userStory,
-        string? definitionOfDone,
-        Guid issueTypeId,
-        Guid issueStatusId,
-        Guid issuePriorityId,
-        Guid reporterAccountId,
-        Guid? assigneeAccountId,
-        DateTimeOffset createdAt)
+    private Issue(IssueCreation creation, ChangeContext context)
     {
-        Id = id;
-        ProjectId = projectId;
-        IssueNo = issueNo;
-        Title = title;
-        Description = description;
-        UserStory = userStory;
-        DefinitionOfDone = definitionOfDone;
-        IssueTypeId = issueTypeId;
-        IssueStatusId = issueStatusId;
-        IssuePriorityId = issuePriorityId;
-        ReporterAccountId = reporterAccountId;
-        AssigneeAccountId = assigneeAccountId;
-        CreatedAt = createdAt;
-        CreatedByAccountId = reporterAccountId;
-        UpdatedAt = createdAt;
-        UpdatedByAccountId = reporterAccountId;
+        Id = creation.Id;
+        ProjectId = creation.ProjectId;
+        IssueNo = creation.IssueNo;
+        Title = creation.Title;
+        Description = creation.Description;
+        UserStory = creation.UserStory;
+        DefinitionOfDone = creation.DefinitionOfDone;
+        IssueTypeId = creation.IssueTypeId;
+        IssueStatusId = creation.IssueStatusId;
+        IssuePriorityId = creation.IssuePriorityId;
+        ReporterAccountId = context.ActorAccountId;
+        AssigneeAccountId = creation.AssigneeAccountId;
+        InitializeAudit(context);
+    }
+
+    public static Issue Create(IssueCreation creation, ChangeContext context)
+    {
+        return new Issue(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -55,56 +44,31 @@ public sealed class Issue
     public Guid? AssigneeAccountId { get; private set; }
     public string? CompletionSummary { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public Guid? CreatedByAccountId { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public Guid? UpdatedByAccountId { get; private set; }
-    public int Version { get; private set; } = 1;
-
     public void ChangeStatus(
         Guid statusId,
-        string statusCode,
-        Guid actorAccountId,
-        DateTimeOffset occurredAt)
+        IssueStatusCategory category,
+        ChangeContext context)
     {
         IssueStatusId = statusId;
-        CompletedAt = statusCode == "completed" ? occurredAt : null;
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        CompletedAt = category == IssueStatusCategory.Done ? context.OccurredAt : null;
+        RecordChange(context);
     }
 
-    public void UpdateDetails(
-        string title,
-        string? description,
-        string? userStory,
-        string? definitionOfDone,
-        string? completionSummary,
-        Guid issueTypeId,
-        Guid issuePriorityId,
-        Guid actorAccountId,
-        DateTimeOffset occurredAt)
+    public void UpdateDetails(IssueDetailsChange change, ChangeContext context)
     {
-        Title = title;
-        Description = description;
-        UserStory = userStory;
-        DefinitionOfDone = definitionOfDone;
-        CompletionSummary = completionSummary;
-        IssueTypeId = issueTypeId;
-        IssuePriorityId = issuePriorityId;
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        Title = change.Title;
+        Description = change.Description;
+        UserStory = change.UserStory;
+        DefinitionOfDone = change.DefinitionOfDone;
+        CompletionSummary = change.CompletionSummary;
+        IssueTypeId = change.IssueTypeId;
+        IssuePriorityId = change.IssuePriorityId;
+        RecordChange(context);
     }
 
-    public void ChangeAssignee(
-        Guid? assigneeAccountId,
-        Guid actorAccountId,
-        DateTimeOffset occurredAt)
+    public void ChangeAssignee(Guid? assigneeAccountId, ChangeContext context)
     {
         AssigneeAccountId = assigneeAccountId;
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        RecordChange(context);
     }
 }
