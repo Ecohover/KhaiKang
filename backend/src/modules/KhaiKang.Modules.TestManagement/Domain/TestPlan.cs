@@ -22,7 +22,7 @@ public sealed class TestPlan
         Description = description;
         TestIssueProjectId = testIssueProjectId;
         TestIssueId = testIssueId;
-        Status = "draft";
+        Status = TestPlanStatus.Draft;
         CreatedAt = UpdatedAt = now;
         CreatedByAccountId = UpdatedByAccountId = actorId;
         Version = 1;
@@ -35,7 +35,7 @@ public sealed class TestPlan
     public string? Description { get; private set; }
     public Guid? TestIssueProjectId { get; private set; }
     public Guid? TestIssueId { get; private set; }
-    public string Status { get; private set; } = null!;
+    public TestPlanStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedByAccountId { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -47,14 +47,19 @@ public sealed class TestPlan
     public void Update(
         string name,
         string? description,
-        string status,
+        TestPlanStatus status,
         Guid actorId,
         DateTimeOffset now,
         Guid? testIssueProjectId = null,
         Guid? testIssueId = null)
     {
-        Name = name; Description = description; Status = status;
-        TestIssueProjectId = testIssueProjectId; TestIssueId = testIssueId;
-        UpdatedAt = now; UpdatedByAccountId = actorId; Version++;
+        Name = name;
+        Description = description;
+        Status = status;
+        TestIssueProjectId = testIssueProjectId;
+        TestIssueId = testIssueId;
+        UpdatedAt = now;
+        UpdatedByAccountId = actorId;
+        Version++;
     }
 }

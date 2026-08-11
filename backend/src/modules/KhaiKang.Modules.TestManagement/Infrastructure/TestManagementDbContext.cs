@@ -50,7 +50,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         workspace.Property(x => x.Prefix).HasColumnName("prefix").HasMaxLength(10);
         workspace.HasIndex(x => x.Prefix).IsUnique().HasDatabaseName("uq_test_workspaces_prefix");
         workspace.Property(x => x.Description).HasColumnName("description");
-        workspace.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        workspace.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(workspace);
 
         var member = modelBuilder.Entity<TestWorkspaceMember>();
@@ -59,8 +64,18 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         member.Property(x => x.Id).HasColumnName("id");
         member.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
         member.Property(x => x.AccountId).HasColumnName("account_id");
-        member.Property(x => x.Role).HasColumnName("role").HasMaxLength(20);
-        member.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        member.Property(x => x.Role)
+            .HasColumnName("role")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseWorkspaceRole(value));
+        member.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseWorkspaceMemberStatus(value));
         member.Property(x => x.JoinedAt).HasColumnName("joined_at");
         member.Property(x => x.RemovedAt).HasColumnName("removed_at");
         Audit(member);
@@ -104,7 +119,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         suite.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
         suite.Property(x => x.Description).HasColumnName("description");
         suite.Property(x => x.SortOrder).HasColumnName("sort_order");
-        suite.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        suite.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(suite);
         suite.HasIndex(x => new { x.TestWorkspaceId, x.ParentId, x.SortOrder })
             .HasDatabaseName("idx_test_suites_workspace_parent_sort_order");
@@ -126,7 +146,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         testCase.Property(x => x.Preconditions).HasColumnName("preconditions");
         testCase.Property(x => x.OverallExpectedResult).HasColumnName("overall_expected_result");
         testCase.Property(x => x.SortOrder).HasColumnName("sort_order");
-        testCase.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        testCase.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(testCase);
         testCase.HasIndex(x => x.TestSuiteId).HasDatabaseName("idx_test_cases_test_suite_id");
         testCase.HasIndex(x => new { x.TestWorkspaceId, x.CaseNo }).IsUnique()
@@ -161,7 +186,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         tag.Property(x => x.Id).HasColumnName("id");
         tag.Property(x => x.Name).HasColumnName("name").HasMaxLength(50);
         tag.Property(x => x.Description).HasColumnName("description");
-        tag.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        tag.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(tag);
         tag.HasIndex(x => x.Status).HasDatabaseName("idx_test_tags_status");
         tag.HasIndex(x => x.Name).IsUnique().HasDatabaseName("uq_test_tags_name");
@@ -195,7 +225,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         plan.Property(x => x.Description).HasColumnName("description");
         plan.Property(x => x.TestIssueProjectId).HasColumnName("test_issue_project_id");
         plan.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
-        plan.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        plan.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParsePlanStatus(value));
         Audit(plan);
         plan.HasIndex(x => new { x.TestWorkspaceId, x.Status })
             .HasDatabaseName("idx_test_plans_workspace_status");
@@ -242,7 +277,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         run.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
         run.Property(x => x.TestIssueProjectId).HasColumnName("test_issue_project_id");
         run.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
-        run.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        run.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseRunStatus(value));
         run.Property(x => x.StartedByAccountId).HasColumnName("started_by_account_id");
         run.Property(x => x.StartedAt).HasColumnName("started_at");
         run.Property(x => x.CompletedAt).HasColumnName("completed_at");
@@ -276,7 +316,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runItem.Property(x => x.CaseDescription).HasColumnName("case_description");
         runItem.Property(x => x.Preconditions).HasColumnName("preconditions");
         runItem.Property(x => x.OverallExpectedResult).HasColumnName("overall_expected_result");
-        runItem.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runItem.Property(x => x.ResultStatus)
+            .HasColumnName("result_status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseResultStatus(value));
         runItem.Property(x => x.ActualResult).HasColumnName("actual_result");
         runItem.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
         runItem.Property(x => x.ExecutedAt).HasColumnName("executed_at");
@@ -301,7 +346,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runStep.Property(x => x.StepNo).HasColumnName("step_no");
         runStep.Property(x => x.Action).HasColumnName("action");
         runStep.Property(x => x.ExpectedResult).HasColumnName("expected_result");
-        runStep.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runStep.Property(x => x.ResultStatus)
+            .HasColumnName("result_status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseResultStatus(value));
         runStep.Property(x => x.ActualResult).HasColumnName("actual_result");
         runStep.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
         runStep.Property(x => x.ExecutedAt).HasColumnName("executed_at");

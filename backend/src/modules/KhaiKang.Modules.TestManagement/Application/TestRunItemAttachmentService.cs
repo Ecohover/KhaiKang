@@ -53,11 +53,13 @@ public sealed class TestRunItemAttachmentService(
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestRunItemAttachmentOutcome.NotFound);
         if (!CanExecute(access.Role)) return new(TestRunItemAttachmentOutcome.Forbidden);
-        if (access.Workspace.Status != "active") return new(TestRunItemAttachmentOutcome.WorkspaceInactive);
+        if (access.Workspace.Status != TestAssetStatus.Active)
+            return new(TestRunItemAttachmentOutcome.WorkspaceInactive);
 
         var runItem = await RunItemAsync(workspaceId, runId, itemId, cancellationToken);
         if (runItem is null) return new(TestRunItemAttachmentOutcome.NotFound);
-        if (runItem.RunStatus != "in_progress") return new(TestRunItemAttachmentOutcome.RunNotInProgress);
+        if (runItem.RunStatus != TestRunStatus.InProgress)
+            return new(TestRunItemAttachmentOutcome.RunNotInProgress);
         if (fileSize <= 0 || string.IsNullOrWhiteSpace(fileName))
             return new(TestRunItemAttachmentOutcome.InvalidFile);
         if (fileSize > options.MaxFileSizeBytes)
@@ -138,11 +140,13 @@ public sealed class TestRunItemAttachmentService(
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestRunItemAttachmentOutcome.NotFound);
         if (!CanExecute(access.Role)) return new(TestRunItemAttachmentOutcome.Forbidden);
-        if (access.Workspace.Status != "active") return new(TestRunItemAttachmentOutcome.WorkspaceInactive);
+        if (access.Workspace.Status != TestAssetStatus.Active)
+            return new(TestRunItemAttachmentOutcome.WorkspaceInactive);
 
         var runItem = await RunItemAsync(workspaceId, runId, itemId, cancellationToken);
         if (runItem is null) return new(TestRunItemAttachmentOutcome.NotFound);
-        if (runItem.RunStatus != "in_progress") return new(TestRunItemAttachmentOutcome.RunNotInProgress);
+        if (runItem.RunStatus != TestRunStatus.InProgress)
+            return new(TestRunItemAttachmentOutcome.RunNotInProgress);
 
         var attachment = await dbContext.RunItemAttachments.SingleOrDefaultAsync(item =>
             item.Id == attachmentId && item.TestRunItemId == itemId && !item.IsDeleted,
@@ -158,12 +162,14 @@ public sealed class TestRunItemAttachmentService(
         Guid accountId,
         CancellationToken cancellationToken) =>
         dbContext.Members.Include(item => item.Workspace).SingleOrDefaultAsync(item =>
-            item.TestWorkspaceId == workspaceId && item.AccountId == accountId && item.Status == "active",
+            item.TestWorkspaceId == workspaceId && item.AccountId == accountId &&
+            item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<bool> HasAccessAsync(Guid workspaceId, Guid accountId, CancellationToken cancellationToken) =>
         dbContext.Members.AnyAsync(item =>
-            item.TestWorkspaceId == workspaceId && item.AccountId == accountId && item.Status == "active",
+            item.TestWorkspaceId == workspaceId && item.AccountId == accountId &&
+            item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<RunItemAccess?> RunItemAsync(
@@ -197,7 +203,8 @@ public sealed class TestRunItemAttachmentService(
             item.CreatedAt)).ToArray();
     }
 
-    private static bool CanExecute(string role) => role is "owner" or "manager" or "tester";
+    private static bool CanExecute(TestWorkspaceRole role) =>
+        role is TestWorkspaceRole.Owner or TestWorkspaceRole.Manager or TestWorkspaceRole.Tester;
 
     private static string SanitizeFileName(string fileName)
     {
@@ -207,5 +214,5 @@ public sealed class TestRunItemAttachmentService(
         return name.Length <= 255 ? name : name[..255];
     }
 
-    private sealed record RunItemAccess(string RunStatus);
+    private sealed record RunItemAccess(TestRunStatus RunStatus);
 }

@@ -102,8 +102,8 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
             .HasColumnName("status")
             .HasMaxLength(50)
             .HasConversion(
-                value => value.ToString().ToLowerInvariant(),
-                value => Enum.Parse<ProjectStatus>(value, true));
+                value => value.ToCode(),
+                value => ProjectManagementCodes.ParseProjectStatus(value));
         project.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
         project.HasIndex(x => x.CreatedByAccountId)
             .HasDatabaseName("idx_projects_created_by_account_id");
@@ -228,7 +228,12 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         member.Property(x => x.Id).HasColumnName("id");
         member.Property(x => x.ProjectId).HasColumnName("project_id");
         member.Property(x => x.AccountId).HasColumnName("account_id");
-        member.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        member.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => ProjectManagementCodes.ParseProjectMemberStatus(value));
         member.Property(x => x.JoinedAt).HasColumnName("joined_at");
         member.Property(x => x.RemovedAt).HasColumnName("removed_at");
         member.Property(x => x.CreatedAt).HasColumnName("created_at");

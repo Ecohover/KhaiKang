@@ -17,7 +17,7 @@ public sealed class TestWorkspaceTests
 
         Assert.Equal("Quality", workspace.Name);
         Assert.Equal("QA", workspace.Prefix);
-        Assert.Equal("active", workspace.Status);
+        Assert.Equal(TestAssetStatus.Active, workspace.Status);
         Assert.Equal(actorId, workspace.CreatedByAccountId);
         Assert.Equal(actorId, workspace.UpdatedByAccountId);
         Assert.Equal(1, workspace.Version);
@@ -30,11 +30,16 @@ public sealed class TestWorkspaceTests
         var actorId = Guid.NewGuid();
         var updatedAt = CreatedAt.AddHours(1);
 
-        workspace.Update("Updated quality", "Updated", "inactive", actorId, updatedAt);
+        workspace.Update(
+            "Updated quality",
+            "Updated",
+            TestAssetStatus.Inactive,
+            actorId,
+            updatedAt);
 
         Assert.Equal("Updated quality", workspace.Name);
         Assert.Equal("Updated", workspace.Description);
-        Assert.Equal("inactive", workspace.Status);
+        Assert.Equal(TestAssetStatus.Inactive, workspace.Status);
         Assert.Equal("QA", workspace.Prefix);
         Assert.Equal(actorId, workspace.UpdatedByAccountId);
         Assert.Equal(updatedAt, workspace.UpdatedAt);

@@ -21,7 +21,7 @@ public sealed class TestRunItemTests
         Assert.Equal("Original description", item.CaseDescription);
         Assert.Equal("Original preconditions", item.Preconditions);
         Assert.Equal("Original expected result", item.OverallExpectedResult);
-        Assert.Equal("not_run", item.ResultStatus);
+        Assert.Equal(TestResultStatus.NotRun, item.ResultStatus);
         Assert.Null(item.ExecutedAt);
         Assert.Equal(1, item.Version);
     }
@@ -40,7 +40,7 @@ public sealed class TestRunItemTests
             "Changed preconditions",
             "Changed expected result",
             2,
-            "active",
+            TestAssetStatus.Active,
             Guid.NewGuid(),
             CreatedAt.AddHours(1));
 
@@ -57,9 +57,9 @@ public sealed class TestRunItemTests
         var actorId = Guid.NewGuid();
         var executedAt = CreatedAt.AddMinutes(15);
 
-        item.Record("failed", "Observed error", actorId, executedAt);
+        item.Record(TestResultStatus.Failed, "Observed error", actorId, executedAt);
 
-        Assert.Equal("failed", item.ResultStatus);
+        Assert.Equal(TestResultStatus.Failed, item.ResultStatus);
         Assert.Equal("Observed error", item.ActualResult);
         Assert.Equal(actorId, item.ExecutedByAccountId);
         Assert.Equal(executedAt, item.ExecutedAt);
@@ -71,12 +71,16 @@ public sealed class TestRunItemTests
     public void Record_NotRunClearsExecutionMetadata()
     {
         var item = CreateRunItem();
-        item.Record("passed", "Passed", Guid.NewGuid(), CreatedAt.AddMinutes(10));
+        item.Record(
+            TestResultStatus.Passed,
+            "Passed",
+            Guid.NewGuid(),
+            CreatedAt.AddMinutes(10));
         var actorId = Guid.NewGuid();
 
-        item.Record("not_run", null, actorId, CreatedAt.AddMinutes(20));
+        item.Record(TestResultStatus.NotRun, null, actorId, CreatedAt.AddMinutes(20));
 
-        Assert.Equal("not_run", item.ResultStatus);
+        Assert.Equal(TestResultStatus.NotRun, item.ResultStatus);
         Assert.Null(item.ActualResult);
         Assert.Null(item.ExecutedByAccountId);
         Assert.Null(item.ExecutedAt);

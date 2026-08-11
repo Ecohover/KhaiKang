@@ -18,7 +18,7 @@ public sealed class TestRunItemStepResultTests
         Assert.Equal(2, result.StepNo);
         Assert.Equal("Perform action", result.Action);
         Assert.Equal("Expected outcome", result.ExpectedResult);
-        Assert.Equal("not_run", result.ResultStatus);
+        Assert.Equal(TestResultStatus.NotRun, result.ResultStatus);
         Assert.Null(result.ExecutedByAccountId);
         Assert.Null(result.ExecutedAt);
         Assert.Equal(1, result.Version);
@@ -31,9 +31,9 @@ public sealed class TestRunItemStepResultTests
         var actorId = Guid.NewGuid();
         var executedAt = CreatedAt.AddMinutes(5);
 
-        result.Record("passed", "Observed outcome", actorId, executedAt);
+        result.Record(TestResultStatus.Passed, "Observed outcome", actorId, executedAt);
 
-        Assert.Equal("passed", result.ResultStatus);
+        Assert.Equal(TestResultStatus.Passed, result.ResultStatus);
         Assert.Equal("Observed outcome", result.ActualResult);
         Assert.Equal(actorId, result.ExecutedByAccountId);
         Assert.Equal(executedAt, result.ExecutedAt);
@@ -45,11 +45,19 @@ public sealed class TestRunItemStepResultTests
     public void Record_NotRunClearsExecutionMetadata()
     {
         var result = CreateResult();
-        result.Record("failed", "Failure", Guid.NewGuid(), CreatedAt.AddMinutes(5));
+        result.Record(
+            TestResultStatus.Failed,
+            "Failure",
+            Guid.NewGuid(),
+            CreatedAt.AddMinutes(5));
 
-        result.Record("not_run", null, Guid.NewGuid(), CreatedAt.AddMinutes(10));
+        result.Record(
+            TestResultStatus.NotRun,
+            null,
+            Guid.NewGuid(),
+            CreatedAt.AddMinutes(10));
 
-        Assert.Equal("not_run", result.ResultStatus);
+        Assert.Equal(TestResultStatus.NotRun, result.ResultStatus);
         Assert.Null(result.ActualResult);
         Assert.Null(result.ExecutedByAccountId);
         Assert.Null(result.ExecutedAt);

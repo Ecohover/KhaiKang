@@ -71,6 +71,13 @@ KhaiKang.CommonUtils.Web
 - Public collections expose `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, or `IEnumerable<T>` when callers should not mutate them.
 - Consider `sealed` for classes that are not extension points, while allowing inheritance where EF Core or testing genuinely needs it.
 - Primary constructors are allowed but not mandatory. Readability and explicit dependencies take precedence.
+- Model a closed set of domain states, types, roles, or results with an enum or value object. Do not pass unvalidated string values through Domain or Application code.
+- Prefer code that reads in domain language and exposes its decisions in order. Shorter syntax, deeply nested expressions, and clever language features are not improvements when they make the business flow harder to follow.
+- New public Domain and Application APIs MUST normally accept no more than three parameters. Existing long parameter lists are tracked refactoring debt. Framework-mandated or necessary exceptions require a pull-request explanation, and lasting exceptions require an ADR.
+- Group ambiguous same-type primitives, strings, GUIDs, or timestamps into an immutable, domain-named Parameter Object, Value Object, or Strongly Typed ID. Do not create an invariant-free, generic parameter bag merely to satisfy the parameter-count rule.
+- Creation and modification use distinct intention-revealing types, such as `IssueCreation` and `IssueDetailsChange`. An HTTP request DTO does not double as a Domain Parameter Object.
+- When multiple entities genuinely share one audit lifecycle, a single shallow `AuditableEntity` base may own `CreatedAt`, `CreatedByAccountId`, `UpdatedAt`, `UpdatedByAccountId`, `Version`, and their consistent initialization/change behavior. Do not introduce a deep entity hierarchy for structural uniformity.
+- Business lifecycle fields are not generic audit metadata. For example, `CompletedAt` remains on `Issue`; a shared base MUST NOT absorb feature-specific state or rules.
 - Write XML documentation in English for public extension points, library APIs, and contracts whose behavior is not clear from their names. Do not restate every public member.
 - Do not introduce abstractions, base services, or helpers merely to reduce line count.
 
@@ -131,6 +138,9 @@ KhaiKang.CommonUtils.Web
 
 - PostgreSQL is the system of record and EF Core is the default data-access technology.
 - Start with an explicit `DbContext` and feature queries/use cases. Do not add a generic repository or unit-of-work wrapper by default.
+- Persist a closed enum or value-object set as a stable English code, never as its numeric enum value or localized display text. Conversion belongs at the persistence and transport boundaries. Renaming a persisted code is a data-contract change and requires an explicit migration or compatibility plan.
+- A database-managed classification table keeps a stable English `code` separate from its user-facing `name`. Business rows reference the classification key; APIs expose the stable code where clients need machine-readable identity.
+- Keep EF Core queries explicit and readable. A collection use case SHOULD make normalization, filtering, ordering, counting, paging, projection, and execution visible in that order. Extract feature-local, intention-revealing methods when a predicate or ordering rule obscures the main flow; do not hide ordinary EF behavior behind a generic query-options abstraction.
 - A feature module owns its entities and EF Core configuration. Other modules do not modify its tables directly.
 - Schema changes require migrations. Production startup MUST NOT substitute `EnsureCreated` for migrations.
 - Before merging a feature branch, keep only one unpublished final migration per affected `DbContext`. Multiple migrations for one context require a documented exception such as an already-deployed migration, staged data movement, or an operationally phased rollout.
@@ -159,6 +169,8 @@ KhaiKang.CommonUtils.Web
 - Tests do not depend on execution order, arbitrary sleeps, developer-machine data, or pre-existing external services.
 - Separate Arrange, Act, and Assert with whitespace when it improves readability; do not add comments that only restate code.
 - New features cover the success path, material validation, authorization, and important conflict/not-found contracts.
+- Before an incremental refactor, add characterization tests for observable behavior, business invariants, audit metadata, and optimistic-concurrency version changes.
+- An explicit allowlist may baseline unresolved architecture debt in a fitness test. The allowlist records existing debt only, MUST NOT grow for new code, and removes an entry whenever that debt is refactored.
 
 ## Dependency Governance
 

@@ -21,7 +21,7 @@ public sealed class ProjectMemberTests
 
         member.Remove(removeActorId, removedAt);
 
-        Assert.Equal("removed", member.Status);
+        Assert.Equal(ProjectMemberStatus.Removed, member.Status);
         Assert.Equal(removedAt, member.RemovedAt);
         Assert.Equal(removeActorId, member.UpdatedByAccountId);
         Assert.Equal(2, member.Version);
@@ -30,7 +30,7 @@ public sealed class ProjectMemberTests
         var restoredAt = JoinedAt.AddDays(2);
         member.Restore(restoreActorId, restoredAt);
 
-        Assert.Equal("active", member.Status);
+        Assert.Equal(ProjectMemberStatus.Active, member.Status);
         Assert.Null(member.RemovedAt);
         Assert.Equal(restoredAt, member.JoinedAt);
         Assert.Equal(restoreActorId, member.UpdatedByAccountId);

@@ -1,4 +1,5 @@
 using KhaiKang.Modules.ProjectManagement.Contracts;
+using KhaiKang.Modules.ProjectManagement.Domain;
 using KhaiKang.Modules.TestManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Domain;
 using KhaiKang.Modules.TestManagement.Infrastructure;
@@ -50,14 +51,15 @@ public sealed class TestCaseRequirementLinkService(
         var access = await dbContext.Members.Include(item => item.Workspace).SingleOrDefaultAsync(
             item => item.TestWorkspaceId == workspaceId &&
                 item.AccountId == accountId &&
-                item.Status == "active",
+                item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
         if (access is null || !await CaseExistsAsync(workspaceId, caseId, cancellationToken))
         {
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (access.Role is not ("owner" or "manager") || access.Workspace.Status != "active")
+        if (access.Role is not (TestWorkspaceRole.Owner or TestWorkspaceRole.Manager) ||
+            access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -69,7 +71,7 @@ public sealed class TestCaseRequirementLinkService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (issue.ProjectStatus != "active")
+        if (issue.ProjectStatus != ProjectStatus.Active)
         {
             return new(TestManagementOutcome.Conflict, Code: "project_not_active");
         }
@@ -117,14 +119,15 @@ public sealed class TestCaseRequirementLinkService(
         var access = await dbContext.Members.Include(item => item.Workspace).SingleOrDefaultAsync(
             item => item.TestWorkspaceId == workspaceId &&
                 item.AccountId == accountId &&
-                item.Status == "active",
+                item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
         if (access is null)
         {
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (access.Role is not ("owner" or "manager") || access.Workspace.Status != "active")
+        if (access.Role is not (TestWorkspaceRole.Owner or TestWorkspaceRole.Manager) ||
+            access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -166,7 +169,7 @@ public sealed class TestCaseRequirementLinkService(
         dbContext.Members.AnyAsync(
             item => item.TestWorkspaceId == workspaceId &&
                 item.AccountId == accountId &&
-                item.Status == "active",
+                item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<bool> CaseExistsAsync(

@@ -13,10 +13,15 @@ public sealed class TestWorkspaceMemberTests
         var actorId = Guid.NewGuid();
 
         var member = new TestWorkspaceMember(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "tester", actorId, JoinedAt);
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            TestWorkspaceRole.Tester,
+            actorId,
+            JoinedAt);
 
-        Assert.Equal("tester", member.Role);
-        Assert.Equal("active", member.Status);
+        Assert.Equal(TestWorkspaceRole.Tester, member.Role);
+        Assert.Equal(TestWorkspaceMemberStatus.Active, member.Status);
         Assert.Equal(JoinedAt, member.JoinedAt);
         Assert.Null(member.RemovedAt);
         Assert.Equal(actorId, member.CreatedByAccountId);
@@ -30,9 +35,9 @@ public sealed class TestWorkspaceMemberTests
         var actorId = Guid.NewGuid();
         var changedAt = JoinedAt.AddHours(1);
 
-        member.ChangeRole("manager", actorId, changedAt);
+        member.ChangeRole(TestWorkspaceRole.Manager, actorId, changedAt);
 
-        Assert.Equal("manager", member.Role);
+        Assert.Equal(TestWorkspaceRole.Manager, member.Role);
         Assert.Equal(actorId, member.UpdatedByAccountId);
         Assert.Equal(changedAt, member.UpdatedAt);
         Assert.Equal(2, member.Version);
@@ -47,17 +52,17 @@ public sealed class TestWorkspaceMemberTests
 
         member.Remove(removeActorId, removedAt);
 
-        Assert.Equal("removed", member.Status);
+        Assert.Equal(TestWorkspaceMemberStatus.Removed, member.Status);
         Assert.Equal(removedAt, member.RemovedAt);
         Assert.Equal(removeActorId, member.UpdatedByAccountId);
         Assert.Equal(2, member.Version);
 
         var restoreActorId = Guid.NewGuid();
         var restoredAt = JoinedAt.AddHours(2);
-        member.Restore("viewer", restoreActorId, restoredAt);
+        member.Restore(TestWorkspaceRole.Viewer, restoreActorId, restoredAt);
 
-        Assert.Equal("active", member.Status);
-        Assert.Equal("viewer", member.Role);
+        Assert.Equal(TestWorkspaceMemberStatus.Active, member.Status);
+        Assert.Equal(TestWorkspaceRole.Viewer, member.Role);
         Assert.Null(member.RemovedAt);
         Assert.Equal(restoreActorId, member.UpdatedByAccountId);
         Assert.Equal(restoredAt, member.UpdatedAt);
@@ -70,7 +75,7 @@ public sealed class TestWorkspaceMemberTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
-            "tester",
+            TestWorkspaceRole.Tester,
             Guid.NewGuid(),
             JoinedAt);
     }

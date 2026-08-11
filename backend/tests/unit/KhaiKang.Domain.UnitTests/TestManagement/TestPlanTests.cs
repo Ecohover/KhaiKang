@@ -25,7 +25,7 @@ public sealed class TestPlanTests
             projectId,
             issueId);
 
-        Assert.Equal("draft", plan.Status);
+        Assert.Equal(TestPlanStatus.Draft, plan.Status);
         Assert.Equal(projectId, plan.TestIssueProjectId);
         Assert.Equal(issueId, plan.TestIssueId);
         Assert.Equal(actorId, plan.CreatedByAccountId);
@@ -45,7 +45,7 @@ public sealed class TestPlanTests
         plan.Update(
             "Updated plan",
             "Updated scope",
-            "active",
+            TestPlanStatus.Active,
             actorId,
             updatedAt,
             replacementProjectId,
@@ -53,7 +53,7 @@ public sealed class TestPlanTests
 
         Assert.Equal("Updated plan", plan.Name);
         Assert.Equal("Updated scope", plan.Description);
-        Assert.Equal("active", plan.Status);
+        Assert.Equal(TestPlanStatus.Active, plan.Status);
         Assert.Equal(replacementProjectId, plan.TestIssueProjectId);
         Assert.Equal(replacementIssueId, plan.TestIssueId);
         Assert.Equal(actorId, plan.UpdatedByAccountId);

@@ -31,7 +31,7 @@ public sealed class ProjectMember
 
     public Guid AccountId { get; private set; }
 
-    public string Status { get; private set; } = "active";
+    public ProjectMemberStatus Status { get; private set; } = ProjectMemberStatus.Active;
 
     public DateTimeOffset JoinedAt { get; private set; }
 
@@ -51,7 +51,7 @@ public sealed class ProjectMember
 
     public void Restore(Guid actorAccountId, DateTimeOffset occurredAt)
     {
-        Status = "active";
+        Status = ProjectMemberStatus.Active;
         JoinedAt = occurredAt;
         RemovedAt = null;
         UpdatedAt = occurredAt;
@@ -61,7 +61,7 @@ public sealed class ProjectMember
 
     public void Remove(Guid actorAccountId, DateTimeOffset occurredAt)
     {
-        Status = "removed";
+        Status = ProjectMemberStatus.Removed;
         RemovedAt = occurredAt;
         UpdatedAt = occurredAt;
         UpdatedByAccountId = actorAccountId;

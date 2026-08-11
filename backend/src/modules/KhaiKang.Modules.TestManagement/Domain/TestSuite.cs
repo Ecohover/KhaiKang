@@ -30,7 +30,7 @@ public sealed class TestSuite
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public int SortOrder { get; private set; }
-    public string Status { get; private set; } = "active";
+    public TestAssetStatus Status { get; private set; } = TestAssetStatus.Active;
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedByAccountId { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -43,7 +43,7 @@ public sealed class TestSuite
         string name,
         string? description,
         int sortOrder,
-        string status,
+        TestAssetStatus status,
         Guid actorId,
         DateTimeOffset now)
     {

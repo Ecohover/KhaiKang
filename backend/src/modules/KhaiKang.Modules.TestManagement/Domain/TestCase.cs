@@ -26,7 +26,7 @@ public sealed class TestCase
         Preconditions = preconditions;
         OverallExpectedResult = overallExpectedResult;
         SortOrder = sortOrder;
-        Status = "active";
+        Status = TestAssetStatus.Active;
         CreatedAt = UpdatedAt = now;
         CreatedByAccountId = UpdatedByAccountId = actorId;
         Version = 1;
@@ -41,7 +41,7 @@ public sealed class TestCase
     public string? Preconditions { get; private set; }
     public string? OverallExpectedResult { get; private set; }
     public int SortOrder { get; private set; }
-    public string Status { get; private set; } = null!;
+    public TestAssetStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedByAccountId { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -68,7 +68,7 @@ public sealed class TestCase
         string? preconditions,
         string? overallExpectedResult,
         int sortOrder,
-        string status,
+        TestAssetStatus status,
         Guid actorId,
         DateTimeOffset now)
     {

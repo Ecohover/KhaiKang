@@ -50,8 +50,10 @@ public sealed class TestCaseAttachmentService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestCaseAttachmentOutcome.NotFound);
-        if (access.Role is not ("owner" or "manager")) return new(TestCaseAttachmentOutcome.Forbidden);
-        if (access.Workspace.Status != "active") return new(TestCaseAttachmentOutcome.WorkspaceInactive);
+        if (access.Role is not (TestWorkspaceRole.Owner or TestWorkspaceRole.Manager))
+            return new(TestCaseAttachmentOutcome.Forbidden);
+        if (access.Workspace.Status != TestAssetStatus.Active)
+            return new(TestCaseAttachmentOutcome.WorkspaceInactive);
         if (!await CaseExistsAsync(workspaceId, caseId, cancellationToken)) return new(TestCaseAttachmentOutcome.NotFound);
         if (fileSize <= 0 || string.IsNullOrWhiteSpace(fileName)) return new(TestCaseAttachmentOutcome.InvalidFile);
         if (fileSize > options.MaxFileSizeBytes) return new(TestCaseAttachmentOutcome.FileTooLarge);
@@ -124,8 +126,10 @@ public sealed class TestCaseAttachmentService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestCaseAttachmentOutcome.NotFound);
-        if (access.Role is not ("owner" or "manager")) return new(TestCaseAttachmentOutcome.Forbidden);
-        if (access.Workspace.Status != "active") return new(TestCaseAttachmentOutcome.WorkspaceInactive);
+        if (access.Role is not (TestWorkspaceRole.Owner or TestWorkspaceRole.Manager))
+            return new(TestCaseAttachmentOutcome.Forbidden);
+        if (access.Workspace.Status != TestAssetStatus.Active)
+            return new(TestCaseAttachmentOutcome.WorkspaceInactive);
 
         var attachment = await dbContext.CaseAttachments.SingleOrDefaultAsync(item =>
             item.Id == attachmentId && item.TestCaseId == caseId &&
@@ -142,12 +146,14 @@ public sealed class TestCaseAttachmentService(
         Guid accountId,
         CancellationToken cancellationToken) =>
         dbContext.Members.Include(item => item.Workspace).SingleOrDefaultAsync(item =>
-            item.TestWorkspaceId == workspaceId && item.AccountId == accountId && item.Status == "active",
+            item.TestWorkspaceId == workspaceId && item.AccountId == accountId &&
+            item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<bool> HasAccessAsync(Guid workspaceId, Guid accountId, CancellationToken cancellationToken) =>
         dbContext.Members.AnyAsync(item =>
-            item.TestWorkspaceId == workspaceId && item.AccountId == accountId && item.Status == "active",
+            item.TestWorkspaceId == workspaceId && item.AccountId == accountId &&
+            item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<bool> CaseExistsAsync(Guid workspaceId, Guid caseId, CancellationToken cancellationToken) =>

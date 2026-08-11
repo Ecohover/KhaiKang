@@ -25,7 +25,7 @@ public sealed class ProjectManagementService(
             .ThenInclude(permission => permission.Permission)
             .Where(member =>
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(role => role.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == ProjectManagementConstants.ProjectReadPermission)))
             .OrderBy(member => member.Project.Name)
@@ -50,7 +50,7 @@ public sealed class ProjectManagementService(
             .Where(member =>
                 member.ProjectId == projectId &&
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(role => role.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == ProjectManagementConstants.ProjectReadPermission)))
             .SingleOrDefaultAsync(cancellationToken);
@@ -139,7 +139,7 @@ public sealed class ProjectManagementService(
                 member =>
                     member.ProjectId == projectId &&
                     member.AccountId == accountId &&
-                    member.Status == "active",
+                    member.Status == ProjectMemberStatus.Active,
                 cancellationToken);
         if (membership is null)
         {
@@ -243,7 +243,7 @@ public sealed class ProjectManagementService(
             .AsSplitQuery()
             .Include(member => member.Roles)
             .ThenInclude(mapping => mapping.ProjectRole)
-            .Where(member => member.ProjectId == projectId && member.Status == "active")
+            .Where(member => member.ProjectId == projectId && member.Status == ProjectMemberStatus.Active)
             .ToArrayAsync(cancellationToken);
         var accounts = await accountDirectory.GetByIdsAsync(
             members.Select(member => member.AccountId).ToArray(),
@@ -296,7 +296,7 @@ public sealed class ProjectManagementService(
             .SingleOrDefaultAsync(
                 item => item.ProjectId == projectId && item.AccountId == account.Id,
                 cancellationToken);
-        if (member?.Status == "active")
+        if (member?.Status == ProjectMemberStatus.Active)
         {
             return new(ProjectMemberMutationOutcome.AlreadyMember);
         }
@@ -360,7 +360,7 @@ public sealed class ProjectManagementService(
             .SingleOrDefaultAsync(
                 item => item.Id == memberId &&
                     item.ProjectId == projectId &&
-                    item.Status == "active",
+                    item.Status == ProjectMemberStatus.Active,
                 cancellationToken);
         if (member is null)
         {
@@ -436,7 +436,7 @@ public sealed class ProjectManagementService(
             .SingleOrDefaultAsync(
                 item => item.Id == memberId &&
                     item.ProjectId == projectId &&
-                    item.Status == "active",
+                    item.Status == ProjectMemberStatus.Active,
                 cancellationToken);
         if (member is null)
         {
@@ -490,7 +490,7 @@ public sealed class ProjectManagementService(
             .SingleOrDefaultAsync(
                 member => member.ProjectId == projectId &&
                     member.AccountId == accountId &&
-                    member.Status == "active",
+                    member.Status == ProjectMemberStatus.Active,
                 cancellationToken);
     }
 
@@ -503,7 +503,7 @@ public sealed class ProjectManagementService(
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode)),
             cancellationToken);
@@ -544,7 +544,7 @@ public sealed class ProjectManagementService(
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
                 member.Id != excludedMemberId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping =>
                     mapping.ProjectRole.Code == ProjectManagementConstants.OwnerRoleCode),
             cancellationToken);
@@ -580,7 +580,7 @@ public sealed class ProjectManagementService(
             member.Id,
             member.AccountId,
             username,
-            member.Status,
+            member.Status.ToCode(),
             roleCodes.ToArray(),
             member.JoinedAt,
             member.Version);

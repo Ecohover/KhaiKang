@@ -47,7 +47,7 @@ public sealed class IssueDirectory(ProjectManagementDbContext dbContext) : IIssu
                 issue.Id,
                 issue.ProjectId,
                 issue.Project.Code,
-                issue.Project.Status == ProjectStatus.Active ? "active" : "inactive",
+                issue.Project.Status,
                 issue.IssueNo,
                 issue.Project.Code + "-" + issue.IssueNo,
                 issue.Title,
@@ -68,7 +68,7 @@ public sealed class IssueDirectory(ProjectManagementDbContext dbContext) : IIssu
                 issue.Id,
                 issue.ProjectId,
                 issue.Project.Code,
-                issue.Project.Status == ProjectStatus.Active ? "active" : "inactive",
+                issue.Project.Status,
                 issue.IssueNo,
                 issue.Project.Code + "-" + issue.IssueNo,
                 issue.Title,
@@ -83,7 +83,7 @@ public sealed class IssueDirectory(ProjectManagementDbContext dbContext) : IIssu
             dbContext.ProjectMembers.Any(member =>
                 member.ProjectId == issue.ProjectId &&
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode))));
     }

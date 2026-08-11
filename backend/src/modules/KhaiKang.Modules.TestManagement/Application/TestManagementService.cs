@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.ProjectManagement.Contracts;
+using KhaiKang.Modules.ProjectManagement.Domain;
 using KhaiKang.Modules.TestManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Domain;
 using KhaiKang.Modules.TestManagement.Infrastructure;
@@ -30,11 +31,14 @@ public sealed class TestManagementService(
     IIssueDirectory issueDirectory,
     TimeProvider timeProvider)
 {
-    private static readonly string[] Roles = ["owner", "manager", "tester", "viewer"];
-
     public async Task<IReadOnlyList<TestTagResponse>> ListTagsAsync(CancellationToken cancellationToken) =>
         await dbContext.Tags.AsNoTracking().OrderBy(x => x.Name)
-            .Select(x => new TestTagResponse(x.Id, x.Name, x.Description, x.Status, x.Version))
+            .Select(x => new TestTagResponse(
+                x.Id,
+                x.Name,
+                x.Description,
+                x.Status.ToCode(),
+                x.Version))
             .ToListAsync(cancellationToken);
 
     public async Task<TestManagementResult<TestTagResponse>> CreateTagAsync(
@@ -58,7 +62,12 @@ public sealed class TestManagementService(
         var name = request.Name.Trim();
         if (await dbContext.Tags.AnyAsync(x => x.Id != tagId && x.Name.ToUpper() == name.ToUpper(), cancellationToken))
             return new(TestManagementOutcome.Conflict, Code: "test_tag_name_conflict");
-        tag.Update(name, Clean(request.Description), request.Status, accountId, timeProvider.GetUtcNow());
+        if (!TestManagementCodes.TryParseAssetStatus(request.Status, out var status))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_tag_status_invalid");
+        }
+
+        tag.Update(name, Clean(request.Description), status, accountId, timeProvider.GetUtcNow());
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToTagResponse(tag));
     }
@@ -68,7 +77,8 @@ public sealed class TestManagementService(
         CancellationToken cancellationToken)
     {
         return await dbContext.Members.AsNoTracking()
-            .Where(x => x.AccountId == accountId && x.Status == "active")
+            .Where(x => x.AccountId == accountId &&
+                x.Status == TestWorkspaceMemberStatus.Active)
             .OrderBy(x => x.Workspace.Name)
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
             .ToListAsync(cancellationToken);
@@ -81,7 +91,8 @@ public sealed class TestManagementService(
     {
         return await dbContext.Members.AsNoTracking()
             .Where(x => x.TestWorkspaceId == workspaceId &&
-                x.AccountId == accountId && x.Status == "active")
+                x.AccountId == accountId &&
+                x.Status == TestWorkspaceMemberStatus.Active)
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
             .SingleOrDefaultAsync(cancellationToken);
     }
@@ -123,7 +134,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        if (!CanManage(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -135,7 +146,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (project.Status != "active")
+        if (project.Status != ProjectStatus.Active)
         {
             return new(TestManagementOutcome.Conflict, Code: "project_not_active");
         }
@@ -181,7 +192,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManage(access.Role) || access.Workspace.Status != "active")
+        if (!CanManage(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -261,7 +272,7 @@ public sealed class TestManagementService(
         var workspace = new TestWorkspace(
             Guid.NewGuid(), name, prefix, Clean(request.Description), accountId, now);
         var owner = new TestWorkspaceMember(
-            Guid.NewGuid(), workspace.Id, accountId, "owner", accountId, now);
+            Guid.NewGuid(), workspace.Id, accountId, TestWorkspaceRole.Owner, accountId, now);
         dbContext.AddRange(workspace, owner);
         try
         {
@@ -275,7 +286,9 @@ public sealed class TestManagementService(
         {
             return new(TestManagementOutcome.Conflict, Code: "workspace_prefix_conflict");
         }
-        return new(TestManagementOutcome.Succeeded, ToWorkspaceResponse(workspace, "owner"));
+        return new(
+            TestManagementOutcome.Succeeded,
+            ToWorkspaceResponse(workspace, TestWorkspaceRole.Owner));
     }
 
     public async Task<TestManagementResult<TestWorkspaceResponse>> UpdateWorkspaceAsync(
@@ -290,7 +303,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (access.Role != "owner")
+        if (access.Role != TestWorkspaceRole.Owner)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -308,7 +321,12 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "workspace_name_conflict");
         }
 
-        workspace.Update(name, Clean(request.Description), request.Status, accountId, timeProvider.GetUtcNow());
+        if (!TestManagementCodes.TryParseAssetStatus(request.Status, out var status))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "workspace_status_invalid");
+        }
+
+        workspace.Update(name, Clean(request.Description), status, accountId, timeProvider.GetUtcNow());
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToWorkspaceResponse(workspace, access.Role));
     }
@@ -324,7 +342,8 @@ public sealed class TestManagementService(
         }
 
         var members = await dbContext.Members.AsNoTracking()
-            .Where(x => x.TestWorkspaceId == workspaceId && x.Status == "active")
+            .Where(x => x.TestWorkspaceId == workspaceId &&
+                x.Status == TestWorkspaceMemberStatus.Active)
             .OrderBy(x => x.JoinedAt).ToListAsync(cancellationToken);
         var accounts = await accountDirectory.GetByIdsAsync(
             members.Select(x => x.AccountId).ToArray(), cancellationToken);
@@ -332,7 +351,7 @@ public sealed class TestManagementService(
             new TestWorkspaceMemberResponse(
                 x.Id, x.AccountId,
                 accounts.GetValueOrDefault(x.AccountId)?.Username ?? x.AccountId.ToString(),
-                x.Role, x.Status, x.JoinedAt, x.Version)).ToArray());
+                 x.Role.ToCode(), x.Status.ToCode(), x.JoinedAt, x.Version)).ToArray());
     }
 
     public async Task<TestManagementResult<TestWorkspaceMemberResponse>> AddMemberAsync(
@@ -347,9 +366,10 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManage(access.Role) || !Roles.Contains(request.Role))
+        var hasValidRole = TestManagementCodes.TryParseWorkspaceRole(request.Role, out var role);
+        if (!CanManage(access.Role) || !hasValidRole)
         {
-            return new(access.Role is "owner" or "manager"
+            return new(access.Role is TestWorkspaceRole.Owner or TestWorkspaceRole.Manager
                 ? TestManagementOutcome.Invalid : TestManagementOutcome.Forbidden);
         }
 
@@ -364,7 +384,7 @@ public sealed class TestManagementService(
             x => x.TestWorkspaceId == workspaceId && x.AccountId == account.Id,
             cancellationToken);
         var now = timeProvider.GetUtcNow();
-        if (member?.Status == "active")
+        if (member?.Status == TestWorkspaceMemberStatus.Active)
         {
             return new(TestManagementOutcome.Conflict, Code: "member_already_active");
         }
@@ -372,18 +392,18 @@ public sealed class TestManagementService(
         if (member is null)
         {
             member = new TestWorkspaceMember(
-                Guid.NewGuid(), workspaceId, account.Id, request.Role, accountId, now);
+                Guid.NewGuid(), workspaceId, account.Id, role, accountId, now);
             dbContext.Members.Add(member);
         }
         else
         {
-            member.Restore(request.Role, accountId, now);
+            member.Restore(role, accountId, now);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, new(
-            member.Id, member.AccountId, account.Username, member.Role,
-            member.Status, member.JoinedAt, member.Version));
+            member.Id, member.AccountId, account.Username, member.Role.ToCode(),
+            member.Status.ToCode(), member.JoinedAt, member.Version));
     }
 
     public async Task<TestManagementResult<TestWorkspaceMemberResponse>> UpdateMemberAsync(
@@ -405,14 +425,15 @@ public sealed class TestManagementService(
         }
 
         var member = await dbContext.Members.SingleOrDefaultAsync(
-            x => x.Id == memberId && x.TestWorkspaceId == workspaceId && x.Status == "active",
+            x => x.Id == memberId && x.TestWorkspaceId == workspaceId &&
+                x.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
         if (member is null)
         {
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!Roles.Contains(request.Role))
+        if (!TestManagementCodes.TryParseWorkspaceRole(request.Role, out var role))
         {
             return new(TestManagementOutcome.Invalid);
         }
@@ -422,19 +443,19 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "member_version_conflict");
         }
 
-        if (member.Role == "owner" && request.Role != "owner" &&
+        if (member.Role == TestWorkspaceRole.Owner && role != TestWorkspaceRole.Owner &&
             await ActiveOwnerCountAsync(workspaceId, cancellationToken) <= 1)
         {
             return new(TestManagementOutcome.Conflict, Code: "last_owner");
         }
 
-        member.ChangeRole(request.Role, accountId, timeProvider.GetUtcNow());
+        member.ChangeRole(role, accountId, timeProvider.GetUtcNow());
         await dbContext.SaveChangesAsync(cancellationToken);
         var accounts = await accountDirectory.GetByIdsAsync([member.AccountId], cancellationToken);
         return new(TestManagementOutcome.Succeeded, new(
             member.Id, member.AccountId,
             accounts.GetValueOrDefault(member.AccountId)?.Username ?? member.AccountId.ToString(),
-            member.Role, member.Status, member.JoinedAt, member.Version));
+            member.Role.ToCode(), member.Status.ToCode(), member.JoinedAt, member.Version));
     }
 
     public async Task<TestManagementResult<object>> RemoveMemberAsync(
@@ -456,7 +477,8 @@ public sealed class TestManagementService(
         }
 
         var member = await dbContext.Members.SingleOrDefaultAsync(
-            x => x.Id == memberId && x.TestWorkspaceId == workspaceId && x.Status == "active",
+            x => x.Id == memberId && x.TestWorkspaceId == workspaceId &&
+                x.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
         if (member is null)
         {
@@ -468,7 +490,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "member_version_conflict");
         }
 
-        if (member.Role == "owner" &&
+        if (member.Role == TestWorkspaceRole.Owner &&
             await ActiveOwnerCountAsync(workspaceId, cancellationToken) <= 1)
         {
             return new(TestManagementOutcome.Conflict, Code: "last_owner");
@@ -507,7 +529,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -544,7 +566,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -586,9 +608,14 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "suite_name_conflict");
         }
 
+        if (!TestManagementCodes.TryParseAssetStatus(request.Status, out var status))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_suite_status_invalid");
+        }
+
         suite.Update(
             request.ParentId, request.Name.Trim(), Clean(request.Description),
-            request.SortOrder, request.Status, accountId, timeProvider.GetUtcNow());
+            request.SortOrder, status, accountId, timeProvider.GetUtcNow());
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(TestManagementOutcome.Succeeded, ToSuiteResponse(suite, parentDepth.Value + 1));
     }
@@ -618,9 +645,9 @@ public sealed class TestManagementService(
             var term = search.Trim();
             query = query.Where(x => x.Title.Contains(term));
         }
-        if (status is "active" or "inactive")
+        if (TestManagementCodes.TryParseAssetStatus(status, out var caseStatus))
         {
-            query = query.Where(x => x.Status == status);
+            query = query.Where(x => x.Status == caseStatus);
         }
         if (tagId is not null)
         {
@@ -648,7 +675,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -656,7 +683,7 @@ public sealed class TestManagementService(
         var suite = await dbContext.Suites.AsNoTracking().SingleOrDefaultAsync(
             x => x.Id == request.SuiteId && x.TestWorkspaceId == workspaceId,
             cancellationToken);
-        if (suite is null || suite.Status != "active")
+        if (suite is null || suite.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.NotFound, Code: "test_suite_not_found");
         }
@@ -670,7 +697,7 @@ public sealed class TestManagementService(
             Guid.NewGuid(),
             workspaceId,
             suite.Id,
-            await NextNumberAsync("case", workspaceId, cancellationToken),
+            await NextNumberAsync(TestNumberType.Case, workspaceId, cancellationToken),
             request.Title.Trim(),
             Clean(request.Description),
             Clean(request.Preconditions),
@@ -739,7 +766,7 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -761,7 +788,7 @@ public sealed class TestManagementService(
         var targetSuite = await dbContext.Suites.AsNoTracking().SingleOrDefaultAsync(
             x => x.Id == request.SuiteId && x.TestWorkspaceId == workspaceId,
             cancellationToken);
-        if (targetSuite is null || targetSuite.Status != "active")
+        if (targetSuite is null || targetSuite.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Conflict, Code: "test_suite_not_found");
         }
@@ -773,6 +800,11 @@ public sealed class TestManagementService(
             if (tags is null) return new(TestManagementOutcome.Invalid, Code: "test_tag_not_found");
         }
 
+        if (!TestManagementCodes.TryParseAssetStatus(request.Status, out var status))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_case_status_invalid");
+        }
+
         var now = timeProvider.GetUtcNow();
         testCase.Update(
             targetSuite.Id,
@@ -781,7 +813,7 @@ public sealed class TestManagementService(
             Clean(request.Preconditions),
             Clean(request.OverallExpectedResult),
             request.SortOrder,
-            request.Status,
+            status,
             accountId,
             now);
 
@@ -861,7 +893,7 @@ public sealed class TestManagementService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestManagementOutcome.NotFound);
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
             return new(TestManagementOutcome.Forbidden);
 
         var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
@@ -874,7 +906,7 @@ public sealed class TestManagementService(
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var planNo = await NextNumberAsync("plan", workspaceId, cancellationToken);
+        var planNo = await NextNumberAsync(TestNumberType.Plan, workspaceId, cancellationToken);
         var name = PlanName(request.Name, now);
         var plan = new TestPlan(
             Guid.NewGuid(), workspaceId, planNo, name, Clean(request.Description),
@@ -896,7 +928,7 @@ public sealed class TestManagementService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestManagementOutcome.NotFound);
-        if (!CanManageAssets(access.Role) || access.Workspace.Status != "active")
+        if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
             return new(TestManagementOutcome.Forbidden);
 
         var plan = await dbContext.Plans.Include(x => x.Items).SingleOrDefaultAsync(
@@ -904,11 +936,16 @@ public sealed class TestManagementService(
         if (plan is null) return new(TestManagementOutcome.NotFound);
         if (plan.Version != request.Version)
             return new(TestManagementOutcome.Conflict, Code: "plan_version_conflict");
-        if (plan.Status == "archived")
+        if (plan.Status == TestPlanStatus.Archived)
             return new(TestManagementOutcome.Conflict, Code: "plan_archived");
 
+        if (!TestManagementCodes.TryParsePlanStatus(request.Status, out var status))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_plan_status_invalid");
+        }
+
         var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
-        if (cases is null || (request.Status == "active" && cases.Count == 0))
+        if (cases is null || (status == TestPlanStatus.Active && cases.Count == 0))
             return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
         var testIssue = await ResolveTestIssueForWriteAsync(
             workspaceId, accountId, request.TestIssueId, cancellationToken);
@@ -923,7 +960,7 @@ public sealed class TestManagementService(
                 Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
         }
         plan.Update(
-            PlanName(request.Name, now), Clean(request.Description), request.Status, accountId, now,
+            PlanName(request.Name, now), Clean(request.Description), status, accountId, now,
             testIssue.Issue?.ProjectId, testIssue.Issue?.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
@@ -974,7 +1011,7 @@ public sealed class TestManagementService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestManagementOutcome.NotFound);
-        if (!CanExecute(access.Role) || access.Workspace.Status != "active")
+        if (!CanExecute(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
             return new(TestManagementOutcome.Forbidden);
 
         var plan = await dbContext.Plans.AsNoTracking()
@@ -983,14 +1020,14 @@ public sealed class TestManagementService(
                 x => x.Id == request.PlanId && x.TestWorkspaceId == workspaceId,
                 cancellationToken);
         if (plan is null) return new(TestManagementOutcome.NotFound);
-        if (plan.Status != "active" || plan.Items.Count == 0)
+        if (plan.Status != TestPlanStatus.Active || plan.Items.Count == 0)
             return new(TestManagementOutcome.Conflict, Code: "plan_not_active");
-        if (plan.Items.Any(x => x.TestCase.Status != "active"))
+        if (plan.Items.Any(x => x.TestCase.Status != TestAssetStatus.Active))
             return new(TestManagementOutcome.Conflict, Code: "plan_contains_inactive_case");
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var runNo = await NextNumberAsync("run", plan.Id, cancellationToken);
+        var runNo = await NextNumberAsync(TestNumberType.Run, plan.Id, cancellationToken);
         var run = new TestRun(
             Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now,
             plan.TestIssueProjectId, plan.TestIssueId);
@@ -1015,7 +1052,7 @@ public sealed class TestManagementService(
     {
         var access = await AccessAsync(workspaceId, accountId, cancellationToken);
         if (access is null) return new(TestManagementOutcome.NotFound);
-        if (!CanExecute(access.Role) || access.Workspace.Status != "active")
+        if (!CanExecute(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
             return new(TestManagementOutcome.Forbidden);
 
         var source = await dbContext.Runs.AsNoTracking().SingleOrDefaultAsync(
@@ -1052,7 +1089,12 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "run_item_version_conflict");
 
         var now = timeProvider.GetUtcNow();
-        item.Record(request.Status, Clean(request.ActualResult), accountId, now);
+        if (!TestManagementCodes.TryParseResultStatus(request.Status, out var resultStatus))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_result_status_invalid");
+        }
+
+        item.Record(resultStatus, Clean(request.ActualResult), accountId, now);
         run.MarkInProgress(accountId, now);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
@@ -1081,7 +1123,12 @@ public sealed class TestManagementService(
             return new(TestManagementOutcome.Conflict, Code: "run_step_version_conflict");
 
         var now = timeProvider.GetUtcNow();
-        step.Record(request.Status, Clean(request.ActualResult), accountId, now);
+        if (!TestManagementCodes.TryParseResultStatus(request.Status, out var resultStatus))
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_result_status_invalid");
+        }
+
+        step.Record(resultStatus, Clean(request.ActualResult), accountId, now);
         run.MarkInProgress(accountId, now);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
@@ -1104,21 +1151,28 @@ public sealed class TestManagementService(
         if (run is null) return new(TestManagementOutcome.NotFound);
         if (run.Version != request.Version)
             return new(TestManagementOutcome.Conflict, Code: "run_version_conflict");
-        if (IsTerminal(run.Status) && !(run.Status == "cancelled" && request.Status == "in_progress"))
+        if (!TestManagementCodes.TryParseRunStatus(request.Status, out var status) ||
+            status == TestRunStatus.NotStarted)
+        {
+            return new(TestManagementOutcome.Invalid, Code: "test_run_status_invalid");
+        }
+
+        if (IsTerminal(run.Status) &&
+            !(run.Status == TestRunStatus.Cancelled && status == TestRunStatus.InProgress))
             return new(TestManagementOutcome.Conflict, Code: "run_is_terminal");
-        if (request.Status == "in_progress")
+        if (status == TestRunStatus.InProgress)
         {
             run.MarkInProgress(accountId, timeProvider.GetUtcNow());
             await dbContext.SaveChangesAsync(cancellationToken);
             return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
         }
-        if (request.Status == "completed" && run.Items.Any(x =>
+        if (status == TestRunStatus.Completed && run.Items.Any(x =>
             x.Steps.Count > 0
-                ? x.Steps.Any(step => step.ResultStatus == "not_run")
-                : x.ResultStatus == "not_run"))
+                ? x.Steps.Any(step => step.ResultStatus == TestResultStatus.NotRun)
+                : x.ResultStatus == TestResultStatus.NotRun))
             return new(TestManagementOutcome.Conflict, Code: "run_has_unfinished_items");
 
-        run.Finish(request.Status, Clean(request.Summary), accountId, timeProvider.GetUtcNow());
+        run.Finish(status, Clean(request.Summary), accountId, timeProvider.GetUtcNow());
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
     }
@@ -1127,11 +1181,13 @@ public sealed class TestManagementService(
         Guid workspaceId, Guid accountId, CancellationToken cancellationToken) =>
         await dbContext.Members.Include(x => x.Workspace).SingleOrDefaultAsync(
             x => x.TestWorkspaceId == workspaceId && x.AccountId == accountId &&
-                x.Status == "active", cancellationToken);
+                x.Status == TestWorkspaceMemberStatus.Active, cancellationToken);
 
     private async Task<int> ActiveOwnerCountAsync(Guid workspaceId, CancellationToken cancellationToken) =>
         await dbContext.Members.CountAsync(
-            x => x.TestWorkspaceId == workspaceId && x.Status == "active" && x.Role == "owner",
+            x => x.TestWorkspaceId == workspaceId &&
+                x.Status == TestWorkspaceMemberStatus.Active &&
+                x.Role == TestWorkspaceRole.Owner,
             cancellationToken);
 
     private async Task<int?> ParentDepthAsync(
@@ -1150,10 +1206,16 @@ public sealed class TestManagementService(
             x.TestWorkspaceId == workspaceId && x.ParentId == parentId &&
             x.Id != exceptId && x.Name == name.Trim(), cancellationToken);
 
-    private static bool CanManage(string role) => role is "owner" or "manager";
-    private static bool CanManageAssets(string role) => role is "owner" or "manager";
-    private static bool CanExecute(string role) => role is "owner" or "manager" or "tester";
-    private static bool IsTerminal(string status) => status is "completed" or "cancelled";
+    private static bool CanManage(TestWorkspaceRole role) =>
+        role is TestWorkspaceRole.Owner or TestWorkspaceRole.Manager;
+
+    private static bool CanManageAssets(TestWorkspaceRole role) => CanManage(role);
+
+    private static bool CanExecute(TestWorkspaceRole role) =>
+        role is TestWorkspaceRole.Owner or TestWorkspaceRole.Manager or TestWorkspaceRole.Tester;
+
+    private static bool IsTerminal(TestRunStatus status) =>
+        status is TestRunStatus.Completed or TestRunStatus.Cancelled;
 
     private IQueryable<TestPlan> PlanQuery() => dbContext.Plans
         .Include(x => x.Workspace)
@@ -1169,7 +1231,7 @@ public sealed class TestManagementService(
         if (caseIds.Count != caseIds.Distinct().Count()) return null;
         var cases = await dbContext.Cases.AsNoTracking()
             .Where(x => caseIds.Contains(x.Id) &&
-                x.Suite.TestWorkspaceId == workspaceId && x.Status == "active")
+                x.Suite.TestWorkspaceId == workspaceId && x.Status == TestAssetStatus.Active)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         return cases.Count == caseIds.Count
             ? caseIds.Select(x => cases[x]).ToArray()
@@ -1196,15 +1258,28 @@ public sealed class TestManagementService(
     private async Task<IReadOnlyList<TestTag>?> ActiveTagsAsync(IReadOnlyList<Guid>? tagIds, CancellationToken cancellationToken)
     {
         var ids = tagIds?.Distinct().ToArray() ?? [];
-        var tags = await dbContext.Tags.Where(x => ids.Contains(x.Id) && x.Status == "active").ToListAsync(cancellationToken);
+        var tags = await dbContext.Tags
+            .Where(x => ids.Contains(x.Id) && x.Status == TestAssetStatus.Active)
+            .ToListAsync(cancellationToken);
         return tags.Count == ids.Length ? tags : null;
     }
     private static string PlanName(string? value, DateTimeOffset now) =>
         string.IsNullOrWhiteSpace(value)
             ? $"TestPlan{now.ToOffset(TimeSpan.FromHours(8)):yyyyMMdd}"
             : value.Trim();
-    private static TestWorkspaceResponse ToWorkspaceResponse(TestWorkspace x, string role) =>
-        new(x.Id, x.Name, x.Prefix, x.Description, x.Status, role, x.CreatedAt, x.UpdatedAt, x.Version);
+    private static TestWorkspaceResponse ToWorkspaceResponse(
+        TestWorkspace workspace,
+        TestWorkspaceRole role) =>
+        new(
+            workspace.Id,
+            workspace.Name,
+            workspace.Prefix,
+            workspace.Description,
+            workspace.Status.ToCode(),
+            role.ToCode(),
+            workspace.CreatedAt,
+            workspace.UpdatedAt,
+            workspace.Version);
     private static TestWorkspaceProjectResponse ToWorkspaceProjectResponse(
         TestWorkspaceProject link,
         ProjectDirectoryEntry project) =>
@@ -1213,24 +1288,36 @@ public sealed class TestManagementService(
             link.ProjectId,
             project.Code,
             project.Name,
-            project.Status,
+            project.Status.ToCode(),
             link.CreatedAt,
             link.Version);
     private static TestSuiteResponse ToSuiteResponse(TestSuite x, int depth) =>
-        new(x.Id, x.ParentId, x.Name, x.Description, x.SortOrder, x.Status, depth, x.Version);
+        new(
+            x.Id,
+            x.ParentId,
+            x.Name,
+            x.Description,
+            x.SortOrder,
+            x.Status.ToCode(),
+            depth,
+            x.Version);
     private static TestCaseResponse ToCaseResponse(TestCase x) =>
         new(
             x.Id,
             x.TestSuiteId,
             x.CaseNo,
             x.Tags.OrderBy(tag => tag.Tag.Name).Select(tag => new TestTagResponse(
-                tag.Tag.Id, tag.Tag.Name, tag.Tag.Description, tag.Tag.Status, tag.Tag.Version)).ToArray(),
+                tag.Tag.Id,
+                tag.Tag.Name,
+                tag.Tag.Description,
+                tag.Tag.Status.ToCode(),
+                tag.Tag.Version)).ToArray(),
             x.Title,
             x.Description,
             x.Preconditions,
             x.OverallExpectedResult,
             x.SortOrder,
-            x.Status,
+            x.Status.ToCode(),
             x.Steps.OrderBy(step => step.StepNo)
                 .Select(step => new TestCaseStepResponse(
                     step.Id,
@@ -1242,9 +1329,9 @@ public sealed class TestManagementService(
             x.UpdatedAt,
             x.Version);
     private static TestTagResponse ToTagResponse(TestTag x) =>
-        new(x.Id, x.Name, x.Description, x.Status, x.Version);
+        new(x.Id, x.Name, x.Description, x.Status.ToCode(), x.Version);
     private async Task<int> NextNumberAsync(
-        string counterType,
+        TestNumberType numberType,
         Guid scopeId,
         CancellationToken cancellationToken)
     {
@@ -1252,31 +1339,31 @@ public sealed class TestManagementService(
         {
             return await dbContext.Database
                 .SqlQuery<int>(
-                    $"SELECT public.next_test_number({counterType}, {scopeId}) AS \"Value\"")
+                    $"SELECT public.next_test_number({numberType.ToCode()}, {scopeId}) AS \"Value\"")
                 .SingleAsync(cancellationToken);
         }
 
-        return counterType switch
+        return numberType switch
         {
-            "case" => (await dbContext.Cases
+            TestNumberType.Case => (await dbContext.Cases
                 .Where(x => x.TestWorkspaceId == scopeId)
                 .MaxAsync(x => (int?)x.CaseNo, cancellationToken) ?? 0) + 1,
-            "plan" => (await dbContext.Plans
+            TestNumberType.Plan => (await dbContext.Plans
                 .Where(x => x.TestWorkspaceId == scopeId)
                 .MaxAsync(x => (int?)x.PlanNo, cancellationToken) ?? 0) + 1,
-            "run" => (await dbContext.Runs
+            TestNumberType.Run => (await dbContext.Runs
                 .Where(x => x.TestPlanId == scopeId)
                 .MaxAsync(x => (int?)x.RunNo, cancellationToken) ?? 0) + 1,
             _ => throw new ArgumentOutOfRangeException(
-                nameof(counterType),
-                counterType,
+                nameof(numberType),
+                numberType,
                 "Unsupported test number counter type."),
         };
     }
     private static TestPlanResponse ToPlanResponse(TestPlan x, IssueDirectoryEntry? testIssue) =>
         new(
             x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",
-            x.Name, x.Description, x.Status,
+            x.Name, x.Description, x.Status.ToCode(),
             x.Items.OrderBy(item => item.SortOrder).Select(item =>
                 new TestPlanItemResponse(
                     item.Id, item.TestCaseId, item.SortOrder, item.TestCase.Title)).ToArray(),
@@ -1284,28 +1371,29 @@ public sealed class TestManagementService(
             testIssue is null ? null : ToTraceIssueResponse(testIssue));
     private static TestRunResponse ToRunResponse(TestRun x, IssueDirectoryEntry? testIssue)
     {
-        var items = x.Items.OrderBy(item => item.SortOrder).Select(item =>
+        var orderedItems = x.Items.OrderBy(item => item.SortOrder).ToArray();
+        var progress = new TestRunProgressResponse(
+            orderedItems.Length,
+            orderedItems.Count(item => item.ResultStatus == TestResultStatus.NotRun),
+            orderedItems.Count(item => item.ResultStatus == TestResultStatus.Passed),
+            orderedItems.Count(item => item.ResultStatus == TestResultStatus.Failed),
+            orderedItems.Count(item => item.ResultStatus == TestResultStatus.Blocked),
+            orderedItems.Count(item => item.ResultStatus == TestResultStatus.Skipped));
+        var items = orderedItems.Select(item =>
             new TestRunItemResponse(
                 item.Id, item.TestCaseId, item.SortOrder, item.CaseTitle,
                 item.CaseDescription, item.Preconditions, item.OverallExpectedResult,
-                item.ResultStatus, item.ActualResult, item.ExecutedByAccountId, item.ExecutedAt,
+                item.ResultStatus.ToCode(), item.ActualResult, item.ExecutedByAccountId, item.ExecutedAt,
                 item.Steps.OrderBy(step => step.StepNo).Select(step =>
                     new TestRunStepResponse(
                         step.Id, step.StepNo, step.Action, step.ExpectedResult,
-                        step.ResultStatus, step.ActualResult, step.ExecutedByAccountId,
+                        step.ResultStatus.ToCode(), step.ActualResult, step.ExecutedByAccountId,
                         step.ExecutedAt, step.Version)).ToArray(),
-                item.Version)).ToArray();
-        var progress = new TestRunProgressResponse(
-            items.Length,
-            items.Count(item => item.ResultStatus == "not_run"),
-            items.Count(item => item.ResultStatus == "passed"),
-            items.Count(item => item.ResultStatus == "failed"),
-            items.Count(item => item.ResultStatus == "blocked"),
-            items.Count(item => item.ResultStatus == "skipped"));
+                 item.Version)).ToArray();
         return new(
             x.Id, x.TestPlanId, x.RunNo,
             $"{x.Plan.Workspace.Prefix}-TP{x.Plan.PlanNo}-R{x.RunNo}",
-            x.Name, x.Status, x.StartedByAccountId,
+            x.Name, x.Status.ToCode(), x.StartedByAccountId,
             x.StartedAt, x.CompletedAt, x.Summary, progress, items,
             x.CreatedAt, x.UpdatedAt, x.Version,
             testIssue is null ? null : ToTraceIssueResponse(testIssue));
@@ -1322,7 +1410,7 @@ public sealed class TestManagementService(
         var issue = await issueDirectory.FindUpdatableAsync(
             issueId.Value, accountId, cancellationToken);
         if (issue is null) return (null, "test_issue_not_accessible");
-        if (issue.ProjectStatus != "active") return (null, "project_not_active");
+        if (issue.ProjectStatus != ProjectStatus.Active) return (null, "project_not_active");
         if (issue.TypeCode != "task") return (null, "test_issue_type_invalid");
 
         var linked = await dbContext.WorkspaceProjects.AnyAsync(

@@ -26,7 +26,7 @@ public sealed class TestSuiteTests
         Assert.Equal(parentId, suite.ParentId);
         Assert.Equal("Regression", suite.Name);
         Assert.Equal(3, suite.SortOrder);
-        Assert.Equal("active", suite.Status);
+        Assert.Equal(TestAssetStatus.Active, suite.Status);
         Assert.Equal(actorId, suite.CreatedByAccountId);
         Assert.Equal(1, suite.Version);
     }
@@ -44,7 +44,7 @@ public sealed class TestSuiteTests
             "Updated suite",
             "Updated scope",
             8,
-            "inactive",
+            TestAssetStatus.Inactive,
             actorId,
             updatedAt);
 
@@ -52,7 +52,7 @@ public sealed class TestSuiteTests
         Assert.Equal("Updated suite", suite.Name);
         Assert.Equal("Updated scope", suite.Description);
         Assert.Equal(8, suite.SortOrder);
-        Assert.Equal("inactive", suite.Status);
+        Assert.Equal(TestAssetStatus.Inactive, suite.Status);
         Assert.Equal(actorId, suite.UpdatedByAccountId);
         Assert.Equal(2, suite.Version);
     }

@@ -17,14 +17,14 @@ public sealed class ProjectDirectory(ProjectManagementDbContext dbContext) : IPr
             .Where(member =>
                 member.ProjectId == projectId &&
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == ProjectManagementConstants.ProjectReadPermission)))
             .Select(member => new ProjectDirectoryEntry(
                 member.Project.Id,
                 member.Project.Code,
                 member.Project.Name,
-                member.Project.Status == ProjectStatus.Active ? "active" : "inactive"))
+                member.Project.Status))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -44,7 +44,7 @@ public sealed class ProjectDirectory(ProjectManagementDbContext dbContext) : IPr
                 project.Id,
                 project.Code,
                 project.Name,
-                project.Status == ProjectStatus.Active ? "active" : "inactive"))
+                project.Status))
             .ToDictionaryAsync(project => project.Id, cancellationToken);
     }
 }

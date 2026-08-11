@@ -1,10 +1,12 @@
+using KhaiKang.Modules.ProjectManagement.Domain;
+
 namespace KhaiKang.Modules.ProjectManagement.Contracts;
 
 public sealed record IssueDirectoryEntry(
     Guid Id,
     Guid ProjectId,
     string ProjectCode,
-    string ProjectStatus,
+    ProjectStatus ProjectStatus,
     int IssueNo,
     string Key,
     string Title,

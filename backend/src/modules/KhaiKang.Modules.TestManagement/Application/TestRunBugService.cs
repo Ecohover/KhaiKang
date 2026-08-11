@@ -49,14 +49,15 @@ public sealed class TestRunBugService(
         var access = await dbContext.Members.Include(item => item.Workspace).SingleOrDefaultAsync(
             item => item.TestWorkspaceId == workspaceId &&
                 item.AccountId == accountId &&
-                item.Status == "active",
+                item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
         if (access is null || !await RunExistsAsync(workspaceId, runId, cancellationToken))
         {
             return new(TestManagementOutcome.NotFound);
         }
 
-        if (access.Role is not ("owner" or "manager") || access.Workspace.Status != "active")
+        if (access.Role is not (TestWorkspaceRole.Owner or TestWorkspaceRole.Manager) ||
+            access.Workspace.Status != TestAssetStatus.Active)
         {
             return new(TestManagementOutcome.Forbidden);
         }
@@ -123,7 +124,7 @@ public sealed class TestRunBugService(
         dbContext.Members.AnyAsync(
             item => item.TestWorkspaceId == workspaceId &&
                 item.AccountId == accountId &&
-                item.Status == "active",
+                item.Status == TestWorkspaceMemberStatus.Active,
             cancellationToken);
 
     private Task<bool> RunExistsAsync(

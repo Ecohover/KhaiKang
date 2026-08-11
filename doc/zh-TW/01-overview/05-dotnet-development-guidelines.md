@@ -70,6 +70,13 @@ KhaiKang.CommonUtils.Web
 - Public collection 優先暴露 `IReadOnlyList<T>`、`IReadOnlyCollection<T>` 或 `IEnumerable<T>`；不要公開可替換的 `List<T>`。
 - 沒有設計為擴充點的 class 應考慮 `sealed`，但 EF Core 或測試需求可以保留繼承能力。
 - Primary constructor 可以使用，但不是強制規則；可讀性與依賴清楚度優先。
+- Domain 中封閉的狀態、類型、角色或結果必須使用 enum 或 Value Object 表達；未驗證的字串不得一路傳入 Domain 或 Application 邏輯。
+- 程式碼應使用領域語言，並依序呈現判斷與流程。若較短的語法、深層巢狀 expression 或語法糖讓業務流程更難閱讀，就不算改善。
+- 新增的 public Domain 與 Application API 原則上不得超過三個參數。既有長參數 API 視為待清理債務；框架簽章或確有必要的例外必須在 pull request 說明，持續性例外則以 ADR 記錄。
+- 多個同型別 primitive、`string`、`Guid` 或時間參數若容易放錯位置，應以具領域名稱的 immutable Parameter Object、Value Object 或 Strongly Typed ID 組合。不得只為符合參數數量而建立沒有 invariant、沒有語意且跨 use case 共用的萬用參數袋。
+- 建立與修改同一概念的資料應使用不同且能表達意圖的 type，例如 `IssueCreation` 與 `IssueDetailsChange`；HTTP request DTO 不直接充當 Domain Parameter Object。
+- 多個 entity 真正共享相同 audit lifecycle 時，可以使用一層淺層的 `AuditableEntity` 基底集中 `CreatedAt`、`CreatedByAccountId`、`UpdatedAt`、`UpdatedByAccountId` 與 `Version`，以及一致的初始化與異動方法。不得建立只為形式統一的深層 entity 階層。
+- 業務生命週期欄位不屬於通用 audit metadata，例如 `CompletedAt` 應保留在 `Issue`；共用基底不得吸收 feature-specific state 或規則。
 - XML documentation 用英文撰寫，只要求在公開 extension point、library API 或無法從名稱理解的 contract；不強制替每個 public member 重述程式碼。
 - 不加入只為減少幾行程式碼的 abstraction、base service 或 helper。
 
@@ -117,6 +124,9 @@ KhaiKang.CommonUtils.Web
 
 - PostgreSQL 是 system of record，EF Core 是預設 data access technology。
 - 初期直接使用明確的 `DbContext` 與 feature query/use case；不預設建立 generic repository 或 unit-of-work wrapper。
+- 封閉的 enum 或 Value Object 必須以穩定英文 code 寫入資料庫，不得儲存 enum 整數值或語系化顯示文字。轉換只存在於 persistence 與 transport boundary；已持久化的 code 若要重新命名，屬於資料契約變更，必須有明確 migration 或相容方案。
+- 由資料表管理的分類資料必須分開保存穩定英文 `code` 與使用者顯示用 `name`。業務資料以分類主鍵關聯；API 在需要機器可讀識別時回傳穩定 code。
+- EF Core 查詢應保持明確且容易順讀。Collection use case 原則上依序呈現正規化、過濾、排序、計數、分頁、投影與執行；當 predicate 或排序規則遮蔽主流程時，抽成 feature-local 且能表達意圖的方法，不以 generic query-options abstraction 隱藏一般 EF 行為。
 - Entity 與 EF Core configuration 由所屬功能模組管理；其他模組不得直接修改其 table。
 - Schema 變更必須有 migration；正式啟動流程不得使用 `EnsureCreated` 代替 migration。
 - 功能分支準備合併主線前，每個受影響的 `DbContext` 只保留一份尚未發布的最終 migration。同一 context 若需保留多份，必須是已部署 migration、分階段資料搬移或分段上線等特殊情境，並在 pull request 記錄原因。
@@ -145,6 +155,8 @@ KhaiKang.CommonUtils.Web
 - 測試不得依賴執行順序、任意 sleep、開發者機器資料或已存在的外部服務。
 - Arrange、Act、Assert 能提升可讀性時使用空行分段，不加入只重述程式碼的註解。
 - 新功能至少涵蓋成功路徑、主要 validation、authorization 與重要 conflict/not-found contract。
+- 漸進式重構應先建立 characterization tests，保護對外行為、業務 invariant、audit metadata 與 optimistic concurrency version，再改變內部結構。
+- 尚未清除的架構債務可以用明確 allowlist 建立 fitness test；allowlist 只記錄既有債務，不得讓新程式碼擴大，且每完成一項重構就必須同步移除對應項目。
 
 ## Dependency 治理
 

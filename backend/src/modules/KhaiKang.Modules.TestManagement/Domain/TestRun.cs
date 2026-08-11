@@ -14,10 +14,17 @@ public sealed class TestRun
         Guid? testIssueProjectId = null,
         Guid? testIssueId = null)
     {
-        Id = id; TestPlanId = planId; RunNo = runNo; Name = name;
-        TestIssueProjectId = testIssueProjectId; TestIssueId = testIssueId;
-        StartedByAccountId = actorId; Status = "not_started";
-        CreatedAt = UpdatedAt = now; CreatedByAccountId = UpdatedByAccountId = actorId; Version = 1;
+        Id = id;
+        TestPlanId = planId;
+        RunNo = runNo;
+        Name = name;
+        TestIssueProjectId = testIssueProjectId;
+        TestIssueId = testIssueId;
+        StartedByAccountId = actorId;
+        Status = TestRunStatus.NotStarted;
+        CreatedAt = UpdatedAt = now;
+        CreatedByAccountId = UpdatedByAccountId = actorId;
+        Version = 1;
     }
 
     public Guid Id { get; private set; }
@@ -26,7 +33,7 @@ public sealed class TestRun
     public string Name { get; private set; } = null!;
     public Guid? TestIssueProjectId { get; private set; }
     public Guid? TestIssueId { get; private set; }
-    public string Status { get; private set; } = null!;
+    public TestRunStatus Status { get; private set; }
     public Guid StartedByAccountId { get; private set; }
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
@@ -41,14 +48,18 @@ public sealed class TestRun
 
     public void MarkInProgress(Guid actorId, DateTimeOffset now)
     {
-        if (Status is not ("not_started" or "cancelled")) return;
-        Status = "in_progress";
+        if (Status is not (TestRunStatus.NotStarted or TestRunStatus.Cancelled))
+        {
+            return;
+        }
+
+        Status = TestRunStatus.InProgress;
         CompletedAt = null;
         StartedAt = now;
         Touch(actorId, now);
     }
 
-    public void Finish(string status, string? summary, Guid actorId, DateTimeOffset now)
+    public void Finish(TestRunStatus status, string? summary, Guid actorId, DateTimeOffset now)
     {
         Status = status;
         Summary = summary;

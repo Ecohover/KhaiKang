@@ -14,7 +14,7 @@ public sealed class TestCaseTests
 
         var testCase = CreateCase(actorId);
 
-        Assert.Equal("active", testCase.Status);
+        Assert.Equal(TestAssetStatus.Active, testCase.Status);
         Assert.Equal("Original title", testCase.Title);
         Assert.Equal(actorId, testCase.CreatedByAccountId);
         Assert.Equal(actorId, testCase.UpdatedByAccountId);
@@ -52,7 +52,7 @@ public sealed class TestCaseTests
             "Updated preconditions",
             "Updated expected result",
             5,
-            "inactive",
+            TestAssetStatus.Inactive,
             actorId,
             updatedAt);
 
@@ -62,7 +62,7 @@ public sealed class TestCaseTests
         Assert.Equal("Updated preconditions", testCase.Preconditions);
         Assert.Equal("Updated expected result", testCase.OverallExpectedResult);
         Assert.Equal(5, testCase.SortOrder);
-        Assert.Equal("inactive", testCase.Status);
+        Assert.Equal(TestAssetStatus.Inactive, testCase.Status);
         Assert.Equal(actorId, testCase.UpdatedByAccountId);
         Assert.Equal(2, testCase.Version);
     }

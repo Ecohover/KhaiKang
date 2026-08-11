@@ -155,7 +155,7 @@ public sealed class IssueAttachmentService(
 
     private Task<bool> HasPermissionAsync(Guid projectId, Guid accountId, string permissionCode, CancellationToken cancellationToken) =>
         dbContext.ProjectMembers.AnyAsync(
-            member => member.ProjectId == projectId && member.AccountId == accountId && member.Status == "active" &&
+            member => member.ProjectId == projectId && member.AccountId == accountId && member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission => permission.Permission.Code == permissionCode)),
             cancellationToken);
 

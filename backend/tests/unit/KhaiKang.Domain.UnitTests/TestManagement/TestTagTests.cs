@@ -15,7 +15,7 @@ public sealed class TestTagTests
         var tag = new TestTag(Guid.NewGuid(), "smoke", "Fast tests", actorId, CreatedAt);
 
         Assert.Equal("smoke", tag.Name);
-        Assert.Equal("active", tag.Status);
+        Assert.Equal(TestAssetStatus.Active, tag.Status);
         Assert.Equal(actorId, tag.CreatedByAccountId);
         Assert.Equal(actorId, tag.UpdatedByAccountId);
         Assert.Equal(1, tag.Version);
@@ -28,11 +28,16 @@ public sealed class TestTagTests
         var actorId = Guid.NewGuid();
         var updatedAt = CreatedAt.AddHours(1);
 
-        tag.Update("regression", "Complete tests", "inactive", actorId, updatedAt);
+        tag.Update(
+            "regression",
+            "Complete tests",
+            TestAssetStatus.Inactive,
+            actorId,
+            updatedAt);
 
         Assert.Equal("regression", tag.Name);
         Assert.Equal("Complete tests", tag.Description);
-        Assert.Equal("inactive", tag.Status);
+        Assert.Equal(TestAssetStatus.Inactive, tag.Status);
         Assert.Equal(actorId, tag.UpdatedByAccountId);
         Assert.Equal(updatedAt, tag.UpdatedAt);
         Assert.Equal(2, tag.Version);

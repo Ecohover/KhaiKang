@@ -16,7 +16,7 @@ public sealed class TestRunTests
 
         var run = CreateRun(projectId, issueId, actorId);
 
-        Assert.Equal("not_started", run.Status);
+        Assert.Equal(TestRunStatus.NotStarted, run.Status);
         Assert.Equal(projectId, run.TestIssueProjectId);
         Assert.Equal(issueId, run.TestIssueId);
         Assert.Equal(actorId, run.StartedByAccountId);
@@ -72,7 +72,7 @@ public sealed class TestRunTests
 
         run.MarkInProgress(actorId, startedAt);
 
-        Assert.Equal("in_progress", run.Status);
+        Assert.Equal(TestRunStatus.InProgress, run.Status);
         Assert.Equal(startedAt, run.StartedAt);
         Assert.Null(run.CompletedAt);
         Assert.Equal(actorId, run.UpdatedByAccountId);
@@ -84,12 +84,12 @@ public sealed class TestRunTests
     {
         var run = CreateRun();
         var completedAt = CreatedAt.AddHours(1);
-        run.Finish("completed", "Done", Guid.NewGuid(), completedAt);
+        run.Finish(TestRunStatus.Completed, "Done", Guid.NewGuid(), completedAt);
         var version = run.Version;
 
         run.MarkInProgress(Guid.NewGuid(), completedAt.AddHours(1));
 
-        Assert.Equal("completed", run.Status);
+        Assert.Equal(TestRunStatus.Completed, run.Status);
         Assert.Equal(completedAt, run.StartedAt);
         Assert.Equal(completedAt, run.CompletedAt);
         Assert.Equal(version, run.Version);
@@ -104,9 +104,9 @@ public sealed class TestRunTests
         run.MarkInProgress(Guid.NewGuid(), startedAt);
         var actorId = Guid.NewGuid();
 
-        run.Finish("completed", "All passed", actorId, completedAt);
+        run.Finish(TestRunStatus.Completed, "All passed", actorId, completedAt);
 
-        Assert.Equal("completed", run.Status);
+        Assert.Equal(TestRunStatus.Completed, run.Status);
         Assert.Equal("All passed", run.Summary);
         Assert.Equal(startedAt, run.StartedAt);
         Assert.Equal(completedAt, run.CompletedAt);

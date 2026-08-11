@@ -22,6 +22,48 @@ public sealed class IssueTests
     }
 
     [Fact]
+    public void Constructor_CapturesIdentityContentClassificationAndAssignment()
+    {
+        var id = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var typeId = Guid.NewGuid();
+        var statusId = Guid.NewGuid();
+        var priorityId = Guid.NewGuid();
+        var reporterId = Guid.NewGuid();
+        var assigneeId = Guid.NewGuid();
+
+        var issue = new Issue(
+            id,
+            projectId,
+            42,
+            "Initial title",
+            "Initial description",
+            "Initial user story",
+            "Initial definition",
+            typeId,
+            statusId,
+            priorityId,
+            reporterId,
+            assigneeId,
+            CreatedAt);
+
+        Assert.Equal(id, issue.Id);
+        Assert.Equal(projectId, issue.ProjectId);
+        Assert.Equal(42, issue.IssueNo);
+        Assert.Equal("Initial title", issue.Title);
+        Assert.Equal("Initial description", issue.Description);
+        Assert.Equal("Initial user story", issue.UserStory);
+        Assert.Equal("Initial definition", issue.DefinitionOfDone);
+        Assert.Equal(typeId, issue.IssueTypeId);
+        Assert.Equal(statusId, issue.IssueStatusId);
+        Assert.Equal(priorityId, issue.IssuePriorityId);
+        Assert.Equal(reporterId, issue.ReporterAccountId);
+        Assert.Equal(assigneeId, issue.AssigneeAccountId);
+        Assert.Equal(CreatedAt, issue.CreatedAt);
+        Assert.Equal(CreatedAt, issue.UpdatedAt);
+    }
+
+    [Fact]
     public void ChangeStatus_ToCompleted_SetsCompletedAt()
     {
         var issue = CreateIssue();
@@ -34,6 +76,7 @@ public sealed class IssueTests
         Assert.Equal(completedStatusId, issue.IssueStatusId);
         Assert.Equal(occurredAt, issue.CompletedAt);
         Assert.Equal(actorId, issue.UpdatedByAccountId);
+        Assert.Equal(occurredAt, issue.UpdatedAt);
         Assert.Equal(2, issue.Version);
     }
 
@@ -66,6 +109,8 @@ public sealed class IssueTests
         var occurredAt = CreatedAt.AddHours(1);
         var typeId = Guid.NewGuid();
         var priorityId = Guid.NewGuid();
+        var originalStatusId = issue.IssueStatusId;
+        var originalReporterId = issue.ReporterAccountId;
 
         issue.UpdateDetails(
             "Updated title",
@@ -86,7 +131,10 @@ public sealed class IssueTests
         Assert.Equal(typeId, issue.IssueTypeId);
         Assert.Equal(priorityId, issue.IssuePriorityId);
         Assert.Equal(assigneeId, issue.AssigneeAccountId);
+        Assert.Equal(originalStatusId, issue.IssueStatusId);
+        Assert.Equal(originalReporterId, issue.ReporterAccountId);
         Assert.Equal(actorId, issue.UpdatedByAccountId);
+        Assert.Equal(occurredAt, issue.UpdatedAt);
         Assert.Equal(2, issue.Version);
     }
 
@@ -95,6 +143,8 @@ public sealed class IssueTests
     {
         var issue = CreateIssue();
         var assigneeId = Guid.NewGuid();
+        var unassignActorId = Guid.NewGuid();
+        var unassignedAt = CreatedAt.AddMinutes(20);
 
         issue.ChangeAssignee(
             assigneeId,
@@ -102,10 +152,12 @@ public sealed class IssueTests
             CreatedAt.AddMinutes(10));
         issue.ChangeAssignee(
             null,
-            Guid.NewGuid(),
-            CreatedAt.AddMinutes(20));
+            unassignActorId,
+            unassignedAt);
 
         Assert.Null(issue.AssigneeAccountId);
+        Assert.Equal(unassignActorId, issue.UpdatedByAccountId);
+        Assert.Equal(unassignedAt, issue.UpdatedAt);
         Assert.Equal(3, issue.Version);
     }
 

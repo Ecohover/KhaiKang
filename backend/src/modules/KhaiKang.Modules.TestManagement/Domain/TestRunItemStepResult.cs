@@ -11,7 +11,7 @@ public sealed class TestRunItemStepResult
         StepNo = source.StepNo;
         Action = source.Action;
         ExpectedResult = source.ExpectedResult;
-        ResultStatus = "not_run";
+        ResultStatus = TestResultStatus.NotRun;
         CreatedAt = UpdatedAt = now;
         CreatedByAccountId = UpdatedByAccountId = actorId;
         Version = 1;
@@ -22,7 +22,7 @@ public sealed class TestRunItemStepResult
     public int StepNo { get; private set; }
     public string Action { get; private set; } = null!;
     public string ExpectedResult { get; private set; } = null!;
-    public string ResultStatus { get; private set; } = null!;
+    public TestResultStatus ResultStatus { get; private set; }
     public string? ActualResult { get; private set; }
     public Guid? ExecutedByAccountId { get; private set; }
     public DateTimeOffset? ExecutedAt { get; private set; }
@@ -32,12 +32,16 @@ public sealed class TestRunItemStepResult
     public Guid? UpdatedByAccountId { get; private set; }
     public int Version { get; private set; }
 
-    public void Record(string status, string? actualResult, Guid actorId, DateTimeOffset now)
+    public void Record(
+        TestResultStatus status,
+        string? actualResult,
+        Guid actorId,
+        DateTimeOffset now)
     {
         ResultStatus = status;
         ActualResult = actualResult;
-        ExecutedByAccountId = status == "not_run" ? null : actorId;
-        ExecutedAt = status == "not_run" ? null : now;
+        ExecutedByAccountId = status == TestResultStatus.NotRun ? null : actorId;
+        ExecutedAt = status == TestResultStatus.NotRun ? null : now;
         UpdatedByAccountId = actorId;
         UpdatedAt = now;
         Version++;

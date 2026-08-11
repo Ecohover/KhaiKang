@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.TestManagement.Application;
 using KhaiKang.Modules.TestManagement.Contracts;
+using KhaiKang.Modules.TestManagement.Domain;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -62,7 +63,8 @@ public static class TestManagementEndpointExtensions
             TestManagementService service, CancellationToken token) =>
         {
             if (ValidateName(request.Name, request.Description) is { } invalid) return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["request"] = ["Status or version is invalid."],
@@ -217,7 +219,8 @@ public static class TestManagementEndpointExtensions
         {
             if (ValidateSuite(request.Name, request.Description, request.SortOrder) is { } invalid)
                 return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["request"] = ["Status or version is invalid."],
@@ -268,7 +271,8 @@ public static class TestManagementEndpointExtensions
             if (ValidateCase(request.Title, request.Description, request.Preconditions,
                 request.OverallExpectedResult, request.SortOrder, request.Steps) is { } invalid)
                 return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["testCase"] = ["Status or version is invalid."],
@@ -316,7 +320,7 @@ public static class TestManagementEndpointExtensions
         {
             if (ValidatePlan(request.Name, request.Description, request.CaseIds) is { } invalid)
                 return invalid;
-            if (request.Status is not ("draft" or "active" or "archived") ||
+            if (!TestManagementCodes.TryParsePlanStatus(request.Status, out _) ||
                 request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -404,7 +408,8 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, Guid runId, UpdateTestRunStatusRequest request,
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
         {
-            if (request.Status is not ("in_progress" or "completed" or "cancelled") ||
+            if (!TestManagementCodes.TryParseRunStatus(request.Status, out var status) ||
+                status == TestRunStatus.NotStarted ||
                 request.Version < 1 || request.Summary?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -440,7 +445,8 @@ public static class TestManagementEndpointExtensions
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
         {
             if (ValidateTag(request.Name, request.Description) is { } invalid) return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["tag"] = ["Status or version is invalid."] });
             if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
             return Map(await service.UpdateTagAsync(tagId, accountId, request, token));
@@ -534,7 +540,7 @@ public static class TestManagementEndpointExtensions
             : null;
 
     private static bool ValidRole(string role) =>
-        role is "owner" or "manager" or "tester" or "viewer";
+        TestManagementCodes.TryParseWorkspaceRole(role, out _);
 
     private static IResult? ValidatePlan(
         string? name, string? description, IReadOnlyList<Guid>? caseIds)
@@ -550,7 +556,7 @@ public static class TestManagementEndpointExtensions
 
     private static IResult? ValidateResult(RecordTestResultRequest request)
     {
-        if (request.Status is not ("not_run" or "passed" or "failed" or "blocked" or "skipped") ||
+        if (!TestManagementCodes.TryParseResultStatus(request.Status, out _) ||
             request.Version < 1 || request.ActualResult?.Length > 4000)
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {

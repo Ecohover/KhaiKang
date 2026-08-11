@@ -333,7 +333,7 @@ public sealed class IssueRelationService(
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
                 member.AccountId == accountId &&
-                member.Status == "active" &&
+                member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode)),
             cancellationToken);
