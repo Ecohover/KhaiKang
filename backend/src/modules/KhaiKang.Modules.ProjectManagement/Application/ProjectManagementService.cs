@@ -95,12 +95,14 @@ public sealed class ProjectManagementService(
             .SingleAsync(
                 role => role.Code == ProjectManagementConstants.OwnerRoleCode,
                 cancellationToken);
-        var memberRole = new ProjectMemberRole(
-            Guid.NewGuid(),
-            member.Id,
-            ownerRole.Id,
-            now,
-            accountId);
+        var memberRole = ProjectMemberRole.Create(
+            new ProjectMemberRoleCreation
+            {
+                Id = Guid.NewGuid(),
+                ProjectMemberId = member.Id,
+                ProjectRoleId = ownerRole.Id,
+            },
+            new ChangeContext(accountId, now));
 
         dbContext.Projects.Add(project);
         dbContext.ProjectMembers.Add(member);
@@ -574,12 +576,14 @@ public sealed class ProjectManagementService(
     {
         foreach (var role in roles)
         {
-            var mapping = new ProjectMemberRole(
-                Guid.NewGuid(),
-                member.Id,
-                role.Id,
-                occurredAt,
-                actorAccountId);
+            var mapping = ProjectMemberRole.Create(
+                new ProjectMemberRoleCreation
+                {
+                    Id = Guid.NewGuid(),
+                    ProjectMemberId = member.Id,
+                    ProjectRoleId = role.Id,
+                },
+                new ChangeContext(actorAccountId, occurredAt));
             dbContext.ProjectMemberRoles.Add(mapping);
         }
     }
