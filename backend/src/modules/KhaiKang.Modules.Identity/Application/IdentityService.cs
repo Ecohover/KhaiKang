@@ -56,14 +56,7 @@ public sealed class IdentityService(
                 permission.Id,
                 now,
                 account.Id)));
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            account.Id,
-            "human",
-            "admin_initialized",
-            now,
-            account.Id,
-            "succeeded"));
+        dbContext.AuditEvents.Add(AuditEvent.AdminInitialized(account.Id, now));
 
         try
         {
@@ -120,14 +113,7 @@ public sealed class IdentityService(
 
         account.RecordSuccessfulLogin(now);
         dbContext.LoginSessions.Add(session);
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            account.Id,
-            "human",
-            "login_succeeded",
-            now,
-            account.Id,
-            "succeeded"));
+        dbContext.AuditEvents.Add(AuditEvent.LoginSucceeded(account.Id, now));
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new LoginResult(LoginOutcome.Succeeded, session, ToResponse(account));
@@ -190,14 +176,7 @@ public sealed class IdentityService(
             session.Revoke(now);
         }
 
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            account.Id,
-            "human",
-            "password_changed",
-            now,
-            account.Id,
-            "succeeded"));
+        dbContext.AuditEvents.Add(AuditEvent.PasswordChanged(account.Id, now));
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return ChangePasswordOutcome.Succeeded;
@@ -214,14 +193,7 @@ public sealed class IdentityService(
 
         var now = timeProvider.GetUtcNow();
         session.Revoke(now);
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            session.AccountId,
-            "human",
-            "logout",
-            now,
-            session.AccountId,
-            "succeeded"));
+        dbContext.AuditEvents.Add(AuditEvent.Logout(session.AccountId, now));
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -230,14 +202,7 @@ public sealed class IdentityService(
         DateTimeOffset occurredAt,
         CancellationToken cancellationToken)
     {
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            accountId is null ? "anonymous" : "human",
-            "login_failed",
-            occurredAt,
-            accountId,
-            "failed"));
+        dbContext.AuditEvents.Add(AuditEvent.LoginFailed(accountId, occurredAt));
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

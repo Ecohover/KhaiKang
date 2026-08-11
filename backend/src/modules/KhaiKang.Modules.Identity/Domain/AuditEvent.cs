@@ -2,27 +2,81 @@ namespace KhaiKang.Modules.Identity.Domain;
 
 public sealed class AuditEvent
 {
+    private const string AnonymousActorType = "anonymous";
+    private const string HumanActorType = "human";
+    private const string SucceededOutcome = "succeeded";
+    private const string FailedOutcome = "failed";
+    private const string AccountCreatedEventType = "account_created";
+    private const string AccountUpdatedEventType = "account_updated";
+    private const string AccountRestoredEventType = "account_restored";
+    private const string AccountSuspendedEventType = "account_suspended";
+    private const string AccountDisabledEventType = "account_disabled";
+    private const string AdminInitializedEventType = "admin_initialized";
+    private const string LoginSucceededEventType = "login_succeeded";
+    private const string LoginFailedEventType = "login_failed";
+    private const string PasswordChangedEventType = "password_changed";
+    private const string LogoutEventType = "logout";
+
     private AuditEvent()
     {
     }
 
-    public AuditEvent(
-        Guid id,
-        Guid? actorId,
-        string actorType,
-        string eventType,
-        DateTimeOffset occurredAt,
-        Guid? targetId,
-        string outcome)
+    public static AuditEvent AccountCreated(
+        Guid actorId,
+        Guid accountId,
+        DateTimeOffset occurredAt) =>
+        Succeeded(AccountCreatedEventType, new AuditContext(actorId, accountId, occurredAt));
+
+    public static AuditEvent AccountUpdated(
+        Guid actorId,
+        Guid accountId,
+        DateTimeOffset occurredAt) =>
+        Succeeded(AccountUpdatedEventType, new AuditContext(actorId, accountId, occurredAt));
+
+    public static AuditEvent AccountRestored(
+        Guid actorId,
+        Guid accountId,
+        DateTimeOffset occurredAt) =>
+        Succeeded(AccountRestoredEventType, new AuditContext(actorId, accountId, occurredAt));
+
+    public static AuditEvent AccountSuspended(
+        Guid actorId,
+        Guid accountId,
+        DateTimeOffset occurredAt) =>
+        Succeeded(AccountSuspendedEventType, new AuditContext(actorId, accountId, occurredAt));
+
+    public static AuditEvent AccountDisabled(
+        Guid actorId,
+        Guid accountId,
+        DateTimeOffset occurredAt) =>
+        Succeeded(AccountDisabledEventType, new AuditContext(actorId, accountId, occurredAt));
+
+    public static AuditEvent AdminInitialized(Guid accountId, DateTimeOffset occurredAt) =>
+        Succeeded(AdminInitializedEventType, new AuditContext(accountId, accountId, occurredAt));
+
+    public static AuditEvent LoginSucceeded(Guid accountId, DateTimeOffset occurredAt) =>
+        Succeeded(LoginSucceededEventType, new AuditContext(accountId, accountId, occurredAt));
+
+    public static AuditEvent LoginFailed(Guid? accountId, DateTimeOffset occurredAt)
     {
-        Id = id;
-        ActorId = actorId;
-        ActorType = actorType;
-        EventType = eventType;
-        OccurredAt = occurredAt;
-        TargetId = targetId;
-        Outcome = outcome;
+        var actorType = accountId is null ? AnonymousActorType : HumanActorType;
+        return new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            ActorId = accountId,
+            ActorType = actorType,
+            EventType = LoginFailedEventType,
+            OccurredAt = occurredAt,
+            TargetId = accountId,
+            Outcome = FailedOutcome,
+        };
     }
+
+    public static AuditEvent PasswordChanged(Guid accountId, DateTimeOffset occurredAt) =>
+        Succeeded(PasswordChangedEventType, new AuditContext(accountId, accountId, occurredAt));
+
+    public static AuditEvent Logout(Guid accountId, DateTimeOffset occurredAt) =>
+        Succeeded(LogoutEventType, new AuditContext(accountId, accountId, occurredAt));
 
     public Guid Id { get; private set; }
 
@@ -37,4 +91,23 @@ public sealed class AuditEvent
     public Guid? TargetId { get; private set; }
 
     public string Outcome { get; private set; } = null!;
+
+    private static AuditEvent Succeeded(string eventType, AuditContext context)
+    {
+        return new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            ActorId = context.ActorId,
+            ActorType = HumanActorType,
+            EventType = eventType,
+            OccurredAt = context.OccurredAt,
+            TargetId = context.TargetId,
+            Outcome = SucceededOutcome,
+        };
+    }
+
+    private readonly record struct AuditContext(
+        Guid ActorId,
+        Guid TargetId,
+        DateTimeOffset OccurredAt);
 }

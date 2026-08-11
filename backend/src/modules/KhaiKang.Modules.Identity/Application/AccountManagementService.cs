@@ -62,14 +62,7 @@ public sealed class AccountManagementService(
 
         dbContext.Accounts.Add(account);
         dbContext.AccountSystemRoles.Add(new AccountSystemRole(account.Id, userRole.Id));
-        dbContext.AuditEvents.Add(new AuditEvent(
-            Guid.NewGuid(),
-            actorAccountId,
-            "human",
-            "account_created",
-            now,
-            account.Id,
-            "succeeded"));
+        dbContext.AuditEvents.Add(AuditEvent.AccountCreated(actorAccountId, account.Id, now));
 
         try
         {
@@ -126,14 +119,7 @@ public sealed class AccountManagementService(
         account.Rename(username, normalizedUsername, actorAccountId, now);
         if (previousUsername != account.Username)
         {
-            dbContext.AuditEvents.Add(new AuditEvent(
-                Guid.NewGuid(),
-                actorAccountId,
-                "human",
-                "account_updated",
-                now,
-                account.Id,
-                "succeeded"));
+            dbContext.AuditEvents.Add(AuditEvent.AccountUpdated(actorAccountId, account.Id, now));
         }
 
         try
@@ -195,14 +181,14 @@ public sealed class AccountManagementService(
 
         if (previousStatus != status)
         {
-            dbContext.AuditEvents.Add(new AuditEvent(
-                Guid.NewGuid(),
-                actorAccountId,
-                "human",
-                StatusEventType(status),
-                now,
-                account.Id,
-                "succeeded"));
+            var auditEvent = status switch
+            {
+                AccountStatus.Active => AuditEvent.AccountRestored(actorAccountId, account.Id, now),
+                AccountStatus.Suspended => AuditEvent.AccountSuspended(actorAccountId, account.Id, now),
+                AccountStatus.Disabled => AuditEvent.AccountDisabled(actorAccountId, account.Id, now),
+                _ => throw new ArgumentOutOfRangeException(nameof(status)),
+            };
+            dbContext.AuditEvents.Add(auditEvent);
         }
 
         try
@@ -237,17 +223,6 @@ public sealed class AccountManagementService(
             account.CreatedAt,
             account.UpdatedAt,
             account.Version);
-    }
-
-    private static string StatusEventType(AccountStatus status)
-    {
-        return status switch
-        {
-            AccountStatus.Active => "account_restored",
-            AccountStatus.Suspended => "account_suspended",
-            AccountStatus.Disabled => "account_disabled",
-            _ => throw new ArgumentOutOfRangeException(nameof(status)),
-        };
     }
 
     private static string NormalizeUsername(string username)
