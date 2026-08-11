@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class SystemEndpointsTests(IdentityApiFactory factory)
-    : IClassFixture<IdentityApiFactory>
+public sealed class SystemEndpointsTests(ApiIntegrationTestFactory factory)
+    : IClassFixture<ApiIntegrationTestFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 

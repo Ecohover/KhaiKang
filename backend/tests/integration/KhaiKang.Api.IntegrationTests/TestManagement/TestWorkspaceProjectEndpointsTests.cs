@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class TestWorkspaceProjectEndpointsTests(IdentityApiFactory factory)
-    : IClassFixture<IdentityApiFactory>
+public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory factory)
+    : IClassFixture<ApiIntegrationTestFactory>
 {
-    private readonly IdentityApiFactory _factory = factory;
+    private readonly ApiIntegrationTestFactory _factory = factory;
 
     private readonly HttpClient _client = factory.CreateClient(
         new WebApplicationFactoryClientOptions

@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\modules\KhaiKang.Modules.Identity\KhaiKang.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\..\src\modules\KhaiKang.Modules.ProjectManagement\KhaiKang.Modules.ProjectManagement.csproj" />
+    <ProjectReference Include="..\..\..\src\modules\KhaiKang.Modules.TestManagement\KhaiKang.Modules.TestManagement.csproj" />
   </ItemGroup>
 
   <ItemGroup>

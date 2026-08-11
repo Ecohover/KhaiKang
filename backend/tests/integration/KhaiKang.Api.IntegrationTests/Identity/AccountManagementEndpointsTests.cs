@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class AccountManagementEndpointsTests(IdentityApiFactory factory)
-    : IClassFixture<IdentityApiFactory>
+public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory factory)
+    : IClassFixture<ApiIntegrationTestFactory>
 {
     private readonly HttpClient _adminClient = CreateClient(factory);
 
@@ -147,7 +147,7 @@ public sealed class AccountManagementEndpointsTests(IdentityApiFactory factory)
         Assert.Equal("active", restored.Status);
     }
 
-    private static HttpClient CreateClient(IdentityApiFactory factory)
+    private static HttpClient CreateClient(ApiIntegrationTestFactory factory)
     {
         return factory.CreateClient(new WebApplicationFactoryClientOptions
         {

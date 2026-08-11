@@ -15,7 +15,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class IdentityApiFactory : WebApplicationFactory<Program>
+public sealed class ApiIntegrationTestFactory : WebApplicationFactory<Program>
 {
     private const string TestConnectionString =
         "Host=localhost;Database=khaikang_testing;Username=testing;Password=testing";
@@ -28,9 +28,17 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
     private readonly ServiceProvider _sqliteServices = new ServiceCollection()
         .AddEntityFrameworkSqlite()
         .BuildServiceProvider();
+    private readonly Action<IServiceCollection>? _configureTestServices;
 
-    public IdentityApiFactory()
+    public ApiIntegrationTestFactory()
+        : this(null)
     {
+    }
+
+    internal ApiIntegrationTestFactory(
+        Action<IServiceCollection>? configureTestServices)
+    {
+        _configureTestServices = configureTestServices;
         _connection.Open();
     }
 
@@ -72,6 +80,7 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<TestManagementDbContext>(options => options
                 .UseSqlite(_connection)
                 .UseInternalServiceProvider(_sqliteServices));
+            _configureTestServices?.Invoke(services);
         });
     }
 

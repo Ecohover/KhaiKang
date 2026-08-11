@@ -7,8 +7,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace KhaiKang.Api.IntegrationTests;
 
-public sealed class IssueTestTraceabilityEndpointsTests(IdentityApiFactory factory)
-    : IClassFixture<IdentityApiFactory>
+public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactory factory)
+    : IClassFixture<ApiIntegrationTestFactory>
 {
     private readonly HttpClient _client = factory.CreateClient(
         new WebApplicationFactoryClientOptions

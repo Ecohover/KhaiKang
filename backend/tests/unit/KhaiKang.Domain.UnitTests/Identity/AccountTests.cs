@@ -101,6 +101,32 @@ public sealed class AccountTests
         Assert.Equal(2, account.Version);
     }
 
+    [Fact]
+    public void SetInitialPassword_StoresHashWithoutChangingAuditVersion()
+    {
+        var account = CreateAccount();
+
+        account.SetInitialPassword("initial-password-hash");
+
+        Assert.Equal("initial-password-hash", account.PasswordHash);
+        Assert.True(account.MustChangePassword);
+        Assert.Equal(CreatedAt, account.UpdatedAt);
+        Assert.Equal(1, account.Version);
+    }
+
+    [Fact]
+    public void RecordSuccessfulLogin_CapturesLoginTimeAndUpdatesVersion()
+    {
+        var account = CreateAccount();
+        var loggedInAt = CreatedAt.AddMinutes(10);
+
+        account.RecordSuccessfulLogin(loggedInAt);
+
+        Assert.Equal(loggedInAt, account.LastLoginAt);
+        Assert.Equal(loggedInAt, account.UpdatedAt);
+        Assert.Equal(2, account.Version);
+    }
+
     private static Account CreateAccount()
     {
         return new Account(
