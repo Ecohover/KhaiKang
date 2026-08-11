@@ -173,14 +173,16 @@ public sealed class IssueRelationService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var relation = new IssueRelation(
-            Guid.NewGuid(),
-            projectId,
-            relationType.Id,
-            sourceIssueId,
-            targetIssueId,
-            accountId,
-            now);
+        var relation = IssueRelation.Create(
+            new IssueRelationCreation
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = projectId,
+                RelationTypeId = relationType.Id,
+                SourceIssueId = sourceIssueId,
+                TargetIssueId = targetIssueId,
+            },
+            new ChangeContext(accountId, now));
         dbContext.IssueRelations.Add(relation);
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
@@ -248,7 +250,7 @@ public sealed class IssueRelationService(
         }
 
         var now = timeProvider.GetUtcNow();
-        relation.Delete(accountId, now);
+        relation.Delete(new ChangeContext(accountId, now));
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
             accountId,

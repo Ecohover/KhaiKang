@@ -8,18 +8,19 @@ public sealed class IssueRelationTests
         new(2026, 8, 11, 1, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Constructor_CapturesRelationAndInitialAuditMetadata()
+    public void Create_CapturesRelationAndInitialAuditMetadata()
     {
+        var creation = CreateRelationData();
         var actorId = Guid.NewGuid();
-        var relation = new IssueRelation(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            actorId,
-            CreatedAt);
+        var relation = IssueRelation.Create(
+            creation,
+            new ChangeContext(actorId, CreatedAt));
 
+        Assert.Equal(creation.Id, relation.Id);
+        Assert.Equal(creation.ProjectId, relation.ProjectId);
+        Assert.Equal(creation.RelationTypeId, relation.RelationTypeId);
+        Assert.Equal(creation.SourceIssueId, relation.SourceIssueId);
+        Assert.Equal(creation.TargetIssueId, relation.TargetIssueId);
         Assert.False(relation.IsDeleted);
         Assert.Null(relation.DeletedAt);
         Assert.Null(relation.DeletedByAccountId);
@@ -37,7 +38,7 @@ public sealed class IssueRelationTests
         var actorId = Guid.NewGuid();
         var deletedAt = CreatedAt.AddHours(1);
 
-        relation.Delete(actorId, deletedAt);
+        relation.Delete(new ChangeContext(actorId, deletedAt));
 
         Assert.True(relation.IsDeleted);
         Assert.Equal(deletedAt, relation.DeletedAt);
@@ -49,13 +50,20 @@ public sealed class IssueRelationTests
 
     private static IssueRelation CreateRelation()
     {
-        return new IssueRelation(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            CreatedAt);
+        return IssueRelation.Create(
+            CreateRelationData(),
+            new ChangeContext(Guid.NewGuid(), CreatedAt));
+    }
+
+    private static IssueRelationCreation CreateRelationData()
+    {
+        return new IssueRelationCreation
+        {
+            Id = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid(),
+            RelationTypeId = Guid.NewGuid(),
+            SourceIssueId = Guid.NewGuid(),
+            TargetIssueId = Guid.NewGuid(),
+        };
     }
 }

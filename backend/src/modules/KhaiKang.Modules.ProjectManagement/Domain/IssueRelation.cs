@@ -1,27 +1,22 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class IssueRelation
+public sealed class IssueRelation : AuditableEntity
 {
     private IssueRelation() { }
 
-    public IssueRelation(
-        Guid id,
-        Guid projectId,
-        Guid relationTypeId,
-        Guid sourceIssueId,
-        Guid targetIssueId,
-        Guid actorAccountId,
-        DateTimeOffset createdAt)
+    private IssueRelation(IssueRelationCreation creation, ChangeContext context)
     {
-        Id = id;
-        ProjectId = projectId;
-        RelationTypeId = relationTypeId;
-        SourceIssueId = sourceIssueId;
-        TargetIssueId = targetIssueId;
-        CreatedAt = createdAt;
-        CreatedByAccountId = actorAccountId;
-        UpdatedAt = createdAt;
-        UpdatedByAccountId = actorAccountId;
+        Id = creation.Id;
+        ProjectId = creation.ProjectId;
+        RelationTypeId = creation.RelationTypeId;
+        SourceIssueId = creation.SourceIssueId;
+        TargetIssueId = creation.TargetIssueId;
+        InitializeAudit(context);
+    }
+
+    public static IssueRelation Create(IssueRelationCreation creation, ChangeContext context)
+    {
+        return new IssueRelation(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -36,19 +31,11 @@ public sealed class IssueRelation
     public bool IsDeleted { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
     public Guid? DeletedByAccountId { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public Guid? CreatedByAccountId { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public Guid? UpdatedByAccountId { get; private set; }
-    public int Version { get; private set; } = 1;
-
-    public void Delete(Guid actorAccountId, DateTimeOffset deletedAt)
+    public void Delete(ChangeContext context)
     {
         IsDeleted = true;
-        DeletedAt = deletedAt;
-        DeletedByAccountId = actorAccountId;
-        UpdatedAt = deletedAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        DeletedAt = context.OccurredAt;
+        DeletedByAccountId = context.ActorAccountId;
+        RecordChange(context);
     }
 }
