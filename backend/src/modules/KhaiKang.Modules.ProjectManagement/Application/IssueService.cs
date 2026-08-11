@@ -318,12 +318,7 @@ public sealed class IssueService(
         };
         var issue = Issue.Create(creation, context);
         dbContext.Issues.Add(issue);
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "issue_created",
-            now,
-            issue.Id));
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueCreated(issue.Id, context));
 
         try
         {
@@ -418,16 +413,12 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
+        var context = new ChangeContext(accountId, now);
         issue.ChangeStatus(
             status.Id,
             status.Category,
-            new ChangeContext(accountId, now));
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "issue_status_changed",
-            now,
-            issue.Id));
+            context);
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueStatusChanged(issue.Id, context));
 
         try
         {
@@ -518,12 +509,7 @@ public sealed class IssueService(
         };
         var context = new ChangeContext(accountId, now);
         issue.UpdateDetails(change, context);
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "issue_updated",
-            now,
-            issue.Id));
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueUpdated(issue.Id, context));
 
         try
         {
@@ -595,15 +581,11 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
+        var context = new ChangeContext(accountId, now);
         issue.ChangeAssignee(
             request.AssigneeAccountId,
-            new ChangeContext(accountId, now));
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "issue_assignee_changed",
-            now,
-            issue.Id));
+            context);
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueAssigneeChanged(issue.Id, context));
 
         try
         {

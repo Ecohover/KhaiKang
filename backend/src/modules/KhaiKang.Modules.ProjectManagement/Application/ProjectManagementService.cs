@@ -72,6 +72,7 @@ public sealed class ProjectManagementService(
         }
 
         var now = timeProvider.GetUtcNow();
+        var context = new ChangeContext(accountId, now);
         var project = Project.Create(
             new ProjectCreation
             {
@@ -80,7 +81,7 @@ public sealed class ProjectManagementService(
                 Name = request.Name.Trim(),
                 Description = NormalizeDescription(request.Description),
             },
-            new ChangeContext(accountId, now));
+            context);
         var member = ProjectMember.Create(
             new ProjectMemberCreation
             {
@@ -88,7 +89,7 @@ public sealed class ProjectManagementService(
                 ProjectId = project.Id,
                 AccountId = accountId,
             },
-            new ChangeContext(accountId, now));
+            context);
         var ownerRole = await dbContext.ProjectRoles
             .Include(role => role.Permissions)
             .ThenInclude(permission => permission.Permission)
@@ -102,17 +103,12 @@ public sealed class ProjectManagementService(
                 ProjectMemberId = member.Id,
                 ProjectRoleId = ownerRole.Id,
             },
-            new ChangeContext(accountId, now));
+            context);
 
         dbContext.Projects.Add(project);
         dbContext.ProjectMembers.Add(member);
         dbContext.ProjectMemberRoles.Add(memberRole);
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "project_created",
-            now,
-            project.Id));
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectCreated(project.Id, context));
 
         try
         {
@@ -179,6 +175,7 @@ public sealed class ProjectManagementService(
             return new UpdateProjectResult(UpdateProjectOutcome.VersionConflict);
         }
 
+        var context = new ChangeContext(accountId, timeProvider.GetUtcNow());
         membership.Project.Update(
             new ProjectDetailsChange
             {
@@ -186,13 +183,9 @@ public sealed class ProjectManagementService(
                 Description = NormalizeDescription(request.Description),
                 Status = requestedStatus,
             },
-            new ChangeContext(accountId, timeProvider.GetUtcNow()));
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            accountId,
-            "project_updated",
-            membership.Project.UpdatedAt,
-            membership.Project.Id));
+            context);
+        dbContext.ProjectAuditEvents.Add(
+            ProjectAuditEvent.ProjectUpdated(membership.Project.Id, context));
 
         try
         {
@@ -313,6 +306,7 @@ public sealed class ProjectManagementService(
         }
 
         var now = timeProvider.GetUtcNow();
+        var context = new ChangeContext(actorAccountId, now);
         if (member is null)
         {
             member = ProjectMember.Create(
@@ -322,22 +316,17 @@ public sealed class ProjectManagementService(
                     ProjectId = projectId,
                     AccountId = account.Id,
                 },
-                new ChangeContext(actorAccountId, now));
+                context);
             dbContext.ProjectMembers.Add(member);
         }
         else
         {
             dbContext.ProjectMemberRoles.RemoveRange(member.Roles);
-            member.Restore(new ChangeContext(actorAccountId, now));
+            member.Restore(context);
         }
 
         AddRoleMappings(member, roles, actorAccountId, now);
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            actorAccountId,
-            "project_member_added",
-            now,
-            member.Id));
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectMemberAdded(member.Id, context));
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return new(
@@ -399,15 +388,12 @@ public sealed class ProjectManagementService(
         }
 
         var now = timeProvider.GetUtcNow();
+        var context = new ChangeContext(actorAccountId, now);
         dbContext.ProjectMemberRoles.RemoveRange(member.Roles);
         AddRoleMappings(member, roles, actorAccountId, now);
-        member.RecordRoleChange(new ChangeContext(actorAccountId, now));
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            actorAccountId,
-            "project_member_roles_changed",
-            now,
-            member.Id));
+        member.RecordRoleChange(context);
+        dbContext.ProjectAuditEvents.Add(
+            ProjectAuditEvent.ProjectMemberRolesChanged(member.Id, context));
 
         try
         {
@@ -474,13 +460,9 @@ public sealed class ProjectManagementService(
         }
 
         var now = timeProvider.GetUtcNow();
-        member.Remove(new ChangeContext(actorAccountId, now));
-        dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
-            Guid.NewGuid(),
-            actorAccountId,
-            "project_member_removed",
-            now,
-            member.Id));
+        var context = new ChangeContext(actorAccountId, now);
+        member.Remove(context);
+        dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectMemberRemoved(member.Id, context));
 
         try
         {

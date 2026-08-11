@@ -16,7 +16,6 @@ public sealed class DomainDesignBaselineTests
         "KhaiKang.Modules.Identity.Domain.AuditEvent::.ctor/7",
         "KhaiKang.Modules.Identity.Domain.LoginSession::.ctor/5",
         "KhaiKang.Modules.Identity.Domain.SystemRolePermission::.ctor/5",
-        "KhaiKang.Modules.ProjectManagement.Domain.ProjectAuditEvent::.ctor/5",
         "KhaiKang.Modules.TestManagement.Domain.TestCase::.ctor/11",
         "KhaiKang.Modules.TestManagement.Domain.TestCase::Update/9",
         "KhaiKang.Modules.TestManagement.Domain.TestCaseAttachment::.ctor/10",
