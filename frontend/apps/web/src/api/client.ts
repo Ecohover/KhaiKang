@@ -17,6 +17,9 @@ import type {
   IssueMetadataResponse,
   IssueListQuery,
   IssueResponse,
+  IssueRelationTypeResponse,
+  IssueRelationResponse,
+  CreateIssueRelationRequest,
   IssueAttachmentResponse,
   LoginRequest,
   LinkTestWorkspaceProjectRequest,
@@ -53,6 +56,10 @@ import type {
   UpdateTestRunStatusRequest,
   RecordTestResultRequest,
   TestRunResponse,
+  LinkTestCaseRequirementIssueRequest,
+  TestCaseRequirementLinkResponse,
+  CreateTestRunBugRequest,
+  TestRunBugLinkResponse,
 } from './contracts'
 import { i18n } from '../i18n/index'
 
@@ -344,6 +351,41 @@ export const apiClient = {
     })
   },
 
+  listIssueRelationTypes(projectId: string): Promise<ApiResult<IssueRelationTypeResponse[]>> {
+    return request(`/api/v1/projects/${projectId}/issue-relation-types`)
+  },
+
+  listIssueRelations(
+    projectId: string,
+    issueId: string,
+  ): Promise<ApiResult<IssueRelationResponse[]>> {
+    return request(`/api/v1/projects/${projectId}/issues/${issueId}/relations`)
+  },
+
+  createIssueRelation(
+    projectId: string,
+    issueId: string,
+    body: CreateIssueRelationRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<IssueRelationResponse>> {
+    return request(`/api/v1/projects/${projectId}/issues/${issueId}/relations`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  deleteIssueRelation(
+    projectId: string,
+    issueId: string,
+    relationId: string,
+    version: number,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/projects/${projectId}/issues/${issueId}/relations/${relationId}?version=${encodeURIComponent(version)}`,
+      { method: 'DELETE', headers },
+    )
+  },
+
   listIssueAttachments(
     projectId: string,
     issueId: string,
@@ -599,6 +641,37 @@ export const apiClient = {
     return `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/attachments/${attachmentId}/content${suffix}`
   },
 
+  listTestCaseRequirementIssues(
+    workspaceId: string,
+    caseId: string,
+  ): Promise<ApiResult<TestCaseRequirementLinkResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/requirement-issues`)
+  },
+
+  linkTestCaseRequirementIssue(
+    workspaceId: string,
+    caseId: string,
+    body: LinkTestCaseRequirementIssueRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestCaseRequirementLinkResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/requirement-issues`, {
+      method: 'POST', headers, body,
+    })
+  },
+
+  unlinkTestCaseRequirementIssue(
+    workspaceId: string,
+    caseId: string,
+    linkId: string,
+    version: number,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(
+      `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/requirement-issues/${linkId}?version=${encodeURIComponent(version)}`,
+      { method: 'DELETE', headers },
+    )
+  },
+
   listTestPlans(workspaceId: string): Promise<ApiResult<TestPlanResponse[]>> {
     return request(`/api/v1/test-workspaces/${workspaceId}/plans`)
   },
@@ -634,6 +707,24 @@ export const apiClient = {
 
   getTestRun(workspaceId: string, runId: string): Promise<ApiResult<TestRunResponse>> {
     return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}`)
+  },
+
+  listTestRunBugs(
+    workspaceId: string,
+    runId: string,
+  ): Promise<ApiResult<TestRunBugLinkResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}/bugs`)
+  },
+
+  createTestRunBug(
+    workspaceId: string,
+    runId: string,
+    body: CreateTestRunBugRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<TestRunBugLinkResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/runs/${runId}/bugs`, {
+      method: 'POST', headers, body,
+    })
   },
 
   createTestRun(

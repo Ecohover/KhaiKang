@@ -29,6 +29,10 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
 
     public DbSet<IssueAttachment> IssueAttachments => Set<IssueAttachment>();
 
+    public DbSet<IssueRelationType> IssueRelationTypes => Set<IssueRelationType>();
+
+    public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var enforceAccountForeignKeys = Database.IsNpgsql();
@@ -48,6 +52,8 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         ConfigureIssuePriority(modelBuilder);
         ConfigureIssue(modelBuilder, enforceAccountForeignKeys);
         ConfigureIssueAttachment(modelBuilder, enforceAccountForeignKeys);
+        ConfigureIssueRelationType(modelBuilder);
+        ConfigureIssueRelation(modelBuilder, enforceAccountForeignKeys);
         ConfigureProjectAuditEvent(modelBuilder, enforceAccountForeignKeys);
     }
 
@@ -493,6 +499,128 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
                 .HasForeignKey(x => x.UploadedByAccountId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_issue_attachments_uploaded_by_account");
+        }
+    }
+
+    private static void ConfigureIssueRelationType(ModelBuilder modelBuilder)
+    {
+        var relationType = modelBuilder.Entity<IssueRelationType>();
+        relationType.ToTable("issue_relation_types");
+        relationType.HasKey(x => x.Id).HasName("pk_issue_relation_types");
+        relationType.Property(x => x.Id).HasColumnName("id");
+        relationType.Property(x => x.Code).HasColumnName("code").HasMaxLength(50);
+        relationType.Property(x => x.ForwardLabel).HasColumnName("forward_label").HasMaxLength(100);
+        relationType.Property(x => x.ReverseLabel).HasColumnName("reverse_label").HasMaxLength(100);
+        relationType.Property(x => x.DirectionKind).HasColumnName("direction_kind").HasMaxLength(20);
+        relationType.Property(x => x.IsSystem).HasColumnName("is_system");
+        relationType.Property(x => x.IsActive).HasColumnName("is_active");
+        relationType.Property(x => x.SortOrder).HasColumnName("sort_order");
+        relationType.Property(x => x.CreatedAt).HasColumnName("created_at");
+        relationType.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
+        relationType.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        relationType.Property(x => x.UpdatedByAccountId).HasColumnName("updated_by_account_id");
+        relationType.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        relationType.HasIndex(x => x.Code).IsUnique().HasDatabaseName("uq_issue_relation_types_code");
+
+        var seededAt = new DateTimeOffset(2026, 8, 10, 0, 0, 0, TimeSpan.Zero);
+        relationType.HasData(IssueRelationCatalog.Types.Select(item => new
+        {
+            item.Id,
+            item.Code,
+            item.ForwardLabel,
+            item.ReverseLabel,
+            item.DirectionKind,
+            IsSystem = true,
+            IsActive = true,
+            item.SortOrder,
+            CreatedAt = seededAt,
+            CreatedByAccountId = (Guid?)null,
+            UpdatedAt = seededAt,
+            UpdatedByAccountId = (Guid?)null,
+            Version = 1,
+        }));
+    }
+
+    private static void ConfigureIssueRelation(
+        ModelBuilder modelBuilder,
+        bool enforceAccountForeignKeys)
+    {
+        var relation = modelBuilder.Entity<IssueRelation>();
+        relation.ToTable("issue_relations", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_issue_relations_distinct_issues",
+                "source_issue_id <> target_issue_id");
+            table.HasCheckConstraint(
+                "ck_issue_relations_deleted_metadata",
+                "(is_deleted = false AND deleted_at IS NULL AND deleted_by_account_id IS NULL) OR " +
+                "(is_deleted = true AND deleted_at IS NOT NULL AND deleted_by_account_id IS NOT NULL)");
+        });
+        relation.HasKey(x => x.Id).HasName("pk_issue_relations");
+        relation.Property(x => x.Id).HasColumnName("id");
+        relation.Property(x => x.ProjectId).HasColumnName("project_id");
+        relation.Property(x => x.RelationTypeId).HasColumnName("relation_type_id");
+        relation.Property(x => x.SourceIssueId).HasColumnName("source_issue_id");
+        relation.Property(x => x.TargetIssueId).HasColumnName("target_issue_id");
+        relation.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+        relation.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        relation.Property(x => x.DeletedByAccountId).HasColumnName("deleted_by_account_id");
+        relation.Property(x => x.CreatedAt).HasColumnName("created_at");
+        relation.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
+        relation.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        relation.Property(x => x.UpdatedByAccountId).HasColumnName("updated_by_account_id");
+        relation.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        relation.HasIndex(x => x.ProjectId).HasDatabaseName("idx_issue_relations_project");
+        relation.HasIndex(x => new { x.SourceIssueId, x.IsDeleted })
+            .HasDatabaseName("idx_issue_relations_source_active");
+        relation.HasIndex(x => new { x.TargetIssueId, x.IsDeleted })
+            .HasDatabaseName("idx_issue_relations_target_active");
+        relation.HasIndex(x => new { x.RelationTypeId, x.SourceIssueId, x.TargetIssueId })
+            .IsUnique()
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("uq_issue_relations_active");
+        relation.HasIndex(x => x.TargetIssueId)
+            .IsUnique()
+            .HasFilter($"is_deleted = false AND relation_type_id = '{IssueRelationCatalog.ParentOfId}'")
+            .HasDatabaseName("uq_issue_relations_active_parent");
+        relation.HasOne(x => x.Project)
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_issue_relations_project");
+        relation.HasOne(x => x.RelationType)
+            .WithMany()
+            .HasForeignKey(x => x.RelationTypeId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_issue_relations_type");
+        relation.HasOne(x => x.SourceIssue)
+            .WithMany()
+            .HasForeignKey(x => x.SourceIssueId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_issue_relations_source_issue");
+        relation.HasOne(x => x.TargetIssue)
+            .WithMany()
+            .HasForeignKey(x => x.TargetIssueId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_issue_relations_target_issue");
+
+        if (enforceAccountForeignKeys)
+        {
+            relation.HasOne<AccountReference>()
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByAccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_issue_relations_created_by_account");
+            relation.HasOne<AccountReference>()
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedByAccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_issue_relations_updated_by_account");
+            relation.HasOne<AccountReference>()
+                .WithMany()
+                .HasForeignKey(x => x.DeletedByAccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_issue_relations_deleted_by_account");
         }
     }
 

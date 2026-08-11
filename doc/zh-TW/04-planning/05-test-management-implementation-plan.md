@@ -22,7 +22,7 @@ Test Workspace
   -> Test Run Report
 ```
 
-Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、Issue 關聯與 AI 功能不納入本次 MVP。
+Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent 與 AI 功能不納入本次 MVP。基本 Issue 關聯與測試追溯已由後續追溯階段完成。
 
 ## 第一階段：規格決策與合約邊界
 
@@ -160,8 +160,8 @@ Playwright、CI 匯入、Test Environment、Test Repository、Execution Agent、
 
 MVP 完成後再規劃：
 
-- Issue 與 Case／Plan／Run 的細部追溯關聯。
-- 失敗結果一鍵建立 Bug。
+- Run Item／Step 層級的細部證據追溯。
+- 從失敗 Run Item 一鍵建立並帶入證據的 Bug。
 - Test Environment、Repository 與 Execution Agent。
 - Playwright 與 CI 結果匯入。
 - 自動化診斷、簽核、進階報表與 AI。

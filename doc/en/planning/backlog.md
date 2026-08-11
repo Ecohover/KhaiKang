@@ -1,12 +1,12 @@
 # Backlog
 
-Status: synchronized on 2026-08-09. Traditional Chinese counterpart: [待處理清單](../../zh-TW/04-planning/02-backlog.md).
+Status: synchronized on 2026-08-11. Traditional Chinese counterpart: [待處理清單](../../zh-TW/04-planning/02-backlog.md).
 
 ## Product Extensions
 
-- Issue tags, parent/sub-task, comments, relations, watchers, and notifications
+- Issue tags, comments, watchers, and notifications
 - Custom roles, workflows, fields, board mappings, and Sprint support
-- Detailed Issue-to-Case/Plan/Run traceability and one-click Bug creation
+- One-click Bug creation from failed Run Items, precise Run Item evidence links, and traceability reports
 - Advanced reports, approvals, and scheduling
 
 ## Integration and Automation
@@ -23,3 +23,5 @@ Status: synchronized on 2026-08-09. Traditional Chinese counterpart: [待處理�
 - Durable execution state, evidence, approval, retry, and multi-agent coordination
 
 Backlog items must move into a reviewed functional spec and data model before implementation. They are not implied by the current MVP schema.
+
+Basic Issue relations and requirement-to-test traceability are implemented according to the accepted [Issue-Test Traceability specification](../specs/issue-test-traceability.md) and [data model](../data-model/issue-test-traceability.md). Precise Run Item evidence links, cross-Run Bug reproduction, and traceability reports remain backlog items.

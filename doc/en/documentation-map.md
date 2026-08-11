@@ -23,6 +23,7 @@ This page is the English entry point for KhaiKang documentation. Current MVP pro
 - [User and authentication](./specs/user-authentication.md)
 - [Project management](./specs/project-management.md)
 - [Test management](./specs/test-management.md)
+- [Issue-Test Traceability](./specs/issue-test-traceability.md)
 
 ## Data Models
 
@@ -30,6 +31,7 @@ This page is the English entry point for KhaiKang documentation. Current MVP pro
 - [Authentication](./data-model/authentication.md)
 - [Project management](./data-model/project-management.md)
 - [Test management](./data-model/test-management.md)
+- [Issue-Test Traceability](./data-model/issue-test-traceability.md)
 - [Audit metadata](./data-model/audit-metadata-fields.md)
 
 ## Current Planning

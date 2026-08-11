@@ -23,6 +23,8 @@ Project creation and its first Owner membership are transactional. Foreign keys 
 
 Issue creation calls `next_project_number('issue', project_id)` in the same transaction as the Issue insert. PostgreSQL serializes updates to the matching counter row, so concurrent creates receive distinct Project-scoped numbers without locking unrelated Projects.
 
-## Deferred Models
+## Traceability Extension
 
-`issue_comments`, `issue_relations`, `issue_relation_types`, Issue tags, watchers, and transitions are design directions only and do not exist in the MVP baseline.
+The active traceability phase adds seeded `issue_relation_types` and `issue_relations` owned by Project Management. Test-specific Case, Plan, Run, and Bug trace data remains owned by Test Management. See [Issue-Test Traceability](./issue-test-traceability.md).
+
+Issue comments, tags, watchers, configurable transitions, and custom relation types remain deferred.

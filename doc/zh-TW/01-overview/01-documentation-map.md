@@ -27,8 +27,9 @@
 8. [使用者與登入規格](../02-specs/01-user-authentication.md)
 9. [專案管理規格](../02-specs/02-project-management.md)
 10. [測試案例管理規格](../02-specs/03-test-case-management.md)
-11. [資料模型總覽](../03-data-model/01-data-model-overview.md)
-12. [階段規劃總覽](../04-planning/01-phase-overview.md)
+11. [Issue 與測試資產追溯規格](../02-specs/04-issue-test-traceability.md)
+12. [資料模型總覽](../03-data-model/01-data-model-overview.md)
+13. [階段規劃總覽](../04-planning/01-phase-overview.md)
 
 ## 文件分類
 
@@ -62,6 +63,7 @@
 - [使用者與登入規格](../02-specs/01-user-authentication.md)
 - [專案管理規格](../02-specs/02-project-management.md)
 - [測試案例管理規格](../02-specs/03-test-case-management.md)
+- [Issue 與測試資產追溯規格](../02-specs/04-issue-test-traceability.md)
 
 ### 03-data-model
 
@@ -78,6 +80,7 @@
 - [專案管理資料模型](../03-data-model/02-project-management-data-model.md)
 - [Audit Info 結構](../03-data-model/99-audit-metadata-fields.md)
 - [測試案例管理資料模型](../03-data-model/03-test-case-management-data-model.md)
+- [Issue 與測試資產追溯資料模型](../03-data-model/05-issue-test-traceability-data-model.md)
 
 ### 04-planning
 
@@ -97,6 +100,7 @@
 - [MVP 收尾與發布準備計畫](../04-planning/06-mvp-release-closure-plan.md)
 - [跨模組附件實作計畫](../04-planning/07-cross-module-attachments-implementation-plan.md)
 - [發布自動化與交付演練計畫](../04-planning/08-release-automation-plan.md)
+- [Issue 與測試資產追溯實作計畫](../04-planning/09-issue-test-traceability-implementation-plan.md)
 
 ## 文件使用原則
 

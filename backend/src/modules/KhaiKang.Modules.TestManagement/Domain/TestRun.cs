@@ -10,9 +10,12 @@ public sealed class TestRun
         int runNo,
         string name,
         Guid actorId,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Guid? testIssueProjectId = null,
+        Guid? testIssueId = null)
     {
         Id = id; TestPlanId = planId; RunNo = runNo; Name = name;
+        TestIssueProjectId = testIssueProjectId; TestIssueId = testIssueId;
         StartedByAccountId = actorId; Status = "not_started";
         CreatedAt = UpdatedAt = now; CreatedByAccountId = UpdatedByAccountId = actorId; Version = 1;
     }
@@ -21,6 +24,8 @@ public sealed class TestRun
     public Guid TestPlanId { get; private set; }
     public int RunNo { get; private set; }
     public string Name { get; private set; } = null!;
+    public Guid? TestIssueProjectId { get; private set; }
+    public Guid? TestIssueId { get; private set; }
     public string Status { get; private set; } = null!;
     public Guid StartedByAccountId { get; private set; }
     public DateTimeOffset? StartedAt { get; private set; }

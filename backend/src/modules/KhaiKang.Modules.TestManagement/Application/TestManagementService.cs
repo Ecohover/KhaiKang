@@ -27,6 +27,7 @@ public sealed class TestManagementService(
     TestManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
     IProjectDirectory projectDirectory,
+    IIssueDirectory issueDirectory,
     TimeProvider timeProvider)
 {
     private static readonly string[] Roles = ["owner", "manager", "tester", "viewer"];
@@ -196,6 +197,28 @@ public sealed class TestManagementService(
         if (link.Version != version)
         {
             return new(TestManagementOutcome.Conflict, Code: "workspace_project_version_conflict");
+        }
+
+        var hasTraceDependencies = await dbContext.CaseRequirementLinks.AnyAsync(
+                item => item.TestWorkspaceId == workspaceId &&
+                    item.ProjectId == projectId &&
+                    !item.IsDeleted,
+                cancellationToken) ||
+            await dbContext.Plans.AnyAsync(
+                item => item.TestWorkspaceId == workspaceId &&
+                    item.TestIssueProjectId == projectId,
+                cancellationToken) ||
+            await dbContext.Runs.AnyAsync(
+                item => item.TestIssueProjectId == projectId &&
+                    dbContext.Plans.Any(plan =>
+                        plan.Id == item.TestPlanId && plan.TestWorkspaceId == workspaceId),
+                cancellationToken) ||
+            await dbContext.RunBugLinks.AnyAsync(
+                item => item.TestWorkspaceId == workspaceId && item.ProjectId == projectId,
+                cancellationToken);
+        if (hasTraceDependencies)
+        {
+            return new(TestManagementOutcome.Conflict, Code: "workspace_project_has_trace_links");
         }
 
         dbContext.WorkspaceProjects.Remove(link);
@@ -804,7 +827,15 @@ public sealed class TestManagementService(
             .Where(x => x.TestWorkspaceId == workspaceId)
             .OrderByDescending(x => x.UpdatedAt)
             .ToListAsync(cancellationToken);
-        return new(TestManagementOutcome.Succeeded, plans.Select(ToPlanResponse).ToArray());
+        var issues = await ReadableTraceIssuesAsync(
+            plans.Select(item => item.TestIssueId), accountId, cancellationToken);
+        return new(
+            TestManagementOutcome.Succeeded,
+            plans.Select(item => ToPlanResponse(
+                item,
+                item.TestIssueId.HasValue
+                    ? issues.GetValueOrDefault(item.TestIssueId.Value)
+                    : null)).ToArray());
     }
 
     public async Task<TestManagementResult<TestPlanResponse>> GetPlanAsync(
@@ -817,9 +848,11 @@ public sealed class TestManagementService(
 
         var plan = await PlanQuery().AsNoTracking().SingleOrDefaultAsync(
             x => x.Id == planId && x.TestWorkspaceId == workspaceId, cancellationToken);
-        return plan is null
-            ? new(TestManagementOutcome.NotFound)
-            : new(TestManagementOutcome.Succeeded, ToPlanResponse(plan));
+        if (plan is null) return new(TestManagementOutcome.NotFound);
+        var issue = plan.TestIssueId.HasValue
+            ? await issueDirectory.FindReadableAsync(plan.TestIssueId.Value, accountId, cancellationToken)
+            : null;
+        return new(TestManagementOutcome.Succeeded, ToPlanResponse(plan, issue));
     }
 
     public async Task<TestManagementResult<TestPlanResponse>> CreatePlanAsync(
@@ -834,6 +867,10 @@ public sealed class TestManagementService(
         var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
         if (cases is null)
             return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
+        var testIssue = await ResolveTestIssueForWriteAsync(
+            workspaceId, accountId, request.TestIssueId, cancellationToken);
+        if (testIssue.Code is not null)
+            return new(TestManagementOutcome.Invalid, Code: testIssue.Code);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
@@ -841,7 +878,7 @@ public sealed class TestManagementService(
         var name = PlanName(request.Name, now);
         var plan = new TestPlan(
             Guid.NewGuid(), workspaceId, planNo, name, Clean(request.Description),
-            accountId, now);
+            accountId, now, testIssue.Issue?.ProjectId, testIssue.Issue?.Id);
         dbContext.Plans.Add(plan);
         for (var index = 0; index < cases.Count; index++)
         {
@@ -873,6 +910,10 @@ public sealed class TestManagementService(
         var cases = await ResolvePlanCasesAsync(workspaceId, request.CaseIds, cancellationToken);
         if (cases is null || (request.Status == "active" && cases.Count == 0))
             return new(TestManagementOutcome.Invalid, Code: "plan_cases_invalid");
+        var testIssue = await ResolveTestIssueForWriteAsync(
+            workspaceId, accountId, request.TestIssueId, cancellationToken);
+        if (testIssue.Code is not null)
+            return new(TestManagementOutcome.Invalid, Code: testIssue.Code);
 
         var now = timeProvider.GetUtcNow();
         foreach (var item in plan.Items.ToArray()) dbContext.PlanItems.Remove(item);
@@ -882,7 +923,8 @@ public sealed class TestManagementService(
                 Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
         }
         plan.Update(
-            PlanName(request.Name, now), Clean(request.Description), request.Status, accountId, now);
+            PlanName(request.Name, now), Clean(request.Description), request.Status, accountId, now,
+            testIssue.Issue?.ProjectId, testIssue.Issue?.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
     }
@@ -898,7 +940,15 @@ public sealed class TestManagementService(
                 plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId))
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
-        return new(TestManagementOutcome.Succeeded, runs.Select(ToRunResponse).ToArray());
+        var issues = await ReadableTraceIssuesAsync(
+            runs.Select(item => item.TestIssueId), accountId, cancellationToken);
+        return new(
+            TestManagementOutcome.Succeeded,
+            runs.Select(item => ToRunResponse(
+                item,
+                item.TestIssueId.HasValue
+                    ? issues.GetValueOrDefault(item.TestIssueId.Value)
+                    : null)).ToArray());
     }
 
     public async Task<TestManagementResult<TestRunResponse>> GetRunAsync(
@@ -911,9 +961,11 @@ public sealed class TestManagementService(
             x => x.Id == runId && dbContext.Plans.Any(
                 plan => plan.Id == x.TestPlanId && plan.TestWorkspaceId == workspaceId),
             cancellationToken);
-        return run is null
-            ? new(TestManagementOutcome.NotFound)
-            : new(TestManagementOutcome.Succeeded, ToRunResponse(run));
+        if (run is null) return new(TestManagementOutcome.NotFound);
+        var issue = run.TestIssueId.HasValue
+            ? await issueDirectory.FindReadableAsync(run.TestIssueId.Value, accountId, cancellationToken)
+            : null;
+        return new(TestManagementOutcome.Succeeded, ToRunResponse(run, issue));
     }
 
     public async Task<TestManagementResult<TestRunResponse>> CreateRunAsync(
@@ -940,7 +992,8 @@ public sealed class TestManagementService(
         var now = timeProvider.GetUtcNow();
         var runNo = await NextNumberAsync("run", plan.Id, cancellationToken);
         var run = new TestRun(
-            Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now);
+            Guid.NewGuid(), plan.Id, runNo, request.Name.Trim(), accountId, now,
+            plan.TestIssueProjectId, plan.TestIssueId);
         dbContext.Runs.Add(run);
         foreach (var planItem in plan.Items.OrderBy(x => x.SortOrder))
         {
@@ -1220,15 +1273,16 @@ public sealed class TestManagementService(
                 "Unsupported test number counter type."),
         };
     }
-    private static TestPlanResponse ToPlanResponse(TestPlan x) =>
+    private static TestPlanResponse ToPlanResponse(TestPlan x, IssueDirectoryEntry? testIssue) =>
         new(
             x.Id, x.TestWorkspaceId, x.PlanNo, $"{x.Workspace.Prefix}-TP{x.PlanNo}",
             x.Name, x.Description, x.Status,
             x.Items.OrderBy(item => item.SortOrder).Select(item =>
                 new TestPlanItemResponse(
                     item.Id, item.TestCaseId, item.SortOrder, item.TestCase.Title)).ToArray(),
-            x.CreatedAt, x.UpdatedAt, x.Version);
-    private static TestRunResponse ToRunResponse(TestRun x)
+            x.CreatedAt, x.UpdatedAt, x.Version,
+            testIssue is null ? null : ToTraceIssueResponse(testIssue));
+    private static TestRunResponse ToRunResponse(TestRun x, IssueDirectoryEntry? testIssue)
     {
         var items = x.Items.OrderBy(item => item.SortOrder).Select(item =>
             new TestRunItemResponse(
@@ -1253,8 +1307,52 @@ public sealed class TestManagementService(
             $"{x.Plan.Workspace.Prefix}-TP{x.Plan.PlanNo}-R{x.RunNo}",
             x.Name, x.Status, x.StartedByAccountId,
             x.StartedAt, x.CompletedAt, x.Summary, progress, items,
-            x.CreatedAt, x.UpdatedAt, x.Version);
+            x.CreatedAt, x.UpdatedAt, x.Version,
+            testIssue is null ? null : ToTraceIssueResponse(testIssue));
     }
+
+    private async Task<(IssueDirectoryEntry? Issue, string? Code)> ResolveTestIssueForWriteAsync(
+        Guid workspaceId,
+        Guid accountId,
+        Guid? issueId,
+        CancellationToken cancellationToken)
+    {
+        if (!issueId.HasValue) return (null, null);
+
+        var issue = await issueDirectory.FindUpdatableAsync(
+            issueId.Value, accountId, cancellationToken);
+        if (issue is null) return (null, "test_issue_not_accessible");
+        if (issue.ProjectStatus != "active") return (null, "project_not_active");
+        if (issue.TypeCode != "task") return (null, "test_issue_type_invalid");
+
+        var linked = await dbContext.WorkspaceProjects.AnyAsync(
+            item => item.TestWorkspaceId == workspaceId && item.ProjectId == issue.ProjectId,
+            cancellationToken);
+        return linked ? (issue, null) : (null, "workspace_project_not_linked");
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, IssueDirectoryEntry>> ReadableTraceIssuesAsync(
+        IEnumerable<Guid?> issueIds,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        var ids = issueIds.Where(item => item.HasValue)
+            .Select(item => item!.Value)
+            .Distinct()
+            .ToArray();
+        return await issueDirectory.GetReadableByIdsAsync(ids, accountId, cancellationToken);
+    }
+
+    private static TestTraceIssueResponse ToTraceIssueResponse(IssueDirectoryEntry issue) =>
+        new(
+            issue.Id,
+            issue.ProjectId,
+            issue.ProjectCode,
+            issue.IssueNo,
+            issue.Key,
+            issue.Title,
+            issue.TypeCode,
+            issue.StatusCode);
     private static IReadOnlyList<TestSuiteResponse> MapSuites(IReadOnlyList<TestSuite> suites) =>
         suites.Select(x => ToSuiteResponse(x, DepthOf(x.Id, suites) ?? 1)).ToArray();
 

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Paperclip, Plus, Trash2, U
 import { useI18n } from 'vue-i18n'
 import { UiAttachmentLink, UiButton, UiCreateActions, UiField, UiFormActionBar } from '@khaikang/ui'
 import AppMarkdown from './AppMarkdown.vue'
+import TestCaseRequirementLinks from './TestCaseRequirementLinks.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type { TestCaseAttachmentResponse, TestCaseResponse, TestSuiteResponse } from '../api/contracts'
 import type { TestWorkspaceResponse } from '../api/contracts'
@@ -320,6 +321,12 @@ async function save(): Promise<void> {
           </select>
         </label>
       </section>
+
+      <TestCaseRequirementLinks
+        :workspace-id="workspaceId"
+        :test-case-id="testCase.id"
+        :can-manage="canUploadImages"
+      />
 
       <section class="form-section">
         <header>

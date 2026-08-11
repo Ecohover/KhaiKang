@@ -281,7 +281,6 @@ Issue 是專案中最基本的追蹤單位。
 - 預估工時
 - 實際工時
 - 標籤
-- 關聯 Issue
 - 自訂欄位
 
 這些欄位後續若需要，可再逐步擴充。
@@ -420,6 +419,14 @@ Issue 是專案中最基本的追蹤單位。
 - 建立人
 - 建立時間
 - 更新時間
+
+## Issue 關聯與測試資產追溯
+
+Project Management 提供固定的 `related`、`parent_of`、`blocks`、`duplicates` 與 `tests` 關聯，詳細方向、從屬與授權規則以 [Issue 與測試資產追溯規格](./04-issue-test-traceability.md) 為準。
+
+其中 `parent_of` 是有方向的從屬關係：來源為父 Issue、目標為子 Issue；子 Issue 最多一個有效父層且不得形成循環。`tests` 由測試 Issue 指向其驗證的需求 Issue。
+
+Test Management 另外擁有 Case 的需求關聯、Plan 的測試 Issue、Run 的測試 Issue 快照及 Run 開立的 Bug 來源關聯。跨模組查詢只能使用明確應用合約，不使用泛用 JSON mapping，也不直接讀取另一模組 DbContext。
 
 ## 狀態與規則
 

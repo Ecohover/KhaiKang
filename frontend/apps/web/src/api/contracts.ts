@@ -224,6 +224,45 @@ export interface TestWorkspaceResponse {
   version: number
 }
 
+export type IssueRelationDirectionKind = 'symmetric' | 'directed' | 'hierarchical'
+export type IssueRelationDirection = 'forward' | 'reverse'
+
+export interface IssueRelationTypeResponse {
+  id: string
+  code: string
+  forwardLabel: string
+  reverseLabel: string
+  directionKind: IssueRelationDirectionKind
+}
+
+export interface IssueRelationIssueResponse {
+  id: string
+  issueNo: number
+  key: string
+  title: string
+  typeCode: string
+  statusCode: string
+}
+
+export interface IssueRelationResponse {
+  id: string
+  projectId: string
+  relationTypeCode: string
+  forwardLabel: string
+  reverseLabel: string
+  directionKind: IssueRelationDirectionKind
+  sourceIssue: IssueRelationIssueResponse
+  targetIssue: IssueRelationIssueResponse
+  createdAt: string
+  version: number
+}
+
+export interface CreateIssueRelationRequest {
+  relationTypeCode: string
+  relatedIssueId: string
+  direction: IssueRelationDirection
+}
+
 export interface LinkTestWorkspaceProjectRequest {
   projectId: string
 }
@@ -418,6 +457,7 @@ export interface CreateTestPlanRequest {
   name?: string | null
   description: string | null
   caseIds: string[]
+  testIssueId?: string | null
 }
 
 export interface UpdateTestPlanRequest extends CreateTestPlanRequest {
@@ -444,6 +484,7 @@ export interface TestPlanResponse {
   createdAt: string
   updatedAt: string
   version: number
+  testIssue: TestTraceIssueResponse | null
 }
 
 export type TestResultStatus = 'not_run' | 'passed' | 'failed' | 'blocked' | 'skipped'
@@ -518,5 +559,45 @@ export interface TestRunResponse {
   items: TestRunItemResponse[]
   createdAt: string
   updatedAt: string
+  version: number
+  testIssue: TestTraceIssueResponse | null
+}
+
+export interface TestTraceIssueResponse {
+  id: string
+  projectId: string
+  projectCode: string
+  issueNo: number
+  key: string
+  title: string
+  typeCode: string
+  statusCode: string
+}
+
+export interface LinkTestCaseRequirementIssueRequest {
+  requirementIssueId: string
+}
+
+export interface TestCaseRequirementLinkResponse {
+  id: string
+  testCaseId: string
+  issue: TestTraceIssueResponse
+  createdAt: string
+  version: number
+}
+
+export interface CreateTestRunBugRequest {
+  projectId: string
+  title: string
+  priorityCode: string | null
+  description: string | null
+  assigneeAccountId: string | null
+}
+
+export interface TestRunBugLinkResponse {
+  id: string
+  testRunId: string
+  issue: TestTraceIssueResponse
+  createdAt: string
   version: number
 }

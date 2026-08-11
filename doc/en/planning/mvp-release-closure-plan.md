@@ -7,12 +7,13 @@ Status: core implementation and baseline verification complete as of 2026-08-09.
 - Local accounts, browser authentication, fixed roles, permissions, and first-run setup.
 - Projects, members, Issues, list/board workflow, assignment, completion information, and Issue attachments.
 - Test Workspaces, Project links, members, Suites, Cases, Tags, Plans, Runs, manual results, immutable snapshots, and Case/Run Item attachments.
+- Fixed Issue relations plus Case requirement, Plan Test Issue, Run snapshot, and Run-originated Bug traceability.
 - Local `IFileStorage`, PostgreSQL metadata, canonical OpenAPI, English/Traditional Chinese UI copy, and optimistic concurrency.
 
 ## Explicitly Deferred
 
 - CI/Jenkins, Playwright, external result import, AI generation/execution, repositories, environments, execution agents, and credentials.
-- Custom roles, workflows, fields, Issue tags/sub-tasks/comments/relations/watchers/notifications.
+- Custom roles, workflows, fields, Issue tags/sub-tasks/comments/watchers/notifications, and configurable relation types.
 - Advanced attachment providers, virus scanning, previews, sharing, versioning, and retention cleanup.
 - Full desktop/mobile manual acceptance, production upgrade rehearsal, and backup/restore rehearsal.
 
@@ -21,7 +22,7 @@ Status: core implementation and baseline verification complete as of 2026-08-09.
 - Test Run execution locks snapshot scope and structure but allows any authorized Workspace executor to contribute results.
 - The three DbContexts each have one baseline migration.
 - A clean `khaikang` PostgreSQL test database applied all three baselines successfully and created 34 public tables including `__EFMigrationsHistory`.
-- Backend build completed with zero warnings/errors and 21 automated tests passed.
+- Backend build completed with zero warnings/errors and 23 automated tests passed.
 - A local attachment-storage probe remained readable after an API restart.
 
 ## Current MVP Status

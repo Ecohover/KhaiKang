@@ -30,3 +30,5 @@ Run creation copies Case and Step content. Once a Run exists, later Case, Suite,
 Case, Plan, and Run creation call `next_test_number` in the same transaction as their inserts. Case and Plan counters use Workspace ID as scope; Run counters use Plan ID. PostgreSQL serializes only requests for the same counter row, allowing unrelated Workspaces and Plans to allocate numbers independently.
 
 Repositories, environments, execution agents, automation bindings, external result records, and AI execution tables are not part of the MVP baseline.
+
+The active [Issue-Test Traceability model](./issue-test-traceability.md) adds Case-to-requirement links, one current Test Issue on a Plan, its immutable Run snapshot, and Run-to-Bug origin links. The Workspace-Project mapping is their scope prerequisite but grants no access by itself.

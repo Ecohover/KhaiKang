@@ -5,7 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiButton, UiCreateActions, UiFormActionBar } from '@khaikang/ui'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
-import type { TestCaseResponse, TestPlanResponse, TestPlanStatus, TestRunResponse, TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
+import { listWorkspaceIssues } from '../api/issueOptions'
+import type { IssueResponse, TestCaseResponse, TestPlanResponse, TestPlanStatus, TestRunResponse, TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import TestPlanCaseTree from '../components/TestPlanCaseTree.vue'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
@@ -25,6 +26,8 @@ const name = ref('')
 const description = ref('')
 const status = ref<TestPlanStatus>('draft')
 const caseIds = ref<string[]>([])
+const testIssues = ref<IssueResponse[]>([])
+const testIssueId = ref('')
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
@@ -86,7 +89,7 @@ function moveCase(caseId: string, offset: number): void {
 async function load(): Promise<void> {
   loading.value = true
   error.value = ''
-  const [workspaceResult, caseResult, suiteResult, planResult, runResult] = await Promise.all([
+  const [workspaceResult, caseResult, suiteResult, planResult, runResult, issueOptionResult] = await Promise.all([
     apiClient.getTestWorkspace(workspaceId.value),
     apiClient.listTestCases(workspaceId.value),
     apiClient.listTestSuites(workspaceId.value),
@@ -94,20 +97,24 @@ async function load(): Promise<void> {
       ? apiClient.getTestPlan(workspaceId.value, planId.value)
       : Promise.resolve({ data: undefined, error: undefined }),
     isEditing.value ? apiClient.listTestRuns(workspaceId.value) : Promise.resolve({ data: [], error: undefined }),
+    listWorkspaceIssues(workspaceId.value, { typeCode: 'task' }),
   ])
   workspace.value = workspaceResult.data
   cases.value = caseResult.data ?? []
   suites.value = suiteResult.data ?? []
   plan.value = planResult.data
   runs.value = runResult.data ?? []
+  testIssues.value = issueOptionResult.issues
+    .sort((left, right) => left.key.localeCompare(right.key))
   if (plan.value) {
     name.value = plan.value.name
     description.value = plan.value.description ?? ''
     status.value = plan.value.status
     caseIds.value = plan.value.items.map((item) => item.caseId)
+    testIssueId.value = plan.value.testIssue?.id ?? ''
   }
   error.value = problemMessage(
-    workspaceResult.error ?? caseResult.error ?? suiteResult.error ?? planResult.error ?? runResult.error,
+    workspaceResult.error ?? caseResult.error ?? suiteResult.error ?? planResult.error ?? runResult.error ?? issueOptionResult.error,
     workspace.value && (!isEditing.value || plan.value) ? '' : t('tests.plan.loadFailed'),
   )
   loading.value = false
@@ -121,6 +128,7 @@ async function save(continueCreating = false): Promise<void> {
     name: name.value.trim(),
     description: description.value.trim() || null,
     caseIds: caseIds.value,
+    testIssueId: testIssueId.value || null,
   }
   const result = isEditing.value && plan.value
     ? await apiClient.updateTestPlan(workspaceId.value, plan.value.id, {
@@ -139,6 +147,7 @@ async function save(continueCreating = false): Promise<void> {
       name.value = ''
       description.value = ''
       caseIds.value = []
+      testIssueId.value = ''
       await nextTick()
       document.getElementById('test-plan-name')?.focus()
     } else {
@@ -177,6 +186,16 @@ onMounted(load)
         <label>
           <span>{{ t('tests.plan.descriptionLabel') }}</span>
           <textarea v-model="description" rows="4" maxlength="4000" :disabled="saving" />
+        </label>
+        <label>
+          <span>{{ t('tests.plan.testIssue') }}</span>
+          <select v-model="testIssueId" :disabled="saving">
+            <option value="">{{ t('tests.plan.noTestIssue') }}</option>
+            <option v-for="testIssue in testIssues" :key="testIssue.id" :value="testIssue.id">
+              {{ testIssue.key }} · {{ testIssue.title }}
+            </option>
+          </select>
+          <small>{{ t('tests.plan.testIssueHint') }}</small>
         </label>
         <label v-if="isEditing">
           <span>{{ t('tests.plan.statusLabel') }}</span>
