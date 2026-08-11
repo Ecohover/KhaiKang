@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.ProjectManagement.Application;
 using KhaiKang.Modules.ProjectManagement.Contracts;
+using KhaiKang.Modules.ProjectManagement.Domain;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -301,7 +302,7 @@ public static partial class ProjectManagementEndpointExtensions
         var errors = new Dictionary<string, string[]>();
         ValidateName(request.Name, errors);
         ValidateDescription(request.Description, errors);
-        if (request.Status is not ("active" or "inactive"))
+        if (!ProjectManagementCodes.IsProjectStatusCode(request.Status))
         {
             errors["status"] = ["Project status must be active or inactive."];
         }

@@ -8,12 +8,19 @@ public sealed class ProjectTests
         new(2026, 8, 11, 8, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Constructor_CreatesActiveProjectWithInitialAuditMetadata()
+    public void Create_CreatesActiveProjectWithInitialAuditMetadata()
     {
         var actorId = Guid.NewGuid();
 
-        var project = new Project(
-            Guid.NewGuid(), "APP", "Application", "Description", actorId, CreatedAt);
+        var project = Project.Create(
+            new ProjectCreation
+            {
+                Id = Guid.NewGuid(),
+                Code = "APP",
+                Name = "Application",
+                Description = "Description",
+            },
+            new ChangeContext(actorId, CreatedAt));
 
         Assert.Equal("APP", project.Code);
         Assert.Equal("Application", project.Name);
@@ -31,11 +38,13 @@ public sealed class ProjectTests
         var updatedAt = CreatedAt.AddHours(1);
 
         project.Update(
-            "Renamed application",
-            "Updated description",
-            ProjectStatus.Inactive,
-            actorId,
-            updatedAt);
+            new ProjectDetailsChange
+            {
+                Name = "Renamed application",
+                Description = "Updated description",
+                Status = ProjectStatus.Inactive,
+            },
+            new ChangeContext(actorId, updatedAt));
 
         Assert.Equal("Renamed application", project.Name);
         Assert.Equal("Updated description", project.Description);
@@ -47,7 +56,13 @@ public sealed class ProjectTests
 
     private static Project CreateProject()
     {
-        return new Project(
-            Guid.NewGuid(), "APP", "Application", null, Guid.NewGuid(), CreatedAt);
+        return Project.Create(
+            new ProjectCreation
+            {
+                Id = Guid.NewGuid(),
+                Code = "APP",
+                Name = "Application",
+            },
+            new ChangeContext(Guid.NewGuid(), CreatedAt));
     }
 }

@@ -11,6 +11,14 @@ public sealed class ProjectManagementCodesTests
     {
         Assert.Equal(code, status.ToCode());
         Assert.Equal(status, ProjectManagementCodes.ParseProjectStatus(code));
+        Assert.True(ProjectManagementCodes.IsProjectStatusCode(code));
+        Assert.True(ProjectManagementCodes.IsProjectStatusCode(code.ToUpperInvariant()));
+    }
+
+    [Fact]
+    public void IsProjectStatusCode_RejectsUnknownCode()
+    {
+        Assert.False(ProjectManagementCodes.IsProjectStatusCode("archived"));
     }
 
     [Theory]

@@ -6,22 +6,21 @@ public sealed class Project
     {
     }
 
-    public Project(
-        Guid id,
-        string code,
-        string name,
-        string? description,
-        Guid creatorAccountId,
-        DateTimeOffset createdAt)
+    private Project(ProjectCreation creation, ChangeContext context)
     {
-        Id = id;
-        Code = code;
-        Name = name;
-        Description = description;
-        CreatedByAccountId = creatorAccountId;
-        CreatedAt = createdAt;
-        UpdatedByAccountId = creatorAccountId;
-        UpdatedAt = createdAt;
+        Id = creation.Id;
+        Code = creation.Code;
+        Name = creation.Name;
+        Description = creation.Description;
+        CreatedByAccountId = context.ActorAccountId;
+        CreatedAt = context.OccurredAt;
+        UpdatedByAccountId = context.ActorAccountId;
+        UpdatedAt = context.OccurredAt;
+    }
+
+    public static Project Create(ProjectCreation creation, ChangeContext context)
+    {
+        return new Project(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -48,18 +47,13 @@ public sealed class Project
 
     public ICollection<Issue> Issues { get; } = [];
 
-    public void Update(
-        string name,
-        string? description,
-        ProjectStatus status,
-        Guid actorAccountId,
-        DateTimeOffset updatedAt)
+    public void Update(ProjectDetailsChange change, ChangeContext context)
     {
-        Name = name;
-        Description = description;
-        Status = status;
-        UpdatedByAccountId = actorAccountId;
-        UpdatedAt = updatedAt;
+        Name = change.Name;
+        Description = change.Description;
+        Status = change.Status;
+        UpdatedByAccountId = context.ActorAccountId;
+        UpdatedAt = context.OccurredAt;
         Version++;
     }
 }

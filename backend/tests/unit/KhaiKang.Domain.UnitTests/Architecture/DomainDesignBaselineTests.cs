@@ -18,8 +18,6 @@ public sealed class DomainDesignBaselineTests
         "KhaiKang.Modules.Identity.Domain.SystemRolePermission::.ctor/5",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueAttachment::.ctor/10",
         "KhaiKang.Modules.ProjectManagement.Domain.IssueRelation::.ctor/7",
-        "KhaiKang.Modules.ProjectManagement.Domain.Project::.ctor/6",
-        "KhaiKang.Modules.ProjectManagement.Domain.Project::Update/5",
         "KhaiKang.Modules.ProjectManagement.Domain.ProjectAuditEvent::.ctor/5",
         "KhaiKang.Modules.ProjectManagement.Domain.ProjectMember::.ctor/5",
         "KhaiKang.Modules.ProjectManagement.Domain.ProjectMemberRole::.ctor/5",

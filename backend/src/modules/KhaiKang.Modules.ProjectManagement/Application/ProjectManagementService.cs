@@ -72,13 +72,15 @@ public sealed class ProjectManagementService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var project = new Project(
-            Guid.NewGuid(),
-            normalizedCode,
-            request.Name.Trim(),
-            NormalizeDescription(request.Description),
-            accountId,
-            now);
+        var project = Project.Create(
+            new ProjectCreation
+            {
+                Id = Guid.NewGuid(),
+                Code = normalizedCode,
+                Name = request.Name.Trim(),
+                Description = NormalizeDescription(request.Description),
+            },
+            new ChangeContext(accountId, now));
         var member = new ProjectMember(Guid.NewGuid(), project.Id, accountId, now, accountId);
         var ownerRole = await dbContext.ProjectRoles
             .Include(role => role.Permissions)
@@ -157,9 +159,7 @@ public sealed class ProjectManagementService(
             return new UpdateProjectResult(UpdateProjectOutcome.Forbidden);
         }
 
-        var requestedStatus = request.Status.Equals("active", StringComparison.OrdinalIgnoreCase)
-            ? ProjectStatus.Active
-            : ProjectStatus.Inactive;
+        var requestedStatus = ProjectManagementCodes.ParseProjectStatus(request.Status);
         if (membership.Project.Status != requestedStatus && !canChangeStatus)
         {
             return new UpdateProjectResult(UpdateProjectOutcome.Forbidden);
@@ -171,11 +171,13 @@ public sealed class ProjectManagementService(
         }
 
         membership.Project.Update(
-            request.Name.Trim(),
-            NormalizeDescription(request.Description),
-            requestedStatus,
-            accountId,
-            timeProvider.GetUtcNow());
+            new ProjectDetailsChange
+            {
+                Name = request.Name.Trim(),
+                Description = NormalizeDescription(request.Description),
+                Status = requestedStatus,
+            },
+            new ChangeContext(accountId, timeProvider.GetUtcNow()));
         dbContext.ProjectAuditEvents.Add(new ProjectAuditEvent(
             Guid.NewGuid(),
             accountId,
@@ -616,7 +618,7 @@ public sealed class ProjectManagementService(
             project.Code,
             project.Name,
             project.Description,
-            project.Status == ProjectStatus.Active ? "active" : "inactive",
+            project.Status.ToCode(),
             roles,
             permissions,
             project.CreatedAt,

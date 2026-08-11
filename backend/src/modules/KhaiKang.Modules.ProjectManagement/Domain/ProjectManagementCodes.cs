@@ -47,6 +47,12 @@ public static class ProjectManagementCodes
         throw UnsupportedDatabaseValue<ProjectStatus>(code);
     }
 
+    public static bool IsProjectStatusCode(string code)
+    {
+        return CodeEquals(code, ProjectActiveCode) ||
+            CodeEquals(code, ProjectInactiveCode);
+    }
+
     public static ProjectMemberStatus ParseProjectMemberStatus(string code)
     {
         if (CodeEquals(code, ProjectMemberActiveCode))
