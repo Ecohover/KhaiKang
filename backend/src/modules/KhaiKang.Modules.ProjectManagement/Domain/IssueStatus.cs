@@ -1,6 +1,6 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class IssueStatus
+public sealed class IssueStatus : AuditableEntity
 {
     private IssueStatus() { }
 
@@ -12,9 +12,4 @@ public sealed class IssueStatus
     public bool IsSystem { get; private set; } = true;
     public bool IsActive { get; private set; } = true;
     public int SortOrder { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public Guid? CreatedByAccountId { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public Guid? UpdatedByAccountId { get; private set; }
-    public int Version { get; private set; } = 1;
 }

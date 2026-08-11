@@ -1,6 +1,6 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class IssueRelationType
+public sealed class IssueRelationType : AuditableEntity
 {
     private IssueRelationType() { }
 
@@ -12,9 +12,4 @@ public sealed class IssueRelationType
     public bool IsSystem { get; private set; }
     public bool IsActive { get; private set; }
     public int SortOrder { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public Guid? CreatedByAccountId { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public Guid? UpdatedByAccountId { get; private set; }
-    public int Version { get; private set; }
 }
