@@ -105,7 +105,7 @@ KhaiKang 採用下列優先順序：
 | C06 | 盤點大型 positional requests | AI | completed | 已完成 high／medium／keep 分級與五個後續小批次 |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
-| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | pending | 固定 JSON characterization、HTTP tests 與 OpenAPI shape 均維持 |
+| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | in-progress | 固定 JSON characterization、HTTP tests 與 OpenAPI shape 均維持 |
 | C10 | Test Case request 改為具名 init contract | AI + Human contract review | pending | Create／Update 分批處理並維持 required／nullable 語意 |
 | C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
 | C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
@@ -262,7 +262,7 @@ C05 批次驗證（2026-08-12，commit `c77e52f`）：
 - 第一次平行執行 build 與會觸發 build 的 test 曾因共用 `obj` 發生 `CS2012` file lock；改用 `--disable-build-servers -m:1` 單序列後完整通過。
 - 目前 stable SDK `10.0.400` 已安裝；E05 已解除環境阻擋，但需獨立批次新增 `global.json` 才算完成。
 
-E05 批次驗證（2026-08-12，待建立本機 commit）：
+E05 批次驗證（2026-08-12，commit `73377a1`）：
 
 - Repository root `dotnet --version`：`10.0.400`，且 `dotnet --info` 讀取本批新增的 `global.json`。
 - `global.json`：固定 `10.0.400`、`rollForward: disable`、`allowPrerelease: false`。
@@ -274,6 +274,15 @@ E05 批次驗證（2026-08-12，待建立本機 commit）：
 - API runtime base 暫時維持 `aspnet:10.0` 以取得同 major/minor 的 runtime security patch；因此本批保證 SDK 選版一致，不宣稱映像 digest 完全可重現。
 - Full-repository `dotnet format --verify-no-changes`：未通過，原因是既有大量 CRLF 與 `.editorconfig` LF baseline 不一致；本批沒有修改 C#，不得藉 E05 大量重寫既有程式。E07 啟用前必須另批清理格式 baseline。
 - 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
+
+C09 characterization baseline（2026-08-12，named-init 重構前）：
+
+- 新增 `IssueRequestContractTests`，以固定 camelCase JSON 鎖定 Create minimal payload、Update full payload與序列化欄位順序。
+- Raw HTTP 鎖定 Create 可省略 optional 欄位並使用預設 `medium` priority。
+- Raw HTTP 鎖定既有 validation key：Create 缺 `title` 回傳 `Title`，Update 缺 `version` 回傳 `version`；本批只保存行為，不順便統一 key casing。
+- Targeted changed-file format：passed。
+- Targeted characterization tests：5/5 passed。
+- Canonical OpenAPI 為 source of truth；TypeScript 已存在 optional／nullable drift，C09 轉換時只做靜態型別放寬，不改 JSON wire shape。
 
 ## 每批更新方式
 
@@ -297,9 +306,10 @@ E05 批次驗證（2026-08-12，待建立本機 commit）：
 - Remote base：`origin/rc`
 - Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
 - Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
-- Current batch：E05 stable SDK 鎖版已完成驗證，待建立本機 commit。
-- Expected working tree：只應包含 SDK pin、CI／Docker、README／CONTRIBUTING、雙語 .NET guideline 與本追蹤文件。
-- Next step：建立 E05 本機 commit並記錄 hash，之後進入 C09 Project Management Issue request named-init 重構。
+- Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
+- Current batch：C09 Project Management `CreateIssueRequest`／`UpdateIssueRequest` named-init contract。
+- Expected working tree：characterization commit 前只應包含本追蹤文件與 `IssueRequestContractTests`。
+- Next step：建立 C09 characterization 本機 commit；再轉換 request、同步 TypeScript optional 欄位、更新 C# call sites並執行 targeted／完整驗證。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
