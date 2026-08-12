@@ -175,7 +175,7 @@ public static partial class ProjectManagementEndpointExtensions
             ProjectManagementService service,
             CancellationToken cancellationToken) =>
         {
-            var validation = ValidateMemberRequest(request.Username, request.RoleCodes);
+            var validation = ValidateAddProjectMemberRequest(request);
             if (validation is not null)
             {
                 return validation;
@@ -210,7 +210,7 @@ public static partial class ProjectManagementEndpointExtensions
             ProjectManagementService service,
             CancellationToken cancellationToken) =>
         {
-            var validation = ValidateMemberRequest(null, request.RoleCodes, request.Version);
+            var validation = ValidateUpdateProjectMemberRolesRequest(request);
             if (validation is not null)
             {
                 return validation;
@@ -333,29 +333,41 @@ public static partial class ProjectManagementEndpointExtensions
         }
     }
 
-    private static IResult? ValidateMemberRequest(
-        string? username,
-        IReadOnlyList<string> roleCodes,
-        int? version = null)
+    private static IResult? ValidateAddProjectMemberRequest(AddProjectMemberRequest request)
     {
         var errors = new Dictionary<string, string[]>();
-        if (username is not null &&
-            (string.IsNullOrWhiteSpace(username) || username.Length > 200))
+        if (string.IsNullOrWhiteSpace(request.Username) || request.Username.Length > 200)
         {
             errors["username"] = ["Username is required and cannot exceed 200 characters."];
         }
 
-        if (roleCodes.Count is < 1 or > 4 || roleCodes.Any(string.IsNullOrWhiteSpace))
-        {
-            errors["roleCodes"] = ["Select between one and four valid project roles."];
-        }
+        ValidateRoleCodes(request.RoleCodes, errors);
+        return errors.Count == 0 ? null : Results.ValidationProblem(errors);
+    }
 
-        if (version is < 1)
+    private static IResult? ValidateUpdateProjectMemberRolesRequest(
+        UpdateProjectMemberRolesRequest request)
+    {
+        var errors = new Dictionary<string, string[]>();
+        ValidateRoleCodes(request.RoleCodes, errors);
+        if (request.Version < 1)
         {
             errors["version"] = ["Member version must be greater than zero."];
         }
 
         return errors.Count == 0 ? null : Results.ValidationProblem(errors);
+    }
+
+    private static void ValidateRoleCodes(
+        IReadOnlyList<string>? roleCodes,
+        IDictionary<string, string[]> errors)
+    {
+        if (roleCodes is null ||
+            roleCodes.Count is < 1 or > 4 ||
+            roleCodes.Any(string.IsNullOrWhiteSpace))
+        {
+            errors["roleCodes"] = ["Select between one and four valid project roles."];
+        }
     }
 
     private static IResult MapMemberMutation(

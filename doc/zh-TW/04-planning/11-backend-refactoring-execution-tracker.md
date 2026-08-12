@@ -97,10 +97,10 @@ KhaiKang 採用下列優先順序：
 
 | ID | Action Item | Owner | 狀態 | 驗收條件 |
 | --- | --- | --- | --- | --- |
-| C01 | 移除 Identity 一次性 `AuditContext` | AI | pending | Named factories 保留，私有流程不再為參數數量包裝 |
-| C02 | 移除 `ProjectAuditEvent.Create` 純轉接 helper | AI | pending | Named factory 直接建立 entity，行為不變 |
-| C03 | `ChangeContext` 建立後完整傳遞 | AI | pending | 不再拆 actor/time 後於 helper 內重建 |
-| C04 | 將 member Add／Update validator 分開 | AI | pending | 不以 null／optional 值切換驗證模式，補 null regression test |
+| C01 | 移除 Identity 一次性 `AuditContext` | AI | in-progress | Named factories 保留，私有流程不再為參數數量包裝 |
+| C02 | 移除 `ProjectAuditEvent.Create` 純轉接 helper | AI | in-progress | Named factory 直接建立 entity，行為不變 |
+| C03 | `ChangeContext` 建立後完整傳遞 | AI | in-progress | 不再拆 actor/time 後於 helper 內重建 |
+| C04 | 將 member Add／Update validator 分開 | AI | in-progress | 不以 null／optional 值切換驗證模式，補 null regression test |
 | C05 | 修正 `RoleCodes` 集合語意 | AI + Human contract review | pending | 評估 `IReadOnlyCollection<string>` 並同步 OpenAPI／clients |
 | C06 | 盤點大型 positional requests | AI | pending | 先處理欄位多、同型別或 optional 的 contract |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
@@ -190,6 +190,18 @@ KhaiKang 採用下列優先順序：
 - 獨立 AI review：修正兩項狀態一致性問題後，沒有剩餘 blocker。
 - Production code 與 contract 未修改，因此本批未重跑 .NET tests。
 
+C01–C04 批次驗證（2026-08-12，commit 前）：
+
+- Changed-file `dotnet format --verify-no-changes`：passed。
+- Backend solution build：passed，0 warnings／0 errors。
+- 受影響 unit tests：6/6 passed。
+- 新增 member validation integration tests：4/4 passed。
+- 完整 Domain unit tests：105/105 passed。
+- 完整 API integration tests：23/23 passed。
+- Identity EF pending model：none。
+- Project Management EF pending model：none。
+- SDK 限制：本機仍使用 `10.0.400-preview.0.26322.102`；E05 保持 blocked，不把 preview 當成完成狀態。
+
 ## 每批更新方式
 
 開始前：
@@ -210,9 +222,10 @@ KhaiKang 採用下列優先順序：
 
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
-- Last completed batch：R01–R05、E01–E04 文件與路由落地；Git history 應包含 `docs: establish backend refactoring execution workflow`。
-- Expected working tree：完成該文件 commit 後應為乾淨；若不乾淨，先確認修改所有權與目前 batch。
-- Next batch：執行 C01–C04 的低風險可讀性修正；E05 等 stable SDK 安裝或版本決策後再處理。
+- Last completed batch：R01–R05、E01–E04 文件與路由落地，commit `df08a2c`。
+- Current batch：C01–C04 低風險可讀性修正與 member validation null regression tests。
+- Expected working tree：本批完成前只應包含 C01–C04 的程式、測試與本追蹤文件；若另有修改，先確認所有權。
+- Next step：完成受影響 unit／integration tests、獨立 review 與本機 commit，再決定下一個 Action Item。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。

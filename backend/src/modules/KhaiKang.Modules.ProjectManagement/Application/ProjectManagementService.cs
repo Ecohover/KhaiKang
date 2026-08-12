@@ -325,7 +325,7 @@ public sealed class ProjectManagementService(
             member.Restore(context);
         }
 
-        AddRoleMappings(member, roles, actorAccountId, now);
+        AddRoleMappings(member, roles, context);
         dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectMemberAdded(member.Id, context));
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -390,7 +390,7 @@ public sealed class ProjectManagementService(
         var now = timeProvider.GetUtcNow();
         var context = new ChangeContext(actorAccountId, now);
         dbContext.ProjectMemberRoles.RemoveRange(member.Roles);
-        AddRoleMappings(member, roles, actorAccountId, now);
+        AddRoleMappings(member, roles, context);
         member.RecordRoleChange(context);
         dbContext.ProjectAuditEvents.Add(
             ProjectAuditEvent.ProjectMemberRolesChanged(member.Id, context));
@@ -553,8 +553,7 @@ public sealed class ProjectManagementService(
     private void AddRoleMappings(
         ProjectMember member,
         IReadOnlyCollection<ProjectRole> roles,
-        Guid actorAccountId,
-        DateTimeOffset occurredAt)
+        ChangeContext context)
     {
         foreach (var role in roles)
         {
@@ -565,7 +564,7 @@ public sealed class ProjectManagementService(
                     ProjectMemberId = member.Id,
                     ProjectRoleId = role.Id,
                 },
-                new ChangeContext(actorAccountId, occurredAt));
+                context);
             dbContext.ProjectMemberRoles.Add(mapping);
         }
     }

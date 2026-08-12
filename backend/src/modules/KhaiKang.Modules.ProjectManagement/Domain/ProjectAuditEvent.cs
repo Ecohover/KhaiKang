@@ -30,37 +30,37 @@ public sealed class ProjectAuditEvent
     }
 
     public static ProjectAuditEvent ProjectCreated(Guid targetId, ChangeContext context) =>
-        Create(ProjectCreatedEventType, targetId, context);
+        new ProjectAuditEvent(ProjectCreatedEventType, targetId, context);
 
     public static ProjectAuditEvent ProjectUpdated(Guid targetId, ChangeContext context) =>
-        Create(ProjectUpdatedEventType, targetId, context);
+        new ProjectAuditEvent(ProjectUpdatedEventType, targetId, context);
 
     public static ProjectAuditEvent ProjectMemberAdded(Guid targetId, ChangeContext context) =>
-        Create(ProjectMemberAddedEventType, targetId, context);
+        new ProjectAuditEvent(ProjectMemberAddedEventType, targetId, context);
 
     public static ProjectAuditEvent ProjectMemberRolesChanged(Guid targetId, ChangeContext context) =>
-        Create(ProjectMemberRolesChangedEventType, targetId, context);
+        new ProjectAuditEvent(ProjectMemberRolesChangedEventType, targetId, context);
 
     public static ProjectAuditEvent ProjectMemberRemoved(Guid targetId, ChangeContext context) =>
-        Create(ProjectMemberRemovedEventType, targetId, context);
+        new ProjectAuditEvent(ProjectMemberRemovedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueCreated(Guid targetId, ChangeContext context) =>
-        Create(IssueCreatedEventType, targetId, context);
+        new ProjectAuditEvent(IssueCreatedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueStatusChanged(Guid targetId, ChangeContext context) =>
-        Create(IssueStatusChangedEventType, targetId, context);
+        new ProjectAuditEvent(IssueStatusChangedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueUpdated(Guid targetId, ChangeContext context) =>
-        Create(IssueUpdatedEventType, targetId, context);
+        new ProjectAuditEvent(IssueUpdatedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueAssigneeChanged(Guid targetId, ChangeContext context) =>
-        Create(IssueAssigneeChangedEventType, targetId, context);
+        new ProjectAuditEvent(IssueAssigneeChangedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueRelationCreated(Guid targetId, ChangeContext context) =>
-        Create(IssueRelationCreatedEventType, targetId, context);
+        new ProjectAuditEvent(IssueRelationCreatedEventType, targetId, context);
 
     public static ProjectAuditEvent IssueRelationDeleted(Guid targetId, ChangeContext context) =>
-        Create(IssueRelationDeletedEventType, targetId, context);
+        new ProjectAuditEvent(IssueRelationDeletedEventType, targetId, context);
 
     public Guid Id { get; private set; }
 
@@ -76,11 +76,4 @@ public sealed class ProjectAuditEvent
 
     public string Outcome { get; private set; } = SucceededOutcome;
 
-    private static ProjectAuditEvent Create(
-        string eventType,
-        Guid targetId,
-        ChangeContext context)
-    {
-        return new ProjectAuditEvent(eventType, targetId, context);
-    }
 }
