@@ -67,7 +67,7 @@ KhaiKang.CommonUtils.Web
 - Keep one primary public type per file. A small private nested type may remain with its owner.
 - Use PascalCase for public APIs, camelCase for parameters and locals, and `_camelCase` for private fields.
 - Awaitable methods use an `Async` suffix; ASP.NET endpoint handlers and framework overrides may follow framework conventions.
-- Prefer immutable records, constructors, or init-only properties for requests, responses, and value objects. A positional record is best limited to a short, stable contract with one to three unambiguous fields. Prefer named init-only properties when a contract has several fields, repeated primitive types, optional values, field-level documentation, or an expectation of continued evolution.
+- Public HTTP request and cross-module application input contracts MUST declare an explicit type body with named properties; do not declare them as positional records. One to three unambiguous required fields may use an explicit constructor with getter-only properties. When a request has more required fields, use `required` init-only properties instead of a long constructor. Optional fields use init-only properties. Positional records remain available for small value objects, responses, or internal immutable carriers when that form is clearer.
 - Required reference members use a constructor or `required`; do not fake initialization with `string.Empty` or the null-forgiving operator.
 - Public collections expose `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, or `IEnumerable<T>` when callers should not mutate them.
 - Consider `sealed` for classes that are not extension points, while allowing inheritance where EF Core or testing genuinely needs it.

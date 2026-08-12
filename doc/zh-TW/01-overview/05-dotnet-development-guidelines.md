@@ -66,7 +66,7 @@ KhaiKang.CommonUtils.Web
 - 一個檔案只放一個主要 public type；只服務所屬 type 的小型 private nested type 可以例外。
 - Public API 使用 PascalCase，parameter 與 local 使用 camelCase，private field 使用 `_camelCase`。
 - 非同步方法使用 `Async` 後綴；ASP.NET endpoint handler 與 framework override 可以依慣例例外。
-- Request、response 與 value object 優先使用 immutable `record`、constructor 或 `init` property。Positional record 適合一至三個欄位、語意明確且穩定的短小 contract；欄位較多、包含多個同型別 primitive、optional 值、逐欄文件需求或預期持續演進時，優先使用具名的 init-only property。
+- Public HTTP request 與跨模組 Application input contract 必須宣告明確的 type body 與具名 property，不使用 positional record。一至三個語意清楚的必填欄位可以使用明確 constructor 與 getter-only property；必填欄位更多時，使用 `required` init-only property，避免形成長 constructor。Optional 欄位使用 init-only property。小型 Value Object、response 或內部 immutable carrier 若 positional 形式確實更清楚，仍可使用。
 - 必填 reference member 使用 constructor 或 `required`，不得用 `string.Empty` 或 null-forgiving operator 偽裝完成初始化。
 - Public collection 優先暴露 `IReadOnlyList<T>`、`IReadOnlyCollection<T>` 或 `IEnumerable<T>`；不要公開可替換的 `List<T>`。
 - 沒有設計為擴充點的 class 應考慮 `sealed`，但 EF Core 或測試需求可以保留繼承能力。

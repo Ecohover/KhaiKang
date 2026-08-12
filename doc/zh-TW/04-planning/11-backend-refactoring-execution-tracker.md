@@ -53,7 +53,7 @@ KhaiKang 採用下列優先順序：
 | D02 | 公開工程規範保持 tool-neutral；AI 操作流程只放在 `AGENTS.md` 與 `.ai/` | accepted |
 | D03 | 三參數規則只套用新增的 public Domain／Application 業務 API；`CancellationToken`、framework-required signature 與 private helper 不計入 | accepted |
 | D04 | Parameter Object 必須代表 use case、domain concept 或共同生命週期，不為通過數量門檻建立一次性資料袋 | accepted |
-| D05 | Positional record 限於短小、穩定且不易混淆的 transport contract；欄位多、optional、多個同型別或持續演進時使用具名 `init` properties | accepted |
+| D05 | Public HTTP request 與跨模組 Application input 統一使用明確 type body 與具名 property，不使用 positional record；短必填 contract 使用明確 constructor，較多必填欄位使用 `required init` | accepted |
 | D06 | Helper／Factory／Command 必須增加語意、驗證或真實重用；不建立純轉接抽象 | accepted |
 | D07 | 外部或私有 repository 只作為經驗參考，不複製公司程式碼、套件假設或 AI 工作流程依賴 | accepted |
 | D08 | 同一 feature branch 每個受影響 `DbContext` 原則上只保留一份未發布的最終 migration | accepted |
@@ -75,7 +75,7 @@ KhaiKang 採用下列優先順序：
 | R01 | 定義 Low／Medium／High 風險 Gate | Human + AI | completed | 本文件記錄分類與人工 Gate |
 | R02 | 釐清三參數規則適用範圍 | Human + AI | completed | 英文與繁中 .NET 規範同步 |
 | R03 | 定義 Parameter Object 成立條件 | Human + AI | completed | 正式規範包含反過度包裝條文 |
-| R04 | 定義 positional record 使用條件 | Human + AI | completed | 正式規範包含短小 contract 例外與切換條件 |
+| R04 | 統一 public request／input contract 宣告方式 | Human + AI | completed | 雙語正式規範不再允許 public request／input 使用 positional record |
 | R05 | 定義 Helper／Factory／Command 建立門檻 | Human + AI | completed | 正式規範包含真實語意與重用門檻 |
 | R06 | 決定 `ProjectDetailsChange.Status` 等欄位是否應拆成獨立狀態轉移 | Human | waiting-human | 業務語意確認並記錄決策 |
 
@@ -112,6 +112,7 @@ KhaiKang 採用下列優先順序：
 | C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
 | C14 | 落實 OpenAPI `additionalProperties: false` | AI + Human contract review | pending | 先盤點未知欄位的相容風險，再讓 runtime 與全域 canonical contract 一致 |
 | C15 | 統一 validation error key casing | AI + Human contract review | pending | 明確選擇 JSON camelCase 或 CLR property casing，建立相容策略與 regression matrix |
+| C16 | 清理其餘 public positional request／input contracts | AI | in-progress | 分模組、小批次轉換；每批維持 JSON／OpenAPI／TypeScript wire contract |
 
 ### I：Identity
 
@@ -138,7 +139,7 @@ KhaiKang 採用下列優先順序：
 | T07 | 分批重構 Attachment／Link entities | AI | pending |
 | T08 | 清除 Test Management architecture allowlist | AI | pending |
 
-## C06 Positional Request Inventory
+## C06 Request Declaration Inventory
 
 盤點只涵蓋 request 與跨模組 application input；大型 response 不因欄位多就改成 mutable class。後續轉換必須保留既有 JSON property name、OpenAPI required／nullable 語意與 TypeScript shape。
 
@@ -159,13 +160,13 @@ KhaiKang 採用下列優先順序：
 - `UpdateTestTagRequest`
 - `UpdateProjectRequest`
 
-三欄但仍包含 optional 或重複 primitive 的 request 暫不機械式轉換；只有出現實際演進或誤用風險時再提升優先級。
+三欄但仍包含 optional 或重複 primitive 的 request 也必須轉為明確 type body；為了讓 contract diff 可審查，排入 C16 分模組處理，不做全 repository 一次性機械改寫。
 
-### Keep positional
+### Short request migration backlog
 
 - Identity 的短小 request，例如 Login、Change Password 與 Account status。
-- Project／Workspace member、狀態更新、單一 ID link、Case step、Run 建立及 Issue relation 等一至三欄且語意清楚的 request。
-- `AddProjectMemberRequest` 與 `UpdateProjectMemberRolesRequest` 保留 positional record；C05 只修正集合介面語意。
+- Project／Workspace member、狀態更新、單一 ID link、Case step、Run 建立及 Issue relation 等一至三欄 request。
+- C16 第一批先處理 `AddProjectMemberRequest` 與 `UpdateProjectMemberRolesRequest`，驗證一致寫法不改變既有 `roleCodes` wire contract。
 
 ### 每批驗證方式
 
@@ -182,7 +183,7 @@ KhaiKang 採用下列優先順序：
 | KK-DOTNET-001 | Nullable reference types 必須啟用 | compiler | enforced |
 | KK-DOTNET-002 | 新 public Domain／Application API 最多三個業務參數 | architecture test + AI review | Domain enforced；Application planned |
 | KK-DOTNET-003 | Parameter Object 不得是無語意的一次性資料袋 | AI review + human review | documented |
-| KK-DOTNET-004 | 大型或易混淆 contract 不使用 positional record | AI review + contract tests | planned |
+| KK-DOTNET-004 | Public request／Application input 不使用 positional record | AI review + contract tests | documented；existing debt tracked by C09–C13／C16 |
 | KK-DOTNET-005 | 同一 mutation context 應完整傳遞 | unit test + AI review | planned |
 | KK-DOTNET-006 | Helper 不以 null／mode flag 隱藏不同 use case | AI review | documented |
 | KK-PERSIST-001 | Stable code 以命名常數集中 mapping | unit test + AI review | partially enforced |
@@ -339,9 +340,9 @@ C10 characterization 與 null-step 邊界修正（2026-08-12，commits `b004ddf`
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
 - Last completed request-contract batch：C09 Issue request，characterization `7404f84`、implementation `25688ea`。
 - Latest C10 checkpoint：characterization `b004ddf`、null-step fix `fb409af`；request type 尚未重構。
-- Current batch：C10 `waiting-human`；測試保護網完成，停止於 canonical contract 決策邊界。
-- Expected working tree：本 tracker checkpoint commit 後應為 clean。
-- Next step：Human 決定 Test Case required／nullable 與 `tagIds` wire semantics；決策後才調整 C# request shape、OpenAPI／TypeScript 與全部 call sites，不混入 C14／C15 或 Test Case domain 重構。
-- Human decisions：除 R06 與 I04 外，新增 C10 contract decision；不得由 AI 為了結構一致性自行收緊或放寬公開 API。
+- Current batch：C16 第一批，先將 Project Member requests 統一為 `CreateIssueRequest` 類型本體風格；C10 contract implementation 緊接其後。
+- Expected working tree：本規則調整尚待文件 commit，之後只應包含當前單一 contract 批次。
+- Next step：先完成 Project Member request 宣告統一與 wire regression；再依已提出的 Test Case required／nullable 與 `tagIds` 語意完成 C10，不混入 C14／C15 或 Test Case domain 重構。
+- Human decisions：R06 與 I04 尚未決定；公開 request 宣告風格已由 Human 改為單一 non-positional type body，不得再保留短 request positional 例外。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
