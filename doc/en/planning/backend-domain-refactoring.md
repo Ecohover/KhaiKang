@@ -1,6 +1,6 @@
 # Backend Domain Readability Refactoring Plan
 
-Status: accepted for incremental refactoring. This document records current debt and sequencing; it does not claim that production code has been refactored.
+Status: active incremental refactoring. Project Management's public long-parameter debt is cleared, and Identity refactoring is in progress. Current work state and resume instructions are tracked in the [backend refactoring execution tracker](../../zh-TW/04-planning/11-backend-refactoring-execution-tracker.md).
 
 ## Goals
 
@@ -9,11 +9,15 @@ Status: accepted for incremental refactoring. This document records current debt
 - Consolidate genuinely shared audit lifecycle behavior without introducing a framework-like inheritance hierarchy.
 - Preserve HTTP contracts, database columns, stable codes, and observable behavior.
 
-## Confirmed debt
+## Current debt baseline
 
-- `Issue` creation currently takes thirteen positional parameters, including several GUIDs and nullable strings.
-- `Issue.UpdateDetails` currently mixes editable content, classification, actor, and occurrence time in nine parameters.
-- Thirty-three Domain types currently declare a complete or near-complete set of audit fields and duplicate initialization/change behavior.
+As of 2026-08-12, the architecture fitness baseline records:
+
+- Project Management: zero long public Domain members and one remaining repeated audit owner (`Project`).
+- Identity: four long public Domain members and three repeated audit owners.
+- Test Management: twenty-five long public Domain members and seventeen repeated audit owners.
+
+`Issue` and `Project` creation and change APIs have already moved to intention-revealing creation/change models. The remaining work must not add smaller types merely to reduce parameter or line counts.
 
 ## Target shape
 

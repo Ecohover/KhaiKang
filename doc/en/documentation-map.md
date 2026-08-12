@@ -39,6 +39,7 @@ This page is the English entry point for KhaiKang documentation. Current MVP pro
 
 - [Phase overview](./planning/phase-overview.md)
 - [MVP release closure](./planning/mvp-release-closure-plan.md)
+- [Backend refactoring execution tracker](../zh-TW/04-planning/11-backend-refactoring-execution-tracker.md) (Traditional Chinese working state)
 - [Release automation and delivery drill](./planning/release-automation.md)
 - [Cross-module attachments](./planning/cross-module-attachments.md)
 - [Backlog](./planning/backlog.md)

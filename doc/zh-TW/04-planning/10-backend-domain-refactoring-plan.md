@@ -1,16 +1,26 @@
 # 後端 Domain 可讀性重構計畫
 
-> 狀態：Accepted for incremental refactoring。本文記錄目前技術債與重構順序，不代表已完成 production code 修改。
+> 狀態：Active incremental refactoring。Project Management 的 public 長參數債務已清除，Identity 正在重構。Action Item、驗證紀錄與中斷接續位置以[後端可讀性重構執行追蹤](./11-backend-refactoring-execution-tracker.md)為準。
 
 ## 目的
 
 讓 Domain API 以領域語言表達意圖，降低長參數、同型別參數放錯位置、primitive obsession 與重複 audit 實作造成的維護風險。重構必須保持 HTTP、資料庫欄位與既有業務行為相容。
 
-## 已確認問題
+## 目前債務基線
+
+截至 2026-08-12，architecture fitness baseline 記錄：
+
+- Project Management：public Domain 長參數 0，重複 audit owner 1（`Project`）。
+- Identity：public Domain 長參數 4，重複 audit owner 3。
+- Test Management：public Domain 長參數 25，重複 audit owner 17。
+
+`Issue` 與 `Project` 的建立／修改 API 已改為具意圖的 creation／change model；後續不得只為減少參數或程式行數繼續拆出沒有獨立語意的小型別。
+
+## 已確認問題與原始目標
 
 ### Issue 建立
 
-`Issue` 建構子目前接受 13 個參數，其中多個為 `Guid` 與 nullable `string`。呼叫端難以單靠位置確認意義，新增或調換欄位時也容易產生靜默錯誤。
+重構前的 `Issue` 建構子曾接受 13 個參數，其中多個為 `Guid` 與 nullable `string`。呼叫端難以單靠位置確認意義，新增或調換欄位時也容易產生靜默錯誤；目前已改為具名 creation model。
 
 目標方向：
 
@@ -20,7 +30,7 @@
 
 ### Issue 修改
 
-`UpdateDetails` 目前接受 9 個參數，混合內容、分類與 audit context。
+重構前的 `UpdateDetails` 曾接受 9 個參數，混合內容、分類與 audit context；目前已改為 `IssueDetailsChange` 與 `ChangeContext`。
 
 目標方向：
 

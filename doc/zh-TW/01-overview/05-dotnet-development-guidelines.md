@@ -65,16 +65,18 @@ KhaiKang.CommonUtils.Web
 - 一個檔案只放一個主要 public type；只服務所屬 type 的小型 private nested type 可以例外。
 - Public API 使用 PascalCase，parameter 與 local 使用 camelCase，private field 使用 `_camelCase`。
 - 非同步方法使用 `Async` 後綴；ASP.NET endpoint handler 與 framework override 可以依慣例例外。
-- Request、response 與 value object 優先使用 immutable `record`、constructor 或 `init` property。
+- Request、response 與 value object 優先使用 immutable `record`、constructor 或 `init` property。Positional record 適合一至三個欄位、語意明確且穩定的短小 contract；欄位較多、包含多個同型別 primitive、optional 值、逐欄文件需求或預期持續演進時，優先使用具名的 init-only property。
 - 必填 reference member 使用 constructor 或 `required`，不得用 `string.Empty` 或 null-forgiving operator 偽裝完成初始化。
 - Public collection 優先暴露 `IReadOnlyList<T>`、`IReadOnlyCollection<T>` 或 `IEnumerable<T>`；不要公開可替換的 `List<T>`。
 - 沒有設計為擴充點的 class 應考慮 `sealed`，但 EF Core 或測試需求可以保留繼承能力。
 - Primary constructor 可以使用，但不是強制規則；可讀性與依賴清楚度優先。
 - Domain 中封閉的狀態、類型、角色或結果必須使用 enum 或 Value Object 表達；未驗證的字串不得一路傳入 Domain 或 Application 邏輯。
 - 程式碼應使用領域語言，並依序呈現判斷與流程。若較短的語法、深層巢狀 expression 或語法糖讓業務流程更難閱讀，就不算改善。
-- 新增的 public Domain 與 Application API 原則上不得超過三個參數。既有長參數 API 視為待清理債務；框架簽章或確有必要的例外必須在 pull request 說明，持續性例外則以 ADR 記錄。
-- 多個同型別 primitive、`string`、`Guid` 或時間參數若容易放錯位置，應以具領域名稱的 immutable Parameter Object、Value Object 或 Strongly Typed ID 組合。不得只為符合參數數量而建立沒有 invariant、沒有語意且跨 use case 共用的萬用參數袋。
+- 新增的 public Domain 與 Application API 原則上不得超過三個業務參數；`CancellationToken`、dependency-injection constructor 與 framework-required signature 不計入。此限制不得機械式套用到 private helper：清楚命名的少量 private 參數比一次性參數袋更容易閱讀。既有長參數 API 視為待清理債務；確有必要的 public 例外必須在 pull request 說明，持續性例外則以 ADR 記錄。
+- 多個同型別 primitive、`string`、`Guid` 或時間參數若容易放錯位置，應以具領域名稱的 immutable Parameter Object、Value Object 或 Strongly Typed ID 組合。Parameter Object 必須代表 use case、domain concept、共同生命週期，或在有意義的邊界上承載 invariant。不得建立後立即拆回原參數而只為符合數量門檻；也不得只因具名 property 數量多，就把內聚的 creation／change model 再拆成更多小型別。
 - 建立與修改同一概念的資料應使用不同且能表達意圖的 type，例如 `IssueCreation` 與 `IssueDetailsChange`；HTTP request DTO 不直接充當 Domain Parameter Object。
+- Mutation context 建立後應在 use case 中完整傳遞，不拆成 actor 與發生時間後再於下游 helper 重建相同 context。
+- Helper、Factory、Command 與 abstraction 必須增加領域語意、驗證、政策或已證明的重用。避免只有轉呼叫的 helper，也不以 null、optional mode value 或 boolean flag 讓一個 helper 代表不同 use case；應先拆成能表達意圖的操作，只抽出真正相同的規則。
 - 多個 entity 真正共享相同 audit lifecycle 時，可以使用一層淺層的 `AuditableEntity` 基底集中 `CreatedAt`、`CreatedByAccountId`、`UpdatedAt`、`UpdatedByAccountId` 與 `Version`，以及一致的初始化與異動方法。不得建立只為形式統一的深層 entity 階層。
 - 業務生命週期欄位不屬於通用 audit metadata，例如 `CompletedAt` 應保留在 `Issue`；共用基底不得吸收 feature-specific state 或規則。
 - XML documentation 用英文撰寫，只要求在公開 extension point、library API 或無法從名稱理解的 contract；不強制替每個 public member 重述程式碼。

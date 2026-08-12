@@ -102,6 +102,8 @@
 - [跨模組附件實作計畫](../04-planning/07-cross-module-attachments-implementation-plan.md)
 - [發布自動化與交付演練計畫](../04-planning/08-release-automation-plan.md)
 - [Issue 與測試資產追溯實作計畫](../04-planning/09-issue-test-traceability-implementation-plan.md)
+- [後端 Domain 可讀性重構計畫](../04-planning/10-backend-domain-refactoring-plan.md)
+- [後端可讀性重構執行追蹤](../04-planning/11-backend-refactoring-execution-tracker.md)
 
 ## 文件使用原則
 
