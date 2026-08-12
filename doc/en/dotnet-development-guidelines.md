@@ -1,6 +1,6 @@
 # .NET Development Guidelines
 
-> Status: Accepted. This document defines the adopted development baseline. SDK, MSBuild, NuGet, analyzer, and CI enforcement have not yet been applied and will be introduced as a separate change.
+> Status: Accepted. This document defines the adopted development baseline. SDK selection is enforced by `global.json` and CI; additional MSBuild, NuGet, analyzer, and format enforcement remains planned as separate changes.
 
 ## Purpose
 
@@ -33,7 +33,8 @@ These rules do not prescribe a fixed template. They allow different contributors
 - Nullable reference types, .NET analyzers, and build-time code-style enforcement MUST remain enabled.
 - Release CI SHOULD treat compiler warnings and adopted analyzer warnings as errors. Local development still uses ordinary `dotnet build` without a custom wrapper.
 - Do not hide issues with a global `NoWarn`; a narrow suppression MUST include a specific rationale.
-- `dotnet restore`, `dotnet build`, `dotnet format --verify-no-changes`, and `dotnet test` are the baseline backend pull-request checks.
+- `dotnet restore`, `dotnet build`, and `dotnet test` are the current baseline backend pull-request checks.
+- Until E07 establishes a repository-wide format baseline, changed C# files MUST be checked with `dotnet format --verify-no-changes --include <paths>` and MUST NOT increase existing format debt. Full-solution format verification is not yet a pull-request gate.
 
 ## Projects and Dependency Direction
 
@@ -190,8 +191,11 @@ Before requesting review for a backend change, run:
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
-dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build
 ```
+
+For changes to C# files, also run `dotnet format` with `--include` limited to the
+affected paths. The full-solution format gate remains deferred until E07 records
+and clears the existing baseline.
 
 If an environment prevents a check, the pull request states which check was skipped, why, and what alternative verification was performed.

@@ -1,6 +1,6 @@
 # .NET 開發準則
 
-> 狀態：Accepted。這份文件定義已採用的開發基線，但尚未將 SDK、MSBuild、NuGet、analyzer 或 CI 限制套用到專案；可執行限制會在後續獨立變更處理。
+> 狀態：Accepted。這份文件定義已採用的開發基線；SDK 選版已由 `global.json` 與 CI 落實，其餘 MSBuild、NuGet、analyzer 與 format 限制仍會在後續獨立變更處理。
 
 ## 目的
 
@@ -33,7 +33,8 @@
 - Nullable reference types、.NET analyzers 與 code style build enforcement 必須啟用。
 - 正式 CI 應將 compiler 與已採用 analyzer 的 warning 視為 error；本機仍使用一般 `dotnet build`，不要求額外 wrapper script。
 - 不得用全域 `NoWarn` 隱藏問題；必要的局部 suppression 必須包含具體理由。
-- `dotnet restore`、`dotnet build`、`dotnet format --verify-no-changes` 與 `dotnet test` 是後端 pull request 的基本驗證。
+- `dotnet restore`、`dotnet build` 與 `dotnet test` 是目前後端 pull request 的基本驗證。
+- E07 建立全 repository 格式 baseline 前，修改過的 C# 檔案必須使用 `dotnet format --verify-no-changes --include <paths>` 檢查，且不得增加既有格式債務；目前尚不把全 solution format 驗證列為 pull request gate。
 
 ## Project 與依賴方向
 
@@ -176,8 +177,10 @@ KhaiKang.CommonUtils.Web
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
-dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build
 ```
+
+若本批修改 C#，還需以 `--include` 將 `dotnet format` 限定在受影響路徑。
+全 solution format gate 會等 E07 記錄並清除既有 baseline 後再啟用。
 
 若因環境限制無法執行其中一項，pull request 必須說明未執行項目、原因與替代驗證。

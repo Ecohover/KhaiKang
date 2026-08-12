@@ -30,8 +30,8 @@ docker compose up -d --wait --wait-timeout 180
 
 ### 從原始碼執行
 
-需要 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)、PostgreSQL、
-Node.js 22 與 pnpm 10。
+需要 [`global.json`](./global.json) 指定的精確
+[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)、PostgreSQL、Node.js 22 與 pnpm 10。
 
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config

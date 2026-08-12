@@ -87,7 +87,7 @@ KhaiKang 採用下列優先順序：
 | E02 | 更新公開 .NET 開發規範 | AI + Human review | completed | 英文與繁中同步且不綁特定 AI |
 | E03 | 更新既有後端重構計畫與目前債務 | AI | completed | 文件反映目前實際進度 |
 | E04 | 建立薄型 AI backend-refactoring 路由 | AI | completed | `.ai/` 只連結正式文件與本追蹤文件 |
-| E05 | 鎖定 stable .NET 10 SDK | AI + Human | pending | Stable `10.0.400` 已可用；仍需新增 `global.json` 並驗證 CI 設定 |
+| E05 | 鎖定 stable .NET 10 SDK | AI + Human | completed | `global.json`、CI 與 Docker build stage 對齊 `10.0.400`；升版必須經過明確變更 |
 | E06 | 集中 compiler／analyzer policy | AI + Human | pending | 先產生 warning baseline，再分階段提高強度 |
 | E07 | Backend CI 加入 format 與必要 gate | AI | pending | PR 上執行 format、build、unit、integration |
 | E08 | Architecture fitness test 納入 Application API | AI | pending | 排除 `CancellationToken`、DI 與 framework signature |
@@ -188,7 +188,7 @@ KhaiKang 採用下列優先順序：
 | KK-CONTRACT-001 | HTTP contract 先修改 OpenAPI並同步 C#／TypeScript | contract tests + review | partially enforced |
 | KK-VERIFY-001 | 完成回報必須列出實際執行與未執行檢查 | AI completion report + PR template | documented |
 | KK-FORMAT-001 | Repository 格式符合 `.editorconfig` | `dotnet format` + CI | CI planned |
-| KK-SDK-001 | Build 使用 stable .NET 10 SDK | `global.json` + CI | planned |
+| KK-SDK-001 | Build 使用 stable .NET 10 SDK | `global.json` + CI | enforced |
 
 ## 已完成重構基線
 
@@ -246,7 +246,7 @@ C01–C04 批次驗證（2026-08-12，commit `280dcf1`）：
 - Identity EF pending model：none。
 - Project Management EF pending model：none。
 - 獨立 AI review：沒有 blocker／high finding。
-- SDK 限制：本機仍使用 `10.0.400-preview.0.26322.102`；E05 保持 blocked，不把 preview 當成完成狀態。
+- 當時的 SDK 限制：本機使用 `10.0.400-preview.0.26322.102`，因此該批未將 E05 標成完成；此為歷史驗證環境，後續 stable SDK 狀態以較新的批次紀錄為準。
 
 C05 批次驗證（2026-08-12，commit `c77e52f`）：
 
@@ -261,6 +261,19 @@ C05 批次驗證（2026-08-12，commit `c77e52f`）：
 - 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 - 第一次平行執行 build 與會觸發 build 的 test 曾因共用 `obj` 發生 `CS2012` file lock；改用 `--disable-build-servers -m:1` 單序列後完整通過。
 - 目前 stable SDK `10.0.400` 已安裝；E05 已解除環境阻擋，但需獨立批次新增 `global.json` 才算完成。
+
+E05 批次驗證（2026-08-12，待建立本機 commit）：
+
+- Repository root `dotnet --version`：`10.0.400`，且 `dotnet --info` 讀取本批新增的 `global.json`。
+- `global.json`：固定 `10.0.400`、`rollForward: disable`、`allowPrerelease: false`。
+- Backend Release build：passed，0 warnings／0 errors。
+- 完整 Domain unit tests：105/105 passed。
+- 完整 API integration tests：25/25 passed。
+- GitHub Actions YAML：兩份 workflow 均可解析，且只使用 `global-json-file: global.json`，不再另行宣告 `10.0.x`。
+- API Docker build：passed；build stage 使用 `sdk:10.0.400`，驗證映像 `khaikang-api:e05-verify` 使用 non-root UID `1654`、OCI version `0.0.0-sdk-pin` 與 runtime `10.0.11`。
+- API runtime base 暫時維持 `aspnet:10.0` 以取得同 major/minor 的 runtime security patch；因此本批保證 SDK 選版一致，不宣稱映像 digest 完全可重現。
+- Full-repository `dotnet format --verify-no-changes`：未通過，原因是既有大量 CRLF 與 `.editorconfig` LF baseline 不一致；本批沒有修改 C#，不得藉 E05 大量重寫既有程式。E07 啟用前必須另批清理格式 baseline。
+- 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 
 ## 每批更新方式
 
@@ -283,9 +296,10 @@ C05 批次驗證（2026-08-12，commit `c77e52f`）：
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
 - Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
-- Current docs checkpoint：C06 request inventory 已完成，等待本機文件 commit。
-- Expected working tree：checkpoint 前只應包含本追蹤文件；若另有修改，先確認所有權。
-- Next batch：E05 新增 stable SDK `global.json`；完成後進入 C09 Project Management Issue request characterization 與具名 init 轉換。
+- Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
+- Current batch：E05 stable SDK 鎖版已完成驗證，待建立本機 commit。
+- Expected working tree：只應包含 SDK pin、CI／Docker、README／CONTRIBUTING、雙語 .NET guideline 與本追蹤文件。
+- Next step：建立 E05 本機 commit並記錄 hash，之後進入 C09 Project Management Issue request named-init 重構。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。

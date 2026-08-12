@@ -1,8 +1,8 @@
 ARG APP_VERSION=0.0.0-dev
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS build
 WORKDIR /src
 
-COPY VERSION Directory.Build.props Directory.Packages.props ./
+COPY VERSION global.json Directory.Build.props Directory.Packages.props ./
 COPY backend/NuGet.config backend/
 COPY backend/src backend/src
 COPY contract contract
