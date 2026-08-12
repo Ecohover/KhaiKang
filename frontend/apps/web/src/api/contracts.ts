@@ -147,10 +147,10 @@ export interface CreateIssueRequest {
   title: string
   typeCode: string
   priorityCode?: string | null
-  description: string | null
-  userStory: string | null
-  definitionOfDone: string | null
-  assigneeAccountId: string | null
+  description?: string | null
+  userStory?: string | null
+  definitionOfDone?: string | null
+  assigneeAccountId?: string | null
 }
 
 export interface UpdateIssueStatusRequest {
@@ -162,10 +162,10 @@ export interface UpdateIssueRequest {
   title: string
   typeCode: string
   priorityCode: string
-  description: string | null
-  userStory: string | null
-  definitionOfDone: string | null
-  completionSummary: string | null
+  description?: string | null
+  userStory?: string | null
+  definitionOfDone?: string | null
+  completionSummary?: string | null
   version: number
 }
 

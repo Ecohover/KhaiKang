@@ -30,26 +30,7 @@ public sealed class IssueListQuery
     public string? SortDirection { get; init; }
 }
 
-public sealed record CreateIssueRequest(
-    string Title,
-    string TypeCode,
-    string? PriorityCode,
-    string? Description,
-    string? UserStory,
-    string? DefinitionOfDone,
-    Guid? AssigneeAccountId);
-
 public sealed record UpdateIssueStatusRequest(string StatusCode, int Version);
-
-public sealed record UpdateIssueRequest(
-    string Title,
-    string TypeCode,
-    string PriorityCode,
-    string? Description,
-    string? UserStory,
-    string? DefinitionOfDone,
-    string? CompletionSummary,
-    int Version);
 
 public sealed record UpdateIssueAssigneeRequest(Guid? AssigneeAccountId, int Version);
 

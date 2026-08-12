@@ -47,6 +47,43 @@ public sealed class IssueRequestContractTests
     }
 
     [Fact]
+    public void CreateIssueRequest_UsesCanonicalCamelCaseJsonShape()
+    {
+        var assigneeAccountId = Guid.Parse("2d2f522c-e782-43fd-9e54-d56ce33c8470");
+        var request = new CreateIssueRequest(
+            title: "Contract task",
+            typeCode: "task")
+        {
+            PriorityCode = "high",
+            Description = "Contract description",
+            UserStory = "Contract user story",
+            DefinitionOfDone = "Contract completion criteria",
+            AssigneeAccountId = assigneeAccountId,
+        };
+
+        using var document = JsonDocument.Parse(
+            JsonSerializer.Serialize(request, JsonSerializerOptions.Web));
+        Assert.Equal(
+            new[]
+            {
+                "title",
+                "typeCode",
+                "priorityCode",
+                "description",
+                "userStory",
+                "definitionOfDone",
+                "assigneeAccountId",
+            }.Order(StringComparer.Ordinal),
+            document.RootElement
+                .EnumerateObject()
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal));
+        Assert.Equal(
+            assigneeAccountId,
+            document.RootElement.GetProperty("assigneeAccountId").GetGuid());
+    }
+
+    [Fact]
     public void UpdateIssueRequest_UsesCanonicalCamelCaseJsonShape()
     {
         var request = JsonSerializer.Deserialize<UpdateIssueRequest>(
@@ -66,7 +103,8 @@ public sealed class IssueRequestContractTests
         using var document = JsonDocument.Parse(
             JsonSerializer.Serialize(request, JsonSerializerOptions.Web));
         Assert.Equal(
-            [
+            new[]
+            {
                 "title",
                 "typeCode",
                 "priorityCode",
@@ -75,8 +113,11 @@ public sealed class IssueRequestContractTests
                 "definitionOfDone",
                 "completionSummary",
                 "version",
-            ],
-            document.RootElement.EnumerateObject().Select(property => property.Name));
+            }.Order(StringComparer.Ordinal),
+            document.RootElement
+                .EnumerateObject()
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -103,8 +144,12 @@ public sealed class IssueRequestContractTests
         Assert.Null(issue.AssigneeAccountId);
     }
 
-    [Fact]
-    public async Task CreateIssue_WhenTitleIsMissing_ReturnsTitleValidationProblem()
+    [Theory]
+    [InlineData("""{"typeCode":"task"}""", "Title")]
+    [InlineData("""{"title":"Contract task"}""", "TypeCode")]
+    public async Task CreateIssue_WhenConstructorFieldIsMissing_ReturnsValidationProblem(
+        string json,
+        string expectedError)
     {
         using var api = await AuthenticatedApiTestContext.CreateAsync();
         var project = await ApiTestData.CreateProjectAsync(api);
@@ -113,13 +158,27 @@ public sealed class IssueRequestContractTests
             api,
             HttpMethod.Post,
             $"/api/v1/projects/{project.Id}/issues",
-            """{"typeCode":"task"}""");
+            json);
 
-        await AssertValidationProblemAsync(response, "Title");
+        await AssertValidationProblemAsync(response, expectedError);
     }
 
-    [Fact]
-    public async Task UpdateIssue_WhenVersionIsMissing_ReturnsVersionValidationProblem()
+    [Theory]
+    [InlineData(
+        """{"typeCode":"task","priorityCode":"medium","version":1}""",
+        "Title")]
+    [InlineData(
+        """{"title":"Contract task","priorityCode":"medium","version":1}""",
+        "TypeCode")]
+    [InlineData(
+        """{"title":"Contract task","typeCode":"task","version":1}""",
+        "PriorityCode")]
+    [InlineData(
+        """{"title":"Contract task","typeCode":"task","priorityCode":"medium"}""",
+        "version")]
+    public async Task UpdateIssue_WhenConstructorFieldIsMissing_ReturnsValidationProblem(
+        string json,
+        string expectedError)
     {
         using var api = await AuthenticatedApiTestContext.CreateAsync();
         var project = await ApiTestData.CreateProjectAsync(api);
@@ -129,15 +188,54 @@ public sealed class IssueRequestContractTests
             api,
             HttpMethod.Put,
             $"/api/v1/projects/{project.Id}/issues/{issue.Id}",
-            """
+            json);
+
+        await AssertValidationProblemAsync(response, expectedError);
+    }
+
+    [Fact]
+    public async Task UpdateIssue_WhenOptionalFieldsAreOmitted_ClearsExistingContent()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var project = await ApiTestData.CreateProjectAsync(api);
+
+        var createResponse = await api.PostJsonAsync(
+            $"/api/v1/projects/{project.Id}/issues",
+            new CreateIssueRequest(
+                title: "Contract task",
+                typeCode: "task")
+            {
+                PriorityCode = "high",
+                Description = "Existing description",
+                UserStory = "Existing user story",
+                DefinitionOfDone = "Existing completion criteria",
+            });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var issue = await createResponse.Content.ReadFromJsonAsync<IssueResponse>();
+        Assert.NotNull(issue);
+
+        var response = await SendRawJsonAsync(
+            api,
+            HttpMethod.Put,
+            $"/api/v1/projects/{project.Id}/issues/{issue.Id}",
+            $$"""
             {
               "title": "Updated contract task",
               "typeCode": "task",
-              "priorityCode": "medium"
+              "priorityCode": "medium",
+              "version": {{issue.Version}}
             }
             """);
 
-        await AssertValidationProblemAsync(response, "version");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<IssueResponse>();
+        Assert.NotNull(updated);
+        Assert.Equal("Updated contract task", updated.Title);
+        Assert.Equal("medium", updated.PriorityCode);
+        Assert.Null(updated.Description);
+        Assert.Null(updated.UserStory);
+        Assert.Null(updated.DefinitionOfDone);
+        Assert.Null(updated.CompletionSummary);
     }
 
     private static async Task<HttpResponseMessage> SendRawJsonAsync(

@@ -28,13 +28,8 @@ internal static class ApiTestData
         var response = await api.PostJsonAsync(
             $"/api/v1/projects/{projectId}/issues",
             new CreateIssueRequest(
-                title,
-                typeCode,
-                null,
-                null,
-                null,
-                null,
-                null));
+                title: title,
+                typeCode: typeCode));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return Assert.IsType<IssueResponse>(
             await response.Content.ReadFromJsonAsync<IssueResponse>());

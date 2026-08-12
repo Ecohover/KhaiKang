@@ -16,13 +16,13 @@ public sealed class IssueCommandService(
             projectId,
             accountId,
             new CreateIssueRequest(
-                request.Title,
-                request.TypeCode,
-                request.PriorityCode,
-                request.Description,
-                null,
-                null,
-                request.AssigneeAccountId),
+                title: request.Title,
+                typeCode: request.TypeCode)
+            {
+                PriorityCode = request.PriorityCode,
+                Description = request.Description,
+                AssigneeAccountId = request.AssigneeAccountId,
+            },
             cancellationToken);
 
         if (result.Outcome != IssueMutationOutcome.Succeeded || result.Issue is null)

@@ -89,7 +89,7 @@ KhaiKang 採用下列優先順序：
 | E04 | 建立薄型 AI backend-refactoring 路由 | AI | completed | `.ai/` 只連結正式文件與本追蹤文件 |
 | E05 | 鎖定 stable .NET 10 SDK | AI + Human | completed | `global.json`、CI 與 Docker build stage 對齊 `10.0.400`；升版必須經過明確變更 |
 | E06 | 集中 compiler／analyzer policy | AI + Human | pending | 先產生 warning baseline，再分階段提高強度 |
-| E07 | Backend CI 加入 format 與必要 gate | AI | pending | PR 上執行 format、build、unit、integration |
+| E07 | Backend CI 加入 format 與必要 gate | AI | pending | 先以 `.gitattributes`／checkout policy 對齊 LF baseline，再於 PR 執行 format、build、unit、integration |
 | E08 | Architecture fitness test 納入 Application API | AI | pending | 排除 `CancellationToken`、DI 與 framework signature |
 | E09 | 維護規範債務基線 | AI | in-progress | 現有 allowlist 不得增加，完成項目立即移除 |
 
@@ -105,11 +105,13 @@ KhaiKang 採用下列優先順序：
 | C06 | 盤點大型 positional requests | AI | completed | 已完成 high／medium／keep 分級與五個後續小批次 |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
-| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | in-progress | 固定 JSON characterization、HTTP tests 與 OpenAPI shape 均維持 |
+| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
 | C10 | Test Case request 改為具名 init contract | AI + Human contract review | pending | Create／Update 分批處理並維持 required／nullable 語意 |
 | C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
 | C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
 | C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
+| C14 | 落實 OpenAPI `additionalProperties: false` | AI + Human contract review | pending | 先盤點未知欄位的相容風險，再讓 runtime 與全域 canonical contract 一致 |
+| C15 | 統一 validation error key casing | AI + Human contract review | pending | 明確選擇 JSON camelCase 或 CLR property casing，建立相容策略與 regression matrix |
 
 ### I：Identity
 
@@ -275,14 +277,28 @@ E05 批次驗證（2026-08-12，commit `73377a1`）：
 - Full-repository `dotnet format --verify-no-changes`：未通過，原因是既有大量 CRLF 與 `.editorconfig` LF baseline 不一致；本批沒有修改 C#，不得藉 E05 大量重寫既有程式。E07 啟用前必須另批清理格式 baseline。
 - 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 
-C09 characterization baseline（2026-08-12，named-init 重構前）：
+C09 characterization baseline（2026-08-12，commit `7404f84`，named-init 重構前）：
 
-- 新增 `IssueRequestContractTests`，以固定 camelCase JSON 鎖定 Create minimal payload、Update full payload與序列化欄位順序。
+- 新增 `IssueRequestContractTests`，以固定 camelCase JSON 鎖定 Create minimal payload、Update full payload與序列化欄位集合。
 - Raw HTTP 鎖定 Create 可省略 optional 欄位並使用預設 `medium` priority。
 - Raw HTTP 鎖定既有 validation key：Create 缺 `title` 回傳 `Title`，Update 缺 `version` 回傳 `version`；本批只保存行為，不順便統一 key casing。
 - Targeted changed-file format：passed。
 - Targeted characterization tests：5/5 passed。
 - Canonical OpenAPI 為 source of truth；TypeScript 已存在 optional／nullable drift，C09 轉換時只做靜態型別放寬，不改 JSON wire shape。
+
+C09 implementation 驗證（2026-08-12，待建立本機 commit）：
+
+- `CreateIssueRequest`：`title`／`typeCode` 使用 2 欄 constructor；5 個 optional nullable 欄位使用 init-only property。
+- `UpdateIssueRequest`：OpenAPI required 的 `title`／`typeCode`／`priorityCode`／`version` 使用具名 constructor；4 個 optional nullable 欄位使用 init-only property。
+- 全部 C# typed call sites 已改用 named arguments 與 initializer；未新增 Application command、factory 或純轉接 abstraction。
+- TypeScript optional nullable 欄位已對齊 canonical OpenAPI；JSON wire shape 不變，frontend type-check passed。
+- Raw HTTP required-field matrix：Create 2 欄、Update 4 欄全部保留既有 validation key；Update 省略 optional 欄位會以 PUT replacement semantics 清除為 `null`。
+- Targeted integration tests：11/11 passed；完整 Domain unit tests：105/105 passed；完整 API integration tests：36/36 passed。
+- Backend Release build：passed，0 warnings／0 errors。
+- 兩個全新 contract 與本批 contract test changed-file format：passed；既有受影響檔案因 Windows CRLF checkout 與 `.editorconfig` LF baseline 不一致而無法通過整檔 format，E07 必須先建立 line-ending policy，不在 C09 大量改寫換行。
+- `git diff --check`：passed；三方獨立 AI review 最終均為 0 blocker／0 high／0 medium。
+- 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
+- 既有 contract debt 已另列 C14／C15：runtime 尚未落實 `additionalProperties: false`，validation key casing 亦未統一；不得在結構重構中無聲改變。
 
 ## 每批更新方式
 
@@ -307,9 +323,9 @@ C09 characterization baseline（2026-08-12，named-init 重構前）：
 - Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
 - Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
-- Current batch：C09 Project Management `CreateIssueRequest`／`UpdateIssueRequest` named-init contract。
-- Expected working tree：characterization commit 前只應包含本追蹤文件與 `IssueRequestContractTests`。
-- Next step：建立 C09 characterization 本機 commit；再轉換 request、同步 TypeScript optional 欄位、更新 C# call sites並執行 targeted／完整驗證。
+- Current batch：C09 Project Management Issue request 重構已完成驗證，待建立本機 implementation commit。
+- Expected working tree：Issue request contract、C# call sites、TypeScript optional 對齊、characterization test補強與本追蹤文件。
+- Next step：建立 C09 implementation 本機 commit並記錄 hash；之後開始 C10 Test Case request characterization。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。

@@ -147,14 +147,16 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var updateIssueResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}",
             JsonContent.Create(new UpdateIssueRequest(
-                "Build and verify the first task",
-                "story",
-                "critical",
-                "## Updated task description\n\n- One\n- Two",
-                "As a **project member**, I want a complete task form.",
-                "- [ ] The dedicated editor is available.",
-                "See [evidence](https://example.test/evidence).",
-                updatedIssue.Version)),
+                title: "Build and verify the first task",
+                typeCode: "story",
+                priorityCode: "critical",
+                version: updatedIssue.Version)
+            {
+                Description = "## Updated task description\n\n- One\n- Two",
+                UserStory = "As a **project member**, I want a complete task form.",
+                DefinitionOfDone = "- [ ] The dedicated editor is available.",
+                CompletionSummary = "See [evidence](https://example.test/evidence).",
+            }),
             await GetCsrfTokenAsync());
         updateIssueResponse.EnsureSuccessStatusCode();
         var editedIssue = await updateIssueResponse.Content.ReadFromJsonAsync<IssueResponse>();
@@ -266,14 +268,10 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
             reviewerClient,
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}",
             JsonContent.Create(new UpdateIssueRequest(
-                "Reviewer must not edit content",
-                "story",
-                "critical",
-                null,
-                null,
-                null,
-                null,
-                unassignedIssue.Version)),
+                title: "Reviewer must not edit content",
+                typeCode: "story",
+                priorityCode: "critical",
+                version: unassignedIssue.Version)),
             await GetCsrfTokenAsync(reviewerClient));
         Assert.Equal(HttpStatusCode.Forbidden, reviewerEditResponse.StatusCode);
 
