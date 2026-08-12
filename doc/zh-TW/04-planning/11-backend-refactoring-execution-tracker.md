@@ -87,7 +87,7 @@ KhaiKang 採用下列優先順序：
 | E02 | 更新公開 .NET 開發規範 | AI + Human review | completed | 英文與繁中同步且不綁特定 AI |
 | E03 | 更新既有後端重構計畫與目前債務 | AI | completed | 文件反映目前實際進度 |
 | E04 | 建立薄型 AI backend-refactoring 路由 | AI | completed | `.ai/` 只連結正式文件與本追蹤文件 |
-| E05 | 鎖定 stable .NET 10 SDK | AI + Human | blocked | `global.json` 與 CI 使用 stable SDK；目前本機只有 preview SDK |
+| E05 | 鎖定 stable .NET 10 SDK | AI + Human | pending | Stable `10.0.400` 已可用；仍需新增 `global.json` 並驗證 CI 設定 |
 | E06 | 集中 compiler／analyzer policy | AI + Human | pending | 先產生 warning baseline，再分階段提高強度 |
 | E07 | Backend CI 加入 format 與必要 gate | AI | pending | PR 上執行 format、build、unit、integration |
 | E08 | Architecture fitness test 納入 Application API | AI | pending | 排除 `CancellationToken`、DI 與 framework signature |
@@ -101,10 +101,15 @@ KhaiKang 採用下列優先順序：
 | C02 | 移除 `ProjectAuditEvent.Create` 純轉接 helper | AI | completed | Named factory 直接建立 entity，行為不變 |
 | C03 | `ChangeContext` 建立後完整傳遞 | AI | completed | 不再拆 actor/time 後於 helper 內重建 |
 | C04 | 將 member Add／Update validator 分開 | AI | completed | 不以 null／optional 值切換驗證模式，補 null regression test |
-| C05 | 修正 `RoleCodes` 集合語意 | AI + Human contract review | in-progress | 評估 `IReadOnlyCollection<string>` 並同步 OpenAPI／clients |
-| C06 | 盤點大型 positional requests | AI | in-progress | 先處理欄位多、同型別或 optional 的 contract |
+| C05 | 修正 `RoleCodes` 集合語意 | AI + Human contract review | completed | Request 使用無順序集合語意、response 保留排序語意，runtime 落實 OpenAPI uniqueness |
+| C06 | 盤點大型 positional requests | AI | completed | 已完成 high／medium／keep 分級與五個後續小批次 |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
+| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | pending | 固定 JSON characterization、HTTP tests 與 OpenAPI shape 均維持 |
+| C10 | Test Case request 改為具名 init contract | AI + Human contract review | pending | Create／Update 分批處理並維持 required／nullable 語意 |
+| C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
+| C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
+| C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
 
 ### I：Identity
 
@@ -131,6 +136,43 @@ KhaiKang 採用下列優先順序：
 | T07 | 分批重構 Attachment／Link entities | AI | pending |
 | T08 | 清除 Test Management architecture allowlist | AI | pending |
 
+## C06 Positional Request Inventory
+
+盤點只涵蓋 request 與跨模組 application input；大型 response 不因欄位多就改成 mutable class。後續轉換必須保留既有 JSON property name、OpenAPI required／nullable 語意與 TypeScript shape。
+
+### High priority
+
+| 批次 | Request | 原因與前置條件 |
+| --- | --- | --- |
+| C09 | `CreateIssueRequest`、`UpdateIssueRequest` | 多個同型別與 optional string；已有主要 HTTP integration coverage |
+| C10 | `CreateTestCaseRequest`、`UpdateTestCaseRequest` | 8／10 欄，包含多個 nullable 內容欄位與 collections |
+| C11 | `CreateTestPlanRequest`、`UpdateTestPlanRequest` | `TestIssueId` 為近期演進欄位，create／update contract 必須同步 |
+| C12 | `CreateTestRunBugRequest`、`IssueCommandRequest` | HTTP request 與跨模組 application contract 需一起維持語意 |
+| C13 | `UpdateTestSuiteRequest` | 6 欄且容易錯置；目前缺直接 update happy-path integration coverage，必須先補測試 |
+
+### Medium priority
+
+- `UpdateTestWorkspaceRequest`
+- `CreateTestSuiteRequest`
+- `UpdateTestTagRequest`
+- `UpdateProjectRequest`
+
+三欄但仍包含 optional 或重複 primitive 的 request 暫不機械式轉換；只有出現實際演進或誤用風險時再提升優先級。
+
+### Keep positional
+
+- Identity 的短小 request，例如 Login、Change Password 與 Account status。
+- Project／Workspace member、狀態更新、單一 ID link、Case step、Run 建立及 Issue relation 等一至三欄且語意清楚的 request。
+- `AddProjectMemberRequest` 與 `UpdateProjectMemberRolesRequest` 保留 positional record；C05 只修正集合介面語意。
+
+### 每批驗證方式
+
+1. 先用固定 camelCase JSON 建立 serialization／deserialization characterization，不以 typed `JsonContent` 作為唯一證據。
+2. 依 canonical OpenAPI 的 required 清單逐欄決定 `required init`；不得把 nullable 誤當 optional，或把 optional 誤改為 required。
+3. Build 驗證所有 C# 建構呼叫點，HTTP integration test 驗證 raw JSON binding 與 observable behavior。
+4. Wire shape 未改時，OpenAPI 與 TypeScript 不做無意義 churn，但仍執行人工對照與 frontend type-check。
+5. 目前不為此盤點引進 OpenAPI parser 或 code generator；完整自動 schema gate 另列 enforcement 工作。
+
 ## Enforcement Matrix
 
 | Rule ID | 規則 | Gate | 目前狀態 |
@@ -146,7 +188,7 @@ KhaiKang 採用下列優先順序：
 | KK-CONTRACT-001 | HTTP contract 先修改 OpenAPI並同步 C#／TypeScript | contract tests + review | partially enforced |
 | KK-VERIFY-001 | 完成回報必須列出實際執行與未執行檢查 | AI completion report + PR template | documented |
 | KK-FORMAT-001 | Repository 格式符合 `.editorconfig` | `dotnet format` + CI | CI planned |
-| KK-SDK-001 | Build 使用 stable .NET 10 SDK | `global.json` + CI | blocked |
+| KK-SDK-001 | Build 使用 stable .NET 10 SDK | `global.json` + CI | planned |
 
 ## 已完成重構基線
 
@@ -173,6 +215,7 @@ KhaiKang 採用下列優先順序：
 - `0f8f496` refactor: centralize identity audit event creation
 - `df08a2c` docs: establish backend refactoring execution workflow
 - `280dcf1` refactor: clarify audit and member validation flows
+- `c77e52f` refactor: clarify project role collection semantics
 
 ## Verification Record
 
@@ -205,6 +248,20 @@ C01–C04 批次驗證（2026-08-12，commit `280dcf1`）：
 - 獨立 AI review：沒有 blocker／high finding。
 - SDK 限制：本機仍使用 `10.0.400-preview.0.26322.102`；E05 保持 blocked，不把 preview 當成完成狀態。
 
+C05 批次驗證（2026-08-12，commit `c77e52f`）：
+
+- Changed-file `dotnet format --verify-no-changes`：passed。
+- Backend solution build：passed，0 warnings／0 errors。
+- Project member targeted integration tests：8/8 passed。
+- 完整 Domain unit tests：105/105 passed。
+- 完整 API integration tests：25/25 passed。
+- Frontend `pnpm type-check`：passed；TypeScript `roleCodes: string[]` 維持不變。
+- OpenAPI／wire review：JSON 仍為 array，runtime 現在會拒絕 `uniqueItems: true` 所禁止的完全相同重複值。
+- 獨立 AI review：沒有 blocker／high finding。
+- 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
+- 第一次平行執行 build 與會觸發 build 的 test 曾因共用 `obj` 發生 `CS2012` file lock；改用 `--disable-build-servers -m:1` 單序列後完整通過。
+- 目前 stable SDK `10.0.400` 已安裝；E05 已解除環境阻擋，但需獨立批次新增 `global.json` 才算完成。
+
 ## 每批更新方式
 
 開始前：
@@ -225,10 +282,10 @@ C01–C04 批次驗證（2026-08-12，commit `280dcf1`）：
 
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
-- Last completed batch：C01–C04 低風險可讀性修正與 member validation null regression tests，commit `280dcf1`。
-- Current batch：C05 `RoleCodes` 集合語意與 C06 大型 positional request 盤點；先確認 wire contract 與 client 影響，再決定最小修改。
-- Expected working tree：本批完成前只應包含 C05／C06 的 contract、測試與本追蹤文件；若另有修改，先確認所有權。
-- Next step：完成 request 分級、必要 serialization／HTTP regression tests、獨立 review 與本機 commit。
+- Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
+- Current docs checkpoint：C06 request inventory 已完成，等待本機文件 commit。
+- Expected working tree：checkpoint 前只應包含本追蹤文件；若另有修改，先確認所有權。
+- Next batch：E05 新增 stable SDK `global.json`；完成後進入 C09 Project Management Issue request characterization 與具名 init 轉換。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
