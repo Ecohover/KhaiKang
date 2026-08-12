@@ -105,9 +105,9 @@ KhaiKang 採用下列優先順序：
 | C06 | 盤點大型 positional requests | AI | completed | 已完成 high／medium／keep 分級與五個後續小批次 |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
-| C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
-| C10 | Test Case request 改為具名 init contract | AI + Human contract review | waiting-human | Characterization 與 null-step 邊界修正已完成；request shape 等待 required／nullable 與 tag 語意決策 |
-| C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
+| C09 | Project Management Issue request 改為 body-form public contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
+| C10 | Test Case request 改為 body-form public contract | AI + Human contract review | completed | Create／Update／Step 已統一宣告形式；required、optional nullable 與 tag 三態語意已對齊 OpenAPI／TypeScript 並完成 regression matrix |
+| C11 | Test Plan request 改為 body-form public contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
 | C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
 | C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
 | C14 | 落實 OpenAPI `additionalProperties: false` | AI + Human contract review | pending | 先盤點未知欄位的相容風險，再讓 runtime 與全域 canonical contract 一致 |
@@ -171,7 +171,7 @@ KhaiKang 採用下列優先順序：
 ### 每批驗證方式
 
 1. 先用固定 camelCase JSON 建立 serialization／deserialization characterization，不以 typed `JsonContent` 作為唯一證據。
-2. 依 canonical OpenAPI 的 required 清單逐欄決定 `required init`；不得把 nullable 誤當 optional，或把 optional 誤改為 required。
+2. 依 canonical OpenAPI 的 required 清單逐欄決定明確 constructor 或 `required init`；不得把 nullable 誤當 optional，或把 optional 誤改為 required。
 3. Build 驗證所有 C# 建構呼叫點，HTTP integration test 驗證 raw JSON binding 與 observable behavior。
 4. Wire shape 未改時，OpenAPI 與 TypeScript 不做無意義 churn，但仍執行人工對照與 frontend type-check。
 5. 目前不為此盤點引進 OpenAPI parser 或 code generator；完整自動 schema gate 另列 enforcement 工作。
@@ -219,8 +219,12 @@ KhaiKang 採用下列優先順序：
 - `df08a2c` docs: establish backend refactoring execution workflow
 - `280dcf1` refactor: clarify audit and member validation flows
 - `c77e52f` refactor: clarify project role collection semantics
+- `afdd727` docs: standardize public request declarations
+- `055700f` test: characterize project member request contracts
+- `fb0003f` refactor: standardize project member requests
 - `b004ddf` test: characterize test case request contracts
 - `fb409af` fix: reject null test case steps
+- `a71f500` refactor: standardize test case requests
 
 ## Verification Record
 
@@ -312,8 +316,27 @@ C10 characterization 與 null-step 邊界修正（2026-08-12，commits `b004ddf`
 - Backend Release build：passed，0 warnings／0 errors。
 - 完整 Domain unit tests：105/105 passed；完整 API integration tests：50/50 passed。
 - `git diff --check`：passed；未執行 EF pending-model check，因本批未修改 entity、mapping 或 migration。
-- C10 request type 尚未修改，狀態維持 `waiting-human`。完成前必須決定：(1) required + nullable 欄位缺欄時拒絕或放寬 OpenAPI；(2) `suiteId`／`sortOrder` 缺欄的 boundary 行為；(3) `tagIds` omitted／`null`／`[]`／duplicate 的 canonical 語意。
+- 此 characterization checkpoint 當時尚未修改 C10 request type；後續決策與完成狀態以 `a71f500` 的 implementation record 為準。
 - C14／C15 仍為 `pending`：本批只保存部分現況，不代表已落實 unknown-property policy 或統一 validation error key casing。
+
+C16 第一批 Project Member request 宣告統一（2026-08-12，commits `055700f`、`fb0003f`）：
+
+- `AddProjectMemberRequest` 與 `UpdateProjectMemberRolesRequest` 已由 positional record 改為與 `CreateIssueRequest` 一致的 body-form `sealed record`，短必填欄位使用明確 constructor 與 getter-only property。
+- 所有 typed call sites 已改用 named arguments；未加入 `required` metadata，既有 JSON binding、validation path、OpenAPI 與 TypeScript wire contract 均未改變。
+- Targeted Project Member contract／endpoint tests：13/13 passed；獨立 AI review：0 blocker／0 high／0 medium。
+- C16 是跨模組的 umbrella item；目前仍有 27 個 positional public requests／inputs 待分批處理，因此狀態維持 `in-progress`。
+
+C10 implementation 驗證（2026-08-12，commit `a71f500`）：
+
+- Human 已確定所有 public Request／public cross-module input 使用 body-form type declaration；這項規則不擴張到 response、domain value object、application result 或 private／internal record。
+- `CreateTestCaseRequest`、`UpdateTestCaseRequest` 與 `CreateTestCaseStepRequest` 已各自獨立成單一 public type 檔案，使用最多三個語意核心 constructor 參數；其餘 required scalar 使用 `required init`，optional nullable 欄位使用一般 init property。
+- Canonical contract 決策：三個文字欄位為 optional nullable；`tagIds` 為 optional nullable unique array。Create omitted／`null` 建立空集合；Update omitted／`null` 保留、`[]` 清除；duplicate 明確回 `400 tagIds`。
+- `suiteId` 缺欄或空值會在 HTTP boundary 回 `400 testCase`；缺少 required-init 欄位會回帶 `status: 400` 的 ProblemDetails；step 缺少 `action`／`expectedResult`、step element 為 `null`、Update `status: null` 均有 regression coverage。
+- Production change 前的 red phase 精確出現 6 個預期失敗；實作後 targeted Test Case contract tests：32/32 passed。
+- Backend Release build：passed，0 warnings／0 errors；完整 Domain unit tests：105/105 passed；完整 API integration tests：70/70 passed。
+- Frontend type-check：passed；web tests：29/29 passed；production build：passed（只有既有 large-chunk warning）。
+- OpenAPI YAML parse、new-file changed-format 與 `git diff --check`：passed；獨立 AI review 最終為 0 blocker／0 high／0 medium。
+- 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 
 ## 每批更新方式
 
@@ -336,13 +359,13 @@ C10 characterization 與 null-step 邊界修正（2026-08-12，commits `b004ddf`
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
 - Last completed production fix：Test Case null step boundary validation，commit `fb409af`。
-- Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
+- Last completed docs rule：Public Request body-form declaration，commit `afdd727`。
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
-- Last completed request-contract batch：C09 Issue request，characterization `7404f84`、implementation `25688ea`。
-- Latest C10 checkpoint：characterization `b004ddf`、null-step fix `fb409af`；request type 尚未重構。
-- Current batch：C16 第一批，先將 Project Member requests 統一為 `CreateIssueRequest` 類型本體風格；C10 contract implementation 緊接其後。
-- Expected working tree：本規則調整尚待文件 commit，之後只應包含當前單一 contract 批次。
-- Next step：先完成 Project Member request 宣告統一與 wire regression；再依已提出的 Test Case required／nullable 與 `tagIds` 語意完成 C10，不混入 C14／C15 或 Test Case domain 重構。
+- Last completed request-contract batch：C10 Test Case request，characterization `b004ddf`、null-step fix `fb409af`、implementation `a71f500`。
+- C16 first batch：Project Member characterization `055700f`、implementation `fb0003f`；umbrella item 維持 `in-progress`。
+- Current batch：無進行中的 production change；C10 implementation 與驗證已完成。
+- Expected working tree：完成本 tracker checkpoint 後應為 clean。
+- Next step：開始 C11 Test Plan body-form request characterization；保留 `CaseIds`、`TestIssueId`、required／nullable 與 validation error 行為，不混入 C14／C15 或 Test Plan domain 重構。
 - Human decisions：R06 與 I04 尚未決定；公開 request 宣告風格已由 Human 改為單一 non-positional type body，不得再保留短 request positional 例外。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
