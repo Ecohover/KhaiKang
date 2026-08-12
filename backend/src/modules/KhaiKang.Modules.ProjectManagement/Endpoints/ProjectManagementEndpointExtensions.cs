@@ -359,12 +359,13 @@ public static partial class ProjectManagementEndpointExtensions
     }
 
     private static void ValidateRoleCodes(
-        IReadOnlyList<string>? roleCodes,
+        IReadOnlyCollection<string>? roleCodes,
         IDictionary<string, string[]> errors)
     {
         if (roleCodes is null ||
             roleCodes.Count is < 1 or > 4 ||
-            roleCodes.Any(string.IsNullOrWhiteSpace))
+            roleCodes.Any(string.IsNullOrWhiteSpace) ||
+            roleCodes.Distinct(StringComparer.Ordinal).Count() != roleCodes.Count)
         {
             errors["roleCodes"] = ["Select between one and four valid project roles."];
         }

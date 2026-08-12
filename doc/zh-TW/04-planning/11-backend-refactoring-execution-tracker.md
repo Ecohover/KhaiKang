@@ -101,8 +101,8 @@ KhaiKang 採用下列優先順序：
 | C02 | 移除 `ProjectAuditEvent.Create` 純轉接 helper | AI | completed | Named factory 直接建立 entity，行為不變 |
 | C03 | `ChangeContext` 建立後完整傳遞 | AI | completed | 不再拆 actor/time 後於 helper 內重建 |
 | C04 | 將 member Add／Update validator 分開 | AI | completed | 不以 null／optional 值切換驗證模式，補 null regression test |
-| C05 | 修正 `RoleCodes` 集合語意 | AI + Human contract review | pending | 評估 `IReadOnlyCollection<string>` 並同步 OpenAPI／clients |
-| C06 | 盤點大型 positional requests | AI | pending | 先處理欄位多、同型別或 optional 的 contract |
+| C05 | 修正 `RoleCodes` 集合語意 | AI + Human contract review | in-progress | 評估 `IReadOnlyCollection<string>` 並同步 OpenAPI／clients |
+| C06 | 盤點大型 positional requests | AI | in-progress | 先處理欄位多、同型別或 optional 的 contract |
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
 
@@ -226,8 +226,9 @@ C01–C04 批次驗證（2026-08-12，commit `280dcf1`）：
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
 - Last completed batch：C01–C04 低風險可讀性修正與 member validation null regression tests，commit `280dcf1`。
-- Expected working tree：完成 tracker checkpoint commit 後應為乾淨；若不乾淨，先確認修改所有權與目前 batch。
-- Next batch：先處理 C05 contract collection 語意與 C06 大型 positional request 盤點；不得只為統一外觀修改短小且清楚的 request。
+- Current batch：C05 `RoleCodes` 集合語意與 C06 大型 positional request 盤點；先確認 wire contract 與 client 影響，再決定最小修改。
+- Expected working tree：本批完成前只應包含 C05／C06 的 contract、測試與本追蹤文件；若另有修改，先確認所有權。
+- Next step：完成 request 分級、必要 serialization／HTTP regression tests、獨立 review 與本機 commit。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。

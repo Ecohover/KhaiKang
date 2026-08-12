@@ -516,7 +516,7 @@ public sealed class ProjectManagementService(
     }
 
     private async Task<ProjectRole[]?> ResolveRolesAsync(
-        IReadOnlyList<string> roleCodes,
+        IReadOnlyCollection<string> roleCodes,
         CancellationToken cancellationToken)
     {
         var normalizedCodes = roleCodes

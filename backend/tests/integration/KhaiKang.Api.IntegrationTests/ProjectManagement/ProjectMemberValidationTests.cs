@@ -74,6 +74,40 @@ public sealed class ProjectMemberValidationTests
         await AssertValidationProblemAsync(response, "version");
     }
 
+    [Fact]
+    public async Task AddProjectMember_WhenRoleCodesContainDuplicates_ReturnsRoleCodesValidationProblem()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var project = await ApiTestData.CreateProjectAsync(api);
+
+        var response = await api.PostJsonAsync(
+            $"/api/v1/projects/{project.Id}/members",
+            new
+            {
+                username = "reviewer",
+                roleCodes = new[] { "contributor", "contributor" },
+            });
+
+        await AssertValidationProblemAsync(response, "roleCodes");
+    }
+
+    [Fact]
+    public async Task UpdateProjectMemberRoles_WhenRoleCodesContainDuplicates_ReturnsRoleCodesValidationProblem()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var project = await ApiTestData.CreateProjectAsync(api);
+
+        var response = await api.PutJsonAsync(
+            $"/api/v1/projects/{project.Id}/members/{Guid.NewGuid()}/roles",
+            new
+            {
+                roleCodes = new[] { "reviewer", "reviewer" },
+                version = 1,
+            });
+
+        await AssertValidationProblemAsync(response, "roleCodes");
+    }
+
     private static async Task AssertValidationProblemAsync(
         HttpResponseMessage response,
         string expectedError)
