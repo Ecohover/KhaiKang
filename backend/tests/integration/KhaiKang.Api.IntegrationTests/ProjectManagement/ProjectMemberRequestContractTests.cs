@@ -8,7 +8,9 @@ public sealed class ProjectMemberRequestContractTests
     [Fact]
     public void AddProjectMemberRequest_UsesCanonicalJsonShape()
     {
-        var request = new AddProjectMemberRequest("reviewer", ["contributor"]);
+        var request = new AddProjectMemberRequest(
+            username: "reviewer",
+            roleCodes: ["contributor"]);
 
         using var document = JsonDocument.Parse(
             JsonSerializer.Serialize(request, JsonSerializerOptions.Web));

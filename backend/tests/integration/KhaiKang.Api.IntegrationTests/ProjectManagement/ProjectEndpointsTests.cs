@@ -65,7 +65,9 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
 
         var addMemberResponse = await PostAsync(
             $"/api/v1/projects/{created.Id}/members",
-            JsonContent.Create(new AddProjectMemberRequest("reviewer", ["contributor"])),
+            JsonContent.Create(new AddProjectMemberRequest(
+                username: "reviewer",
+                roleCodes: ["contributor"])),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, addMemberResponse.StatusCode);
         var addedMember = await addMemberResponse.Content.ReadFromJsonAsync<ProjectMemberResponse>();
@@ -216,8 +218,8 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var updateRolesResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/members/{addedMember.Id}/roles",
             JsonContent.Create(new UpdateProjectMemberRolesRequest(
-                ["reviewer"],
-                addedMember.Version)),
+                roleCodes: ["reviewer"],
+                version: addedMember.Version)),
             await GetCsrfTokenAsync());
         updateRolesResponse.EnsureSuccessStatusCode();
         var updatedMember = await updateRolesResponse.Content

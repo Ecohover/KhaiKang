@@ -89,7 +89,9 @@ public sealed class IssueRelationBehaviorTests
         await api.Factory.AddActiveAccountAsync("relation-reviewer");
         var addReviewerResponse = await api.PostJsonAsync(
             $"/api/v1/projects/{project.Id}/members",
-            new AddProjectMemberRequest("relation-reviewer", ["reviewer"]));
+            new AddProjectMemberRequest(
+                username: "relation-reviewer",
+                roleCodes: ["reviewer"]));
         Assert.Equal(HttpStatusCode.Created, addReviewerResponse.StatusCode);
 
         using var reviewerClient = api.CreateClient();
