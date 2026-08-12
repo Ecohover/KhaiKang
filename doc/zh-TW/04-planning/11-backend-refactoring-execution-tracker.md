@@ -106,7 +106,7 @@ KhaiKang 採用下列優先順序：
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
 | C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
-| C10 | Test Case request 改為具名 init contract | AI + Human contract review | in-progress | Create／Update 分批處理並維持 required／nullable 語意 |
+| C10 | Test Case request 改為具名 init contract | AI + Human contract review | waiting-human | Characterization 與 null-step 邊界修正已完成；request shape 等待 required／nullable 與 tag 語意決策 |
 | C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
 | C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
 | C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
@@ -218,6 +218,8 @@ KhaiKang 採用下列優先順序：
 - `df08a2c` docs: establish backend refactoring execution workflow
 - `280dcf1` refactor: clarify audit and member validation flows
 - `c77e52f` refactor: clarify project role collection semantics
+- `b004ddf` test: characterize test case request contracts
+- `fb409af` fix: reject null test case steps
 
 ## Verification Record
 
@@ -300,6 +302,18 @@ C09 implementation 驗證（2026-08-12，commit `25688ea`）：
 - 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 - 既有 contract debt 已另列 C14／C15：runtime 尚未落實 `additionalProperties: false`，validation key casing 亦未統一；不得在結構重構中無聲改變。
 
+C10 characterization 與 null-step 邊界修正（2026-08-12，commits `b004ddf`、`fb409af`）：
+
+- 新增 `TestCaseRequestContractTests`，雙向鎖定 Create／Update 的 camelCase JSON 欄位集合、step 欄位、穩定 validation path 與 `tagIds` 省略語意。
+- Raw HTTP 實測確認既有 contract drift：Create 省略 `description`／`preconditions`／`overallExpectedResult`／`sortOrder` 仍回 `201`，省略 `suiteId` 回 `404`；Update 省略前述三個文字欄位或 `sortOrder` 仍回 `200`。這些一次性診斷案例未保留成 regression test，避免把違反 canonical OpenAPI 的現況固定成目標行為。
+- 修正前 Create／Update 收到 `steps: [null]` 均回 `500`；`fb409af` 讓共用 HTTP boundary validator 明確接受不受信任的 nullable element，並穩定回傳 `400 testCase`。
+- Targeted Test Case contract tests：14/14 passed。
+- Backend Release build：passed，0 warnings／0 errors。
+- 完整 Domain unit tests：105/105 passed；完整 API integration tests：50/50 passed。
+- `git diff --check`：passed；未執行 EF pending-model check，因本批未修改 entity、mapping 或 migration。
+- C10 request type 尚未修改，狀態維持 `waiting-human`。完成前必須決定：(1) required + nullable 欄位缺欄時拒絕或放寬 OpenAPI；(2) `suiteId`／`sortOrder` 缺欄的 boundary 行為；(3) `tagIds` omitted／`null`／`[]`／duplicate 的 canonical 語意。
+- C14／C15 仍為 `pending`：本批只保存部分現況，不代表已落實 unknown-property policy 或統一 validation error key casing。
+
 ## 每批更新方式
 
 開始前：
@@ -320,13 +334,14 @@ C09 implementation 驗證（2026-08-12，commit `25688ea`）：
 
 - Branch：`ecohover/refactor/backend-clean-code`
 - Remote base：`origin/rc`
-- Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
+- Last completed production fix：Test Case null step boundary validation，commit `fb409af`。
 - Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
 - Last completed request-contract batch：C09 Issue request，characterization `7404f84`、implementation `25688ea`。
-- Current batch：C10 Test Case request characterization；先確認 canonical OpenAPI required／nullable 與既有 HTTP error shape。
-- Expected working tree：C10 characterization 開始前只應包含本追蹤文件。
-- Next step：盤點 `CreateTestCaseRequest`／`UpdateTestCaseRequest`、TypeScript 與全部 call sites；先測後改，不混入 Test Case domain／application 重構。
-- Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
+- Latest C10 checkpoint：characterization `b004ddf`、null-step fix `fb409af`；request type 尚未重構。
+- Current batch：C10 `waiting-human`；測試保護網完成，停止於 canonical contract 決策邊界。
+- Expected working tree：本 tracker checkpoint commit 後應為 clean。
+- Next step：Human 決定 Test Case required／nullable 與 `tagIds` wire semantics；決策後才調整 C# request shape、OpenAPI／TypeScript 與全部 call sites，不混入 C14／C15 或 Test Case domain 重構。
+- Human decisions：除 R06 與 I04 外，新增 C10 contract decision；不得由 AI 為了結構一致性自行收緊或放寬公開 API。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
