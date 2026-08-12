@@ -136,6 +136,22 @@ public sealed class TestCaseRequestContractTests
     }
 
     [Fact]
+    public async Task CreateCase_WhenStepIsNull_ReturnsValidationProblem()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var workspace = await ApiTestData.CreateWorkspaceAsync(api);
+        var suite = await CreateSuiteAsync(api, workspace.Id);
+
+        var response = await SendRawJsonAsync(
+            api,
+            HttpMethod.Post,
+            $"/api/v1/test-workspaces/{workspace.Id}/cases",
+            CreateJson(suite.Id, stepsJson: "[null]"));
+
+        await AssertValidationProblemAsync(response, "testCase");
+    }
+
+    [Fact]
     public async Task CreateCase_WhenTagIdsAreOmitted_CreatesEmptyTagCollection()
     {
         using var api = await AuthenticatedApiTestContext.CreateAsync();
@@ -174,6 +190,22 @@ public sealed class TestCaseRequestContractTests
             HttpMethod.Put,
             $"/api/v1/test-workspaces/{workspace.Id}/cases/{testCase.Id}",
             UpdateJson(testCase, omittedField));
+
+        await AssertValidationProblemAsync(response, "testCase");
+    }
+
+    [Fact]
+    public async Task UpdateCase_WhenStepIsNull_ReturnsValidationProblem()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var workspace = await ApiTestData.CreateWorkspaceAsync(api);
+        var testCase = await ApiTestData.CreateCaseAsync(api, workspace.Id);
+
+        var response = await SendRawJsonAsync(
+            api,
+            HttpMethod.Put,
+            $"/api/v1/test-workspaces/{workspace.Id}/cases/{testCase.Id}",
+            UpdateJson(testCase, stepsJson: "[null]"));
 
         await AssertValidationProblemAsync(response, "testCase");
     }
@@ -233,10 +265,17 @@ public sealed class TestCaseRequestContractTests
             property => !property.StartsWith($"\"{omittedField}\"", StringComparison.Ordinal))) + "}";
     }
 
-    private static string UpdateJson(TestCaseResponse testCase, string? omittedField = null)
-        => UpdateJson(testCase.SuiteId, testCase.Version, omittedField);
+    private static string UpdateJson(
+        TestCaseResponse testCase,
+        string? omittedField = null,
+        string stepsJson = """[{"action":"Perform the updated operation.","expectedResult":"The updated result is visible."}]""")
+        => UpdateJson(testCase.SuiteId, testCase.Version, omittedField, stepsJson);
 
-    private static string UpdateJson(Guid suiteId, int version, string? omittedField = null)
+    private static string UpdateJson(
+        Guid suiteId,
+        int version,
+        string? omittedField = null,
+        string stepsJson = """[{"action":"Perform the updated operation.","expectedResult":"The updated result is visible."}]""")
     {
         var properties = new List<string>
         {
@@ -248,7 +287,7 @@ public sealed class TestCaseRequestContractTests
             "\"sortOrder\":1",
             "\"status\":\"active\"",
             $"\"version\":{version}",
-            "\"steps\":[{\"action\":\"Perform the updated operation.\",\"expectedResult\":\"The updated result is visible.\"}]",
+            $"\"steps\":{stepsJson}",
         };
         return "{" + string.Join(",", properties.Where(
             property => !property.StartsWith($"\"{omittedField}\"", StringComparison.Ordinal))) + "}";

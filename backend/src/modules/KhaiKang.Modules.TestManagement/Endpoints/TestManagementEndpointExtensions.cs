@@ -503,7 +503,7 @@ public static class TestManagementEndpointExtensions
         string? preconditions,
         string? overallExpectedResult,
         int sortOrder,
-        IReadOnlyList<CreateTestCaseStepRequest>? steps)
+        IReadOnlyList<CreateTestCaseStepRequest?>? steps)
     {
         var textIsInvalid =
             string.IsNullOrWhiteSpace(title) ||
@@ -516,6 +516,7 @@ public static class TestManagementEndpointExtensions
             steps is null ||
             steps.Count is < 1 or > 100 ||
             steps.Any(step =>
+                step is null ||
                 string.IsNullOrWhiteSpace(step.Action) ||
                 step.Action.Length > 4000 ||
                 string.IsNullOrWhiteSpace(step.ExpectedResult) ||
