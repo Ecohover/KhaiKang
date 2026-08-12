@@ -73,13 +73,17 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
         var caseResponse = await PostAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/cases",
             JsonContent.Create(new CreateTestCaseRequest(
-                suite.Id,
-                "Submit checkout",
-                null,
-                null,
-                null,
-                1,
-                [new CreateTestCaseStepRequest("Submit the checkout form.", "The order is created.")])),
+                suiteId: suite.Id,
+                title: "Submit checkout",
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "Submit the checkout form.",
+                        expectedResult: "The order is created."),
+                ])
+            {
+                SortOrder = 1,
+            }),
             await GetCsrfTokenAsync());
         caseResponse.EnsureSuccessStatusCode();
         var testCase = await caseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();

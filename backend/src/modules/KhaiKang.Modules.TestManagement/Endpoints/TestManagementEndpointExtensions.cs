@@ -243,6 +243,8 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, CreateTestCaseRequest request, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>
         {
+            if (ValidateCaseReferences(request.SuiteId, request.TagIds) is { } invalidReferences)
+                return invalidReferences;
             if (ValidateCase(request.Title, request.Description, request.Preconditions,
                 request.OverallExpectedResult, request.SortOrder, request.Steps) is { } invalid)
                 return invalid;
@@ -268,6 +270,8 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, Guid caseId, UpdateTestCaseRequest request, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>
         {
+            if (ValidateCaseReferences(request.SuiteId, request.TagIds) is { } invalidReferences)
+                return invalidReferences;
             if (ValidateCase(request.Title, request.Description, request.Preconditions,
                 request.OverallExpectedResult, request.SortOrder, request.Steps) is { } invalid)
                 return invalid;
@@ -533,6 +537,29 @@ public static class TestManagementEndpointExtensions
                 "A title and at least one valid step with an expected result are required.",
             ],
         });
+    }
+
+    private static IResult? ValidateCaseReferences(
+        Guid suiteId,
+        IReadOnlyList<Guid>? tagIds)
+    {
+        if (suiteId == Guid.Empty)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["testCase"] = ["A valid suite is required."],
+            });
+        }
+
+        if (tagIds is not null && tagIds.Count != tagIds.Distinct().Count())
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["tagIds"] = ["Tag IDs must be unique."],
+            });
+        }
+
+        return null;
     }
 
     private static IResult? ValidateTag(string name, string? description) =>

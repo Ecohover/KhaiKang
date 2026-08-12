@@ -85,17 +85,24 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
         var createCaseResponse = await PostAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases",
             JsonContent.Create(new CreateTestCaseRequest(
-                suite.Id,
-                "Sign in with valid credentials",
-                "Verifies the normal sign-in flow.",
-                "An active account exists.",
-                "The user reaches the home page.",
-                1,
+                suiteId: suite.Id,
+                title: "Sign in with valid credentials",
+                steps:
                 [
-                    new("Open the sign-in page.", "The sign-in form is displayed."),
-                    new("Submit valid credentials.", "The home page is displayed."),
-                ],
-                TagIds: [tag.Id])),
+                    new CreateTestCaseStepRequest(
+                        action: "Open the sign-in page.",
+                        expectedResult: "The sign-in form is displayed."),
+                    new CreateTestCaseStepRequest(
+                        action: "Submit valid credentials.",
+                        expectedResult: "The home page is displayed."),
+                ])
+            {
+                Description = "Verifies the normal sign-in flow.",
+                Preconditions = "An active account exists.",
+                OverallExpectedResult = "The user reaches the home page.",
+                SortOrder = 1,
+                TagIds = [tag.Id],
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, createCaseResponse.StatusCode);
         var testCase = await createCaseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
@@ -128,18 +135,23 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{testCase.Id}")
         {
             Content = JsonContent.Create(new UpdateTestCaseRequest(
-                suite.Id,
-                "Sign in with valid credentials - Updated",
-                "## Updated description\n\n- visible to the team",
-                "**Updated** preconditions.",
-                "[Updated expected result](https://example.test/expected).",
-                2,
-                "active",
-                testCase.Version,
+                suiteId: suite.Id,
+                title: "Sign in with valid credentials - Updated",
+                steps:
                 [
-                    new("1. Enter **valid** credentials.", "The [home page](https://example.test/home) is displayed."),
-                ],
-                TagIds: [tag.Id])),
+                    new CreateTestCaseStepRequest(
+                        action: "1. Enter **valid** credentials.",
+                        expectedResult: "The [home page](https://example.test/home) is displayed."),
+                ])
+            {
+                Description = "## Updated description\n\n- visible to the team",
+                Preconditions = "**Updated** preconditions.",
+                OverallExpectedResult = "[Updated expected result](https://example.test/expected).",
+                SortOrder = 2,
+                Status = "active",
+                Version = testCase.Version,
+                TagIds = [tag.Id],
+            }),
         };
         updateCaseRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
         var updateCaseResponse = await _client.SendAsync(updateCaseRequest);
@@ -188,16 +200,23 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
         var addExpectedImageResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
             new UpdateTestCaseRequest(
-                suite.Id,
-                updatedCase.Title,
-                updatedCase.Description,
-                updatedCase.Preconditions,
-                updatedCase.OverallExpectedResult,
-                updatedCase.SortOrder,
-                updatedCase.Status,
-                updatedCase.Version,
-                [new("1. Enter **valid** credentials.", expectedResultWithImage)],
-                TagIds: [tag.Id]));
+                suiteId: suite.Id,
+                title: updatedCase.Title,
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "1. Enter **valid** credentials.",
+                        expectedResult: expectedResultWithImage),
+                ])
+            {
+                Description = updatedCase.Description,
+                Preconditions = updatedCase.Preconditions,
+                OverallExpectedResult = updatedCase.OverallExpectedResult,
+                SortOrder = updatedCase.SortOrder,
+                Status = updatedCase.Status,
+                Version = updatedCase.Version,
+                TagIds = [tag.Id],
+            });
         addExpectedImageResponse.EnsureSuccessStatusCode();
         updatedCase = await addExpectedImageResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
         Assert.NotNull(updatedCase);
@@ -251,15 +270,20 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
         var changeSourceResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
             new UpdateTestCaseRequest(
-                suite.Id,
-                "Source changed after run",
-                "Changed source description.",
-                null,
-                null,
-                2,
-                "active",
-                updatedCase.Version,
-                [new("Changed source step.", "Changed source expected result.")]));
+                suiteId: suite.Id,
+                title: "Source changed after run",
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "Changed source step.",
+                        expectedResult: "Changed source expected result."),
+                ])
+            {
+                Description = "Changed source description.",
+                SortOrder = 2,
+                Status = "active",
+                Version = updatedCase.Version,
+            });
         changeSourceResponse.EnsureSuccessStatusCode();
 
         var fetchedRunResponse = await _client.GetAsync(

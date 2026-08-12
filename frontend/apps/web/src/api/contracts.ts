@@ -341,25 +341,25 @@ export interface CreateTestCaseStepRequest {
 export interface CreateTestCaseRequest {
   suiteId: string
   title: string
-  description: string | null
-  preconditions: string | null
-  overallExpectedResult: string | null
+  description?: string | null
+  preconditions?: string | null
+  overallExpectedResult?: string | null
   sortOrder: number
   steps: CreateTestCaseStepRequest[]
-  tagIds?: string[]
+  tagIds?: string[] | null
 }
 
 export interface UpdateTestCaseRequest {
   suiteId: string
   title: string
-  description: string | null
-  preconditions: string | null
-  overallExpectedResult: string | null
+  description?: string | null
+  preconditions?: string | null
+  overallExpectedResult?: string | null
   sortOrder: number
   status: 'active' | 'inactive'
   version: number
   steps: CreateTestCaseStepRequest[]
-  tagIds?: string[]
+  tagIds?: string[] | null
 }
 
 export interface IssueListQuery {

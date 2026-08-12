@@ -75,13 +75,20 @@ internal static class ApiTestData
         var caseResponse = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspaceId}/cases",
             new CreateTestCaseRequest(
-                suite.Id,
-                title,
-                "Case description.",
-                "An active account exists.",
-                "The operation succeeds.",
-                1,
-                [new CreateTestCaseStepRequest("Perform the operation.", "The result is visible.")]));
+                suiteId: suite.Id,
+                title: title,
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "Perform the operation.",
+                        expectedResult: "The result is visible."),
+                ])
+            {
+                Description = "Case description.",
+                Preconditions = "An active account exists.",
+                OverallExpectedResult = "The operation succeeds.",
+                SortOrder = 1,
+            });
         Assert.Equal(HttpStatusCode.Created, caseResponse.StatusCode);
         return Assert.IsType<TestCaseResponse>(
             await caseResponse.Content.ReadFromJsonAsync<TestCaseResponse>());

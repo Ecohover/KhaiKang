@@ -57,32 +57,6 @@ public sealed record TestSuiteResponse(
     int Depth,
     int Version);
 
-public sealed record CreateTestCaseStepRequest(
-    string Action,
-    string ExpectedResult);
-
-public sealed record CreateTestCaseRequest(
-    Guid SuiteId,
-    string Title,
-    string? Description,
-    string? Preconditions,
-    string? OverallExpectedResult,
-    int SortOrder,
-    IReadOnlyList<CreateTestCaseStepRequest> Steps,
-    IReadOnlyList<Guid>? TagIds = null);
-
-public sealed record UpdateTestCaseRequest(
-    Guid SuiteId,
-    string Title,
-    string? Description,
-    string? Preconditions,
-    string? OverallExpectedResult,
-    int SortOrder,
-    string Status,
-    int Version,
-    IReadOnlyList<CreateTestCaseStepRequest> Steps,
-    IReadOnlyList<Guid>? TagIds = null);
-
 public sealed record TestTagResponse(Guid Id, string Name, string? Description, string Status, int Version);
 
 public sealed record CreateTestTagRequest(string Name, string? Description);

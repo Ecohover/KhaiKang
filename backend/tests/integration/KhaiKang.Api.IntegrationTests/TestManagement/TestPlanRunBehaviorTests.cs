@@ -70,18 +70,20 @@ public sealed class TestPlanRunBehaviorTests
         var deactivateCaseResponse = await api.PutJsonAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/cases/{testCase.Id}",
             new UpdateTestCaseRequest(
-                testCase.SuiteId,
-                testCase.Title,
-                testCase.Description,
-                testCase.Preconditions,
-                testCase.OverallExpectedResult,
-                testCase.SortOrder,
-                "inactive",
-                testCase.Version,
-                testCase.Steps.Select(step =>
+                suiteId: testCase.SuiteId,
+                title: testCase.Title,
+                steps: testCase.Steps.Select(step =>
                     new CreateTestCaseStepRequest(
-                        step.Action,
-                        step.ExpectedResult)).ToArray()));
+                        action: step.Action,
+                        expectedResult: step.ExpectedResult)).ToArray())
+            {
+                Description = testCase.Description,
+                Preconditions = testCase.Preconditions,
+                OverallExpectedResult = testCase.OverallExpectedResult,
+                SortOrder = testCase.SortOrder,
+                Status = "inactive",
+                Version = testCase.Version,
+            });
         Assert.Equal(HttpStatusCode.OK, deactivateCaseResponse.StatusCode);
 
         var inactiveCaseRun = await api.PostJsonAsync(
