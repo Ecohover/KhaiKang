@@ -106,7 +106,7 @@ KhaiKang 採用下列優先順序：
 | C07 | 盤點 Application 直接使用 HTTP DTO | AI + Human | pending | 只在多入口或規則複雜時增加 application input model |
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
 | C09 | Project Management Issue request 改為具名 init contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
-| C10 | Test Case request 改為具名 init contract | AI + Human contract review | pending | Create／Update 分批處理並維持 required／nullable 語意 |
+| C10 | Test Case request 改為具名 init contract | AI + Human contract review | in-progress | Create／Update 分批處理並維持 required／nullable 語意 |
 | C11 | Test Plan request 改為具名 init contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
 | C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
 | C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
@@ -286,7 +286,7 @@ C09 characterization baseline（2026-08-12，commit `7404f84`，named-init 重�
 - Targeted characterization tests：5/5 passed。
 - Canonical OpenAPI 為 source of truth；TypeScript 已存在 optional／nullable drift，C09 轉換時只做靜態型別放寬，不改 JSON wire shape。
 
-C09 implementation 驗證（2026-08-12，待建立本機 commit）：
+C09 implementation 驗證（2026-08-12，commit `25688ea`）：
 
 - `CreateIssueRequest`：`title`／`typeCode` 使用 2 欄 constructor；5 個 optional nullable 欄位使用 init-only property。
 - `UpdateIssueRequest`：OpenAPI required 的 `title`／`typeCode`／`priorityCode`／`version` 使用具名 constructor；4 個 optional nullable 欄位使用 init-only property。
@@ -323,9 +323,10 @@ C09 implementation 驗證（2026-08-12，待建立本機 commit）：
 - Last completed production batch：C05 `RoleCodes` 集合語意與 OpenAPI uniqueness 落實，commit `c77e52f`。
 - Last completed docs checkpoint：C06 request inventory，commit `2d27f4a`。
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
-- Current batch：C09 Project Management Issue request 重構已完成驗證，待建立本機 implementation commit。
-- Expected working tree：Issue request contract、C# call sites、TypeScript optional 對齊、characterization test補強與本追蹤文件。
-- Next step：建立 C09 implementation 本機 commit並記錄 hash；之後開始 C10 Test Case request characterization。
+- Last completed request-contract batch：C09 Issue request，characterization `7404f84`、implementation `25688ea`。
+- Current batch：C10 Test Case request characterization；先確認 canonical OpenAPI required／nullable 與既有 HTTP error shape。
+- Expected working tree：C10 characterization 開始前只應包含本追蹤文件。
+- Next step：盤點 `CreateTestCaseRequest`／`UpdateTestCaseRequest`、TypeScript 與全部 call sites；先測後改，不混入 Test Case domain／application 重構。
 - Human decisions：R06 與 I04 尚未決定；不得由 AI 為了結構一致性自行改變業務狀態或 nullability。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
