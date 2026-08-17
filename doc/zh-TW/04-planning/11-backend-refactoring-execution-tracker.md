@@ -182,7 +182,7 @@ Project Member characterization checkpoint（2026-08-13，尚未 commit）：
 - 加入 P04 baseline／characterization 後完整 Domain unit tests：169/169 passed；完整 API integration tests：109/109 passed；`git diff --check`：passed。
 - 本 checkpoint 只補 characterization，尚未拆分 `ProjectMemberMutationResult`／Outcome，不得宣稱 C17-2 或 P04 完成。
 - 2026-08-17 checkpoint 前重新驗證：9 個 backend projects restore 成功；Release build 0 warnings／0 errors；unit 169/169、integration 109/109；frontend type-check、29/29 tests、production build皆通過。Vite build 保留既有 766.93 kB chunk size warning，沒有 build failure。
-- Structural／public-boundary／P04 baseline implementation checkpoint：`82cf8c9`（`refactor: standardize backend boundaries and organization`）；尚未 push。
+- Structural／public-boundary／P04 baseline implementation checkpoint：`82cf8c9`（`refactor: standardize backend boundaries and organization`）；branch publication 狀態以 live Git upstream 為準，不在此 evidence 重複維護。
 
 ### I：Identity
 
@@ -499,14 +499,15 @@ C19 業務資料夾分類與防回歸 gate（2026-08-12，尚未 commit）：
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
 - Last completed request-contract batch：C10 Test Case request，characterization `b004ddf`、null-step fix `fb409af`、implementation `a71f500`。
 - C16 first batch：Project Member characterization `055700f`、implementation `fb0003f`；umbrella item 維持 `in-progress`。
-- Last structural／boundary checkpoint：`82cf8c9`；C11／C12／C13／C16／C18／C19 與 E10 已完成提交，尚未 push。
+- Last structural／boundary checkpoint：`82cf8c9`；C11／C12／C13／C16／C18／C19 與 E10 已完成提交，branch publication 狀態以 live Git upstream 為準。
 - Active principle model：P09 實體組織已完成；P03 公開邊界宣告標準化已完成，但因 Workspace canonical drift 與 C14／C15 尚在，原則維持 `in-progress`；P04 Result／Outcome 語意為下一個全域 active refactoring principle。單一 Project Member、Issue、Attachment 或 Test Management slice 只會是 P04 checkpoint，不得單獨宣告 P04 完成。
 - P04 inventory checkpoint：已盤點 60 個 Application Result／Outcome operations，其中 8 個初步 `keep-family`、52 個 broad Result semantic debt；`ApplicationResultSemanticBaselineTests` 已建立 exact no-growth baseline並以 targeted tests 6/6通過。C17-1 尚缺 reachable outcome／HTTP mapping characterization matrix，不得標為完成。
 - P04 first characterization slice：Project Member Add／Update Roles／Remove 的 reachable outcome、HTTP status、problem code與成功 payload／no-content已由 targeted integration tests 3/3保護；production Result／Outcome尚未修改。
 - Current debt target：aggregate public-type file、檔名 mismatch、Contracts／Application public positional record 與五個純技術 source folder 名稱目前均為零；Domain／真正 internal carrier 不納入公開邊界 gate，業務 use-case 目錄不視為技術分類。
 - Checkpoint evidence：提交前 cached scope為204 files（25 rename、115 add、35 delete、29 modify），6,285 insertions／1,829 deletions；0 unstaged、0 untracked、0 binary、0禁止路徑，`git diff --cached --check`通過。
 - Expected working tree：本 tracker checkpoint 提交後應為 clean。不得把 Workspace prefix、Account lastLoginAt、C14 unknown-property 或 C15 error-key drift 靜默混入後續 P04 批次。
-- Next step：以 local runtime smoke test驗證 `82cf8c9`，接著補完 C17-1 reachable outcome／HTTP mapping characterization matrix，再選第一個 P04 垂直切片；未獲授權不得 push。
+- Local runtime checkpoint：2026-08-17 以 API `5220`、Web `5175` 驗證 `82cf8c9`；health、frontend proxy、database setup status、登入頁渲染與 browser console均正常，runtime error logs為空。
+- Next step：補完 C17-1 reachable outcome／HTTP mapping characterization matrix，再選第一個 P04 垂直切片；後續 commit／push仍需逐次取得授權。
 - Human decisions：R06 與 I04 尚未決定；公開 boundary contract 宣告風格已由 Human 改為單一 non-positional type body，不得再保留小型 response／public Result positional 例外。TestManagement operation-family Result 與 error Code 的長期拆分粒度另列後續語意重構，不阻擋本次 factory invariant 收斂。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
