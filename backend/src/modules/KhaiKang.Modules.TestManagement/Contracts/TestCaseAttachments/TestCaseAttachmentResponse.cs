@@ -1,0 +1,22 @@
+namespace KhaiKang.Modules.TestManagement.Contracts;
+
+public sealed record TestCaseAttachmentResponse
+{
+    public required Guid Id { get; init; }
+
+    public required Guid TestCaseId { get; init; }
+
+    public required string OriginalFileName { get; init; }
+
+    public required string ContentType { get; init; }
+
+    public required long FileSize { get; init; }
+
+    public required string FileHash { get; init; }
+
+    public required Guid UploadedByAccountId { get; init; }
+
+    public required string UploadedByUsername { get; init; }
+
+    public required DateTimeOffset CreatedAt { get; init; }
+}

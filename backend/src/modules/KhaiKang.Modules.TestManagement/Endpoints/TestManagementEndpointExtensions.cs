@@ -464,15 +464,16 @@ public static class TestManagementEndpointExtensions
     private static Guid? AccountId(ClaimsPrincipal principal) =>
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var value) ? value : null;
 
-    private static IResult Map<T>(TestManagementResult<T> result) => result.Outcome switch
-    {
-        TestManagementOutcome.Succeeded => Results.Ok(result.Value),
-        TestManagementOutcome.Forbidden => Results.Forbid(),
-        TestManagementOutcome.NotFound => Results.NotFound(),
-        TestManagementOutcome.Invalid => Results.ValidationProblem(
-            new Dictionary<string, string[]> { ["request"] = [result.Code ?? "Invalid request."] }),
-        _ => Problem(result.Code ?? "test_management_conflict"),
-    };
+    private static IResult Map<T>(TestManagementResult<T> result)
+        where T : class => result.Outcome switch
+        {
+            TestManagementOutcome.Succeeded => Results.Ok(result.Value),
+            TestManagementOutcome.Forbidden => Results.Forbid(),
+            TestManagementOutcome.NotFound => Results.NotFound(),
+            TestManagementOutcome.Invalid => Results.ValidationProblem(
+                new Dictionary<string, string[]> { ["request"] = [result.Code ?? "Invalid request."] }),
+            _ => Problem(result.Code ?? "test_management_conflict"),
+        };
 
     private static IResult Problem(string code) => Results.Problem(
         statusCode: 409,

@@ -17,22 +17,34 @@ public sealed class IssueRelationBehaviorTests
 
         var invalidType = await api.PostJsonAsync(
             path,
-            new CreateIssueRelationRequest("unknown", second.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "unknown",
+                relatedIssueId: second.Id,
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.BadRequest, invalidType.StatusCode);
 
         var invalidDirection = await api.PostJsonAsync(
             path,
-            new CreateIssueRelationRequest("related", second.Id, "sideways"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: second.Id,
+                direction: "sideways"));
         Assert.Equal(HttpStatusCode.BadRequest, invalidDirection.StatusCode);
 
         var selfRelation = await api.PostJsonAsync(
             path,
-            new CreateIssueRelationRequest("related", first.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: first.Id,
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.BadRequest, selfRelation.StatusCode);
 
         var missingTarget = await api.PostJsonAsync(
             path,
-            new CreateIssueRelationRequest("related", Guid.NewGuid(), "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: Guid.NewGuid(),
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.NotFound, missingTarget.StatusCode);
     }
 
@@ -47,7 +59,10 @@ public sealed class IssueRelationBehaviorTests
 
         var createResponse = await api.PostJsonAsync(
             $"/api/v1/projects/{project.Id}/issues/{first.Id}/relations",
-            new CreateIssueRelationRequest("related", second.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: second.Id,
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var relation = Assert.IsType<IssueRelationResponse>(
             await createResponse.Content.ReadFromJsonAsync<IssueRelationResponse>());
@@ -55,15 +70,20 @@ public sealed class IssueRelationBehaviorTests
         var deactivateResponse = await api.PutJsonAsync(
             $"/api/v1/projects/{project.Id}",
             new UpdateProjectRequest(
-                project.Name,
-                project.Description,
-                "inactive",
-                project.Version));
+                name: project.Name,
+                status: "inactive",
+                version: project.Version)
+            {
+                Description = project.Description,
+            });
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
 
         var blockedCreate = await api.PostJsonAsync(
             $"/api/v1/projects/{project.Id}/issues/{first.Id}/relations",
-            new CreateIssueRelationRequest("related", third.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: third.Id,
+                direction: "forward"));
         await AssertConflictCodeAsync(blockedCreate, "project_inactive");
 
         var blockedDelete = await api.DeleteAsync(
@@ -81,7 +101,10 @@ public sealed class IssueRelationBehaviorTests
 
         var ownerCreateResponse = await api.PostJsonAsync(
             $"/api/v1/projects/{project.Id}/issues/{first.Id}/relations",
-            new CreateIssueRelationRequest("related", second.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "related",
+                relatedIssueId: second.Id,
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.Created, ownerCreateResponse.StatusCode);
         var relation = Assert.IsType<IssueRelationResponse>(
             await ownerCreateResponse.Content.ReadFromJsonAsync<IssueRelationResponse>());
@@ -107,7 +130,10 @@ public sealed class IssueRelationBehaviorTests
         var blockedCreate = await AuthenticatedApiTestContext.PostJsonAsync(
             reviewerClient,
             $"/api/v1/projects/{project.Id}/issues/{first.Id}/relations",
-            new CreateIssueRelationRequest("blocks", second.Id, "forward"));
+            new CreateIssueRelationRequest(
+                relationTypeCode: "blocks",
+                relatedIssueId: second.Id,
+                direction: "forward"));
         Assert.Equal(HttpStatusCode.Forbidden, blockedCreate.StatusCode);
 
         using var deleteRequest = new HttpRequestMessage(

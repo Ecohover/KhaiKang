@@ -36,14 +36,24 @@ public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory
         var loginResponse = await PostAsync(
             _client,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             csrfToken);
         loginResponse.EnsureSuccessStatusCode();
 
         var createProjectResponse = await PostAsync(
             _client,
             "/api/v1/projects",
-            JsonContent.Create(new CreateProjectRequest("WEB", "Web Project", null)),
+            JsonContent.Create(new CreateProjectRequest(
+                code: "WEB",
+                name: "Web Project")
+            {
+                Description = null,
+            }),
             await GetCsrfTokenAsync(_client));
         Assert.Equal(HttpStatusCode.Created, createProjectResponse.StatusCode);
         var project = await createProjectResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -52,7 +62,12 @@ public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory
         var createHiddenProjectResponse = await PostAsync(
             _client,
             "/api/v1/projects",
-            JsonContent.Create(new CreateProjectRequest("OPS", "Operations Project", null)),
+            JsonContent.Create(new CreateProjectRequest(
+                code: "OPS",
+                name: "Operations Project")
+            {
+                Description = null,
+            }),
             await GetCsrfTokenAsync(_client));
         Assert.Equal(HttpStatusCode.Created, createHiddenProjectResponse.StatusCode);
         var hiddenProject = await createHiddenProjectResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -61,7 +76,11 @@ public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory
         var createWorkspaceResponse = await PostAsync(
             _client,
             "/api/v1/test-workspaces",
-            JsonContent.Create(new CreateTestWorkspaceRequest("Release Verification", "RV", null)),
+            JsonContent.Create(new CreateTestWorkspaceRequest("Release Verification")
+            {
+                Prefix = "RV",
+                Description = null,
+            }),
             await GetCsrfTokenAsync(_client));
         Assert.Equal(HttpStatusCode.Created, createWorkspaceResponse.StatusCode);
         var workspace = await createWorkspaceResponse.Content.ReadFromJsonAsync<TestWorkspaceResponse>();
@@ -110,7 +129,12 @@ public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory
         var managerLoginResponse = await PostAsync(
             managerClient,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("manager", "Temporary-Pass-123!", false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "manager",
+                Password = "Temporary-Pass-123!",
+                RememberMe = false,
+            }),
             await GetCsrfTokenAsync(managerClient));
         managerLoginResponse.EnsureSuccessStatusCode();
 
@@ -132,7 +156,12 @@ public sealed class TestWorkspaceProjectEndpointsTests(ApiIntegrationTestFactory
         var outsiderLoginResponse = await PostAsync(
             outsiderClient,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("outsider", "Temporary-Pass-123!", false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "outsider",
+                Password = "Temporary-Pass-123!",
+                RememberMe = false,
+            }),
             await GetCsrfTokenAsync(outsiderClient));
         outsiderLoginResponse.EnsureSuccessStatusCode();
         Assert.Equal(

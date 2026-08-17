@@ -13,7 +13,12 @@ internal static class ApiTestData
     {
         var response = await api.PostJsonAsync(
             "/api/v1/projects",
-            new CreateProjectRequest(code, $"{code} Project", null));
+            new CreateProjectRequest(
+                code: code,
+                name: $"{code} Project")
+            {
+                Description = null,
+            });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return Assert.IsType<ProjectResponse>(
             await response.Content.ReadFromJsonAsync<ProjectResponse>());
@@ -41,7 +46,11 @@ internal static class ApiTestData
     {
         var response = await api.PostJsonAsync(
             "/api/v1/test-workspaces",
-            new CreateTestWorkspaceRequest($"{prefix} Workspace", prefix, null));
+            new CreateTestWorkspaceRequest($"{prefix} Workspace")
+            {
+                Prefix = prefix,
+                Description = null,
+            });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return Assert.IsType<TestWorkspaceResponse>(
             await response.Content.ReadFromJsonAsync<TestWorkspaceResponse>());
@@ -67,7 +76,13 @@ internal static class ApiTestData
     {
         var suiteResponse = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspaceId}/suites",
-            new CreateTestSuiteRequest(null, "Checkout", null, 1));
+            new CreateTestSuiteRequest
+            {
+                ParentId = null,
+                Name = "Checkout",
+                Description = null,
+                SortOrder = 1,
+            });
         Assert.Equal(HttpStatusCode.Created, suiteResponse.StatusCode);
         var suite = Assert.IsType<TestSuiteResponse>(
             await suiteResponse.Content.ReadFromJsonAsync<TestSuiteResponse>());
@@ -104,10 +119,12 @@ internal static class ApiTestData
         var createResponse = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspaceId}/plans",
             new CreateTestPlanRequest(
-                "Regression plan",
-                "Stable refactoring scope.",
-                [caseId],
-                testIssueId));
+                description: "Stable refactoring scope.",
+                caseIds: [caseId])
+            {
+                Name = "Regression plan",
+                TestIssueId = testIssueId,
+            });
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var plan = Assert.IsType<TestPlanResponse>(
             await createResponse.Content.ReadFromJsonAsync<TestPlanResponse>());
@@ -118,13 +135,15 @@ internal static class ApiTestData
 
         var activateResponse = await api.PutJsonAsync(
             $"/api/v1/test-workspaces/{workspaceId}/plans/{plan.Id}",
-            new UpdateTestPlanRequest(
-                plan.Name,
-                plan.Description,
-                "active",
-                plan.Version,
-                [caseId],
-                testIssueId));
+            new UpdateTestPlanRequest
+            {
+                Name = plan.Name,
+                Description = plan.Description,
+                Status = "active",
+                Version = plan.Version,
+                CaseIds = [caseId],
+                TestIssueId = testIssueId,
+            });
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         return Assert.IsType<TestPlanResponse>(
             await activateResponse.Content.ReadFromJsonAsync<TestPlanResponse>());

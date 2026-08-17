@@ -34,13 +34,23 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
 
         var loginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             csrfToken);
         loginResponse.EnsureSuccessStatusCode();
 
         var createResponse = await PostAsync(
             "/api/v1/projects",
-            JsonContent.Create(new CreateProjectRequest("core", "Core Project", "First project")),
+            JsonContent.Create(new CreateProjectRequest(
+                code: "core",
+                name: "Core Project")
+            {
+                Description = "First project",
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -100,15 +110,21 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
 
         var invalidAssigneeResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/assignee",
-            JsonContent.Create(new UpdateIssueAssigneeRequest(Guid.NewGuid(), createdIssue.Version)),
+            JsonContent.Create(new UpdateIssueAssigneeRequest
+            {
+                AssigneeAccountId = Guid.NewGuid(),
+                Version = createdIssue.Version,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.BadRequest, invalidAssigneeResponse.StatusCode);
 
         var assignIssueResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/assignee",
-            JsonContent.Create(new UpdateIssueAssigneeRequest(
-                addedMember.AccountId,
-                createdIssue.Version)),
+            JsonContent.Create(new UpdateIssueAssigneeRequest
+            {
+                AssigneeAccountId = addedMember.AccountId,
+                Version = createdIssue.Version,
+            }),
             await GetCsrfTokenAsync());
         assignIssueResponse.EnsureSuccessStatusCode();
         var assignedIssue = await assignIssueResponse.Content.ReadFromJsonAsync<IssueResponse>();
@@ -132,7 +148,9 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
 
         var updateIssueStatusResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/status",
-            JsonContent.Create(new UpdateIssueStatusRequest("in_progress", assignedIssue.Version)),
+            JsonContent.Create(new UpdateIssueStatusRequest(
+                statusCode: "in_progress",
+                version: assignedIssue.Version)),
             await GetCsrfTokenAsync());
         updateIssueStatusResponse.EnsureSuccessStatusCode();
         var updatedIssue = await updateIssueStatusResponse.Content.ReadFromJsonAsync<IssueResponse>();
@@ -142,7 +160,9 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
 
         var staleIssueStatusResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/status",
-            JsonContent.Create(new UpdateIssueStatusRequest("completed", assignedIssue.Version)),
+            JsonContent.Create(new UpdateIssueStatusRequest(
+                statusCode: "completed",
+                version: assignedIssue.Version)),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Conflict, staleIssueStatusResponse.StatusCode);
 
@@ -238,17 +258,23 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var reviewerLoginResponse = await PostAsync(
             reviewerClient,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest(
-                "reviewer",
-                "Temporary-Pass-123!",
-                false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "reviewer",
+                Password = "Temporary-Pass-123!",
+                RememberMe = false,
+            }),
             reviewerCsrfToken);
         reviewerLoginResponse.EnsureSuccessStatusCode();
 
         var reviewerUnassignResponse = await PutAsync(
             reviewerClient,
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/assignee",
-            JsonContent.Create(new UpdateIssueAssigneeRequest(null, editedIssue.Version)),
+            JsonContent.Create(new UpdateIssueAssigneeRequest
+            {
+                AssigneeAccountId = null,
+                Version = editedIssue.Version,
+            }),
             await GetCsrfTokenAsync(reviewerClient));
         reviewerUnassignResponse.EnsureSuccessStatusCode();
         var unassignedIssue = await reviewerUnassignResponse.Content
@@ -300,10 +326,12 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var updateResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}",
             JsonContent.Create(new UpdateProjectRequest(
-                "Core Project Updated",
-                "Updated description",
-                "inactive",
-                created.Version)),
+                name: "Core Project Updated",
+                status: "inactive",
+                version: created.Version)
+            {
+                Description = "Updated description",
+            }),
             await GetCsrfTokenAsync());
         updateResponse.EnsureSuccessStatusCode();
         var updated = await updateResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -320,8 +348,8 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var inactiveStatusResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}/issues/{createdIssue.Id}/status",
             JsonContent.Create(new UpdateIssueStatusRequest(
-                "completed",
-                unassignedIssue.Version)),
+                statusCode: "completed",
+                version: unassignedIssue.Version)),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Conflict, inactiveStatusResponse.StatusCode);
         var inactiveProblem = await inactiveStatusResponse.Content
@@ -332,10 +360,12 @@ public sealed class ProjectEndpointsTests(ApiIntegrationTestFactory factory)
         var staleUpdateResponse = await PutAsync(
             $"/api/v1/projects/{created.Id}",
             JsonContent.Create(new UpdateProjectRequest(
-                "Stale update",
-                null,
-                "active",
-                created.Version)),
+                name: "Stale update",
+                status: "active",
+                version: created.Version)
+            {
+                Description = null,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Conflict, staleUpdateResponse.StatusCode);
     }

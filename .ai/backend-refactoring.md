@@ -13,7 +13,10 @@ Read this file only for incremental backend readability refactoring.
 ## Execution rules
 
 - Treat the execution tracker as work state, not as a replacement for specifications, tests, OpenAPI, or current code.
+- Treat a repository-wide principle as the unit of completion. A feature, module, resource, or folder is only a characterization, review, rollback, and commit checkpoint within that principle.
+- Start an active principle with a repository-wide inventory and exact non-growing baseline. Do not declare the principle complete because one checkpoint is complete.
 - Work on one cohesive action item or one tightly related batch at a time.
+- Keep each implementation batch within one principle and one complete vertical slice; do not create a repository-wide mega-diff.
 - Add characterization tests before changing observable behavior, audit metadata, version handling, contracts, or persistence semantics.
 - Do not create a parameter object, helper, factory, command, or base type only to satisfy a numeric rule or reduce line count.
 - Keep public contribution and build workflows independent of private prompt repositories and specific AI tools.
@@ -26,4 +29,5 @@ Read this file only for incremental backend readability refactoring.
 1. Check the current branch, `git status`, and recent commits.
 2. Compare live state with the tracker's `Resume Point`.
 3. If they differ, trust Git, accepted specifications, tests, and current code; then correct the tracker.
-4. Continue only the next safe action that does not require an unresolved human decision.
+4. Read the tracker's active principle, remaining inventory, and next checkpoint.
+5. Continue only the next safe checkpoint that does not require an unresolved human decision; update the remaining repository-wide debt before reporting completion.

@@ -16,7 +16,11 @@ internal sealed class AccountDirectory(IdentityDbContext dbContext) : IAccountDi
             .Where(account =>
                 account.NormalizedUsername == normalizedUsername &&
                 account.Status == AccountStatus.Active)
-            .Select(account => new AccountDirectoryEntry(account.Id, account.Username))
+            .Select(account => new AccountDirectoryEntry
+            {
+                Id = account.Id,
+                Username = account.Username,
+            })
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -32,7 +36,11 @@ internal sealed class AccountDirectory(IdentityDbContext dbContext) : IAccountDi
         return await dbContext.Accounts
             .AsNoTracking()
             .Where(account => accountIds.Contains(account.Id))
-            .Select(account => new AccountDirectoryEntry(account.Id, account.Username))
+            .Select(account => new AccountDirectoryEntry
+            {
+                Id = account.Id,
+                Username = account.Username,
+            })
             .ToDictionaryAsync(account => account.Id, cancellationToken);
     }
 }

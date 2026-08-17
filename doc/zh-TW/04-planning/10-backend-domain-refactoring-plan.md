@@ -1,77 +1,64 @@
-# 後端 Domain 可讀性重構計畫
+# 後端可讀性重構計畫
 
-> 狀態：Active incremental refactoring。Project Management 的 public 長參數債務已清除，Identity 正在重構。Action Item、驗證紀錄與中斷接續位置以[後端可讀性重構執行追蹤](./11-backend-refactoring-execution-tracker.md)為準。
+> 狀態：Active principle-driven refactoring。Action Item、驗證證據與中斷接續位置以[後端可讀性重構執行追蹤](./11-backend-refactoring-execution-tracker.md)為準。
 
-## 目的
+## 完成模型
 
-讓 Domain API 以領域語言表達意圖，降低長參數、同型別參數放錯位置、primitive obsession 與重複 audit 實作造成的維護風險。重構必須保持 HTTP、資料庫欄位與既有業務行為相容。
+重構的完成單位是「套用到全 repository 的工程原則」。Feature、module、resource 或資料夾只是同一原則下用來建立 characterization、review、rollback 與 commit 的 checkpoint。
 
-## 目前債務基線
+完成一個 Project Management、Identity 或 Test Management 切片，不代表該原則完成。只有全 repository 盤點債務歸零，或所有剩餘例外都經 Human 明確核准並留下理由與不可成長的精確 baseline／ADR，才能把原則標為完成。
 
-截至 2026-08-12，architecture fitness baseline 記錄：
+這項規則不代表一次修改整個 repository。每個原則仍要透過小型、完整的垂直切片實作，保持 observable behavior，並讓每個 checkpoint 都可獨立 review 與回復。
 
-- Project Management：public Domain 長參數 0，重複 audit owner 1（`Project`）。
-- Identity：public Domain 長參數 4，重複 audit owner 3。
-- Test Management：public Domain 長參數 25，重複 audit owner 17。
+## 執行模型
 
-`Issue` 與 `Project` 的建立／修改 API 已改為具意圖的 creation／change model；後續不得只為減少參數或程式行數繼續拆出沒有獨立語意的小型別。
+每個 active principle 都依下列流程處理：
 
-## 已確認問題與原始目標
+1. 定義全 repository invariant 與例外邊界。
+2. 修改 production code 前，完成現況 debt inventory。
+3. 依風險補 observable behavior、wire contract、persistence、audit 與 concurrency characterization。
+4. 每批只處理一個 semantic family 或垂直切片，不混入其他原則。
+5. 精確債務 baseline 必須下降；不得用另一個寬泛 abstraction 包裝原有債務。
+6. 執行 targeted 與完整驗證，再進行獨立 review。
+7. Tracker 記錄證據、剩餘債務、核准例外與下一個安全 checkpoint。
 
-### Issue 建立
+## 原則型工作流
 
-重構前的 `Issue` 建構子曾接受 13 個參數，其中多個為 `Guid` 與 nullable `string`。呼叫端難以單靠位置確認意義，新增或調換欄位時也容易產生靜默錯誤；目前已改為具名 creation model。
+| ID | 原則 | 全 repository 完成條件 |
+| --- | --- | --- |
+| P01 | 重構安全網 | 所有被調整的行為都在正確 boundary 有保護；外部系統、資料庫、檔案儲存與時間來源在適合層級隔離或 mock；測試保護 observable behavior，不鎖 private implementation。 |
+| P02 | Domain／Application API 可讀性 | Public business API 不再依賴長參數或易混淆 primitive 位置；creation、change、context model 代表真實概念；例外有紀錄且 baseline 不增加。 |
+| P03 | 公開邊界契約 | HTTP 與跨模組 public contract 使用明確 body-form、一個 public type 一檔；canonical required、nullable、JSON、OpenAPI 與 TypeScript 行為保持一致。 |
+| P04 | Result／Outcome 語意 | 不存在 caller 不可能遇到的 outcome 或 payload 組合；只有真正 semantic family 共用型別；無 payload 操作不用假 `object`；endpoint mapping 完整；任意業務錯誤字串歸零或經明確核准。 |
+| P05 | 封閉狀態與 stable code | 封閉集合使用 enum／Value Object 語意，資料庫保存 stable English code；資料表管理的分類提供穩定 client code 與 display name；mapping 使用具名常數並有 round-trip test。 |
+| P06 | Audit lifecycle 與 mutation context | 只有 lifecycle 與 nullability 真正一致的 created／updated actor、time、version 行為才共用；mutation context 完整傳遞；feature-specific lifecycle 留在 owner。 |
+| P07 | Query／paging 可讀性 | EF query 依 normalize、filter、order、count、page、project、execute 順序閱讀；優先使用原生 EF；generic query framework 不隱藏業務條件。 |
+| P08 | 抽象節制 | Helper、factory、interface、repository、base type、parameter object 只在增加 domain language、invariant、boundary isolation 或已證明 reuse 時成立。 |
+| P09 | 實體組織 | Public type 依 resource／use case 分類，不以技術型別分桶；一個 top-level public type 一個同名檔案；跨資源 coordinator 在有真實 owner 前保留 layer root。 |
+| P10 | Enforcement 與交付 | Compiler、analyzer、architecture test、format、contract check、CI 漸進落實客觀規則；合併前檢查 branch migration 原則；所有 baseline 只能縮小。 |
 
-目標方向：
+## Human 與 AI 責任
 
-- 以 `Issue.Create(IssueCreation creation, ChangeContext context)` 或同等的具名 factory 表達建立行為。
-- `IssueCreation` 只承載建立 Issue 所需且彼此內聚的資料，可以再組合 `IssueContent`、`IssueClassification` 或 Strongly Typed ID；不建立全專案共用的萬用參數袋。
-- EF Core 所需的無參數建構子保持 private，不視為 Domain 建立 API。
+- Human owner：決定業務語意、相容性、資料意義、公開契約變更、例外、風險接受、merge 與 release。
+- AI Builder：完成 inventory、characterization、受控實作、驗證、文件與 Tracker 同步。
+- 獨立 AI Reviewer：檢查 outcome reachability、抽象價值、contract drift、測試品質，以及全域債務是否真的下降。
+- CI：只 enforcement 客觀規則；不能替代 Human 判斷兩個操作是否真的屬於同一 semantic family。
 
-### Issue 修改
+## 每批邊界
 
-重構前的 `UpdateDetails` 曾接受 9 個參數，混合內容、分類與 audit context；目前已改為 `IssueDetailsChange` 與 `ChangeContext`。
+- 一批只處理一個全域原則；同一垂直切片需要時可以同時涵蓋 service、endpoint、domain 與 tests。
+- 不得把結構重構與 wire contract、schema、業務規則或 error identity 變更靜默混在一起。
+- 行為或相容性有風險時，production 變更前先建立 characterization。
+- Checkpoint 要小到能獨立 review／回復，但 checkpoint 完成不代表全域原則完成。
+- 不建立新的 generic `OperationResult<T>`、query framework、多層 base hierarchy 或 property bag，只為讓局部程式碼外觀看起來一致。
 
-目標方向：
+## 全 repository 驗收條件
 
-- 改為 `UpdateDetails(IssueDetailsChange change, ChangeContext context)` 或等價名稱。
-- `IssueDetailsChange` 僅包含可由此 use case 一次更新的欄位。
-- `ChangeContext` 集中 actor 與發生時間，避免每個 mutation 重複排列 `Guid actorAccountId` 與 `DateTimeOffset occurredAt`。
-- `ChangeStatus` 後續不再依賴裸 `statusCode` 字串判斷完成狀態，應改用經驗證的狀態參照或明確的 domain semantics。
+只有符合以下條件，才能把一項原則標為完成：
 
-### Audit metadata
-
-目前盤點有 33 個 Domain type 重複宣告完整或近似的 audit 欄位與版本更新行為。
-
-目標方向：
-
-- 建立一層淺層 `AuditableEntity`，集中 `CreatedAt`、`CreatedByAccountId`、`UpdatedAt`、`UpdatedByAccountId` 與 `Version`。
-- 基底只提供一致的初始化與異動紀錄行為；不放 HTTP、EF Core 或 feature-specific 規則。
-- `CompletedAt`、`DeletedAt`、`ExecutedByAccountId` 等生命週期或業務欄位留在各自 entity。
-- EF Core 仍映射到現有欄位名稱，`Version` 維持 concurrency token；正常情況不產生 schema migration。
-- 不建立多層 `BaseEntity -> BaseAuditableEntity -> BaseAggregateRoot` 階層。若 composition 能更清楚表達不同 audit lifecycle，可以在實作前以小型 spike 比較 EF Core mapping 複雜度。
-
-## 已採用的 API 規則
-
-- 新增的 public Domain 與 Application API 原則上最多三個參數。
-- 同型別 primitive 參數若容易誤置，必須先考慮 Parameter Object、Value Object 或 Strongly Typed ID。
-- Parameter Object 必須有單一 use case 或 domain concept，不得只是為壓低參數數量的資料袋。
-- 既有違規項目以 architecture fitness test allowlist 管理；新程式碼不得擴大 allowlist。
-- 重構優先保持 observable behavior，不以追求抽象一致性改變 contract 或資料模型。
-
-## 建議順序
-
-1. 補齊 Issue characterization tests，鎖定建立、修改、狀態、指派、audit 與 version 行為。
-2. 建立 architecture fitness baseline，列出既有長參數與重複 audit 宣告；禁止新增債務。
-3. 引入 `ChangeContext` 與一層 `AuditableEntity`，先在 Project Management 小範圍驗證 EF Core mapping。
-4. 重構 `Issue` 建立與 `UpdateDetails`，確認 Application 與 HTTP contract 無變化。
-5. 依序處理 Project Management、Identity、Test Management 的既有 allowlist。
-6. 每一批執行 unit、API integration、EF pending-model check；刪除已完成的 allowlist 項目。
-
-## 驗收條件
-
-- 重構後的 public Domain/Application API 不超過三個參數，或有 ADR 記錄例外。
-- 呼叫端不再依賴多個同型別 primitive 的位置辨識語意。
-- audit 欄位與 `Version` 行為和重構前一致。
-- HTTP/OpenAPI、資料庫欄位、stable code 與既有 migration 保持相容。
-- Domain unit tests、API integration tests 與兩個受影響 DbContext 的 pending-model check 通過。
+- inventory 歸零，或所有例外都有 Human 明確核准與可長期追蹤的理由；
+- architecture／debt baseline 不可增加；
+- observable behavior 與適用的 HTTP、OpenAPI、TypeScript、persistence、audit、concurrency 語意都有保護；
+- 受影響的 Release build、unit、integration、format，以及 contract／EF check 通過；
+- 獨立 review 無未處理 blocker、high、medium finding；
+- Tracker 記錄驗證證據、核准例外與下一個安全動作。

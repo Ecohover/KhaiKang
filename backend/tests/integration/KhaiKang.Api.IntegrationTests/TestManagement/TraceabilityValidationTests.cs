@@ -33,10 +33,12 @@ public sealed class TraceabilityValidationTests
         var deactivateResponse = await api.PutJsonAsync(
             $"/api/v1/projects/{project.Id}",
             new UpdateProjectRequest(
-                project.Name,
-                project.Description,
-                "inactive",
-                project.Version));
+                name: project.Name,
+                status: "inactive",
+                version: project.Version)
+            {
+                Description = project.Description,
+            });
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
 
         var inactiveProject = await api.PostJsonAsync(
@@ -60,10 +62,12 @@ public sealed class TraceabilityValidationTests
         var unlinkedPlan = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans",
             new CreateTestPlanRequest(
-                "Unlinked plan",
-                null,
-                [testCase.Id],
-                testTask.Id));
+                description: null,
+                caseIds: [testCase.Id])
+            {
+                Name = "Unlinked plan",
+                TestIssueId = testTask.Id,
+            });
         await AssertValidationCodeAsync(
             unlinkedPlan,
             "workspace_project_not_linked");
@@ -82,12 +86,14 @@ public sealed class TraceabilityValidationTests
 
         var invalidPriority = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/runs/{run.Id}/bugs",
-            new CreateTestRunBugRequest(
-                project.Id,
-                "Checkout is incorrect",
-                "urgent",
-                null,
-                null));
+            new CreateTestRunBugRequest
+            {
+                ProjectId = project.Id,
+                Title = "Checkout is incorrect",
+                PriorityCode = "urgent",
+                Description = null,
+                AssigneeAccountId = null,
+            });
         await AssertValidationCodeAsync(
             invalidPriority,
             "bug_issue_option_invalid");
@@ -95,20 +101,24 @@ public sealed class TraceabilityValidationTests
         var deactivateResponse = await api.PutJsonAsync(
             $"/api/v1/projects/{project.Id}",
             new UpdateProjectRequest(
-                project.Name,
-                project.Description,
-                "inactive",
-                project.Version));
+                name: project.Name,
+                status: "inactive",
+                version: project.Version)
+            {
+                Description = project.Description,
+            });
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
 
         var inactiveProject = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/runs/{run.Id}/bugs",
-            new CreateTestRunBugRequest(
-                project.Id,
-                "Checkout is incorrect",
-                "high",
-                null,
-                null));
+            new CreateTestRunBugRequest
+            {
+                ProjectId = project.Id,
+                Title = "Checkout is incorrect",
+                PriorityCode = "high",
+                Description = null,
+                AssigneeAccountId = null,
+            });
         await AssertConflictCodeAsync(inactiveProject, "project_not_active");
     }
 

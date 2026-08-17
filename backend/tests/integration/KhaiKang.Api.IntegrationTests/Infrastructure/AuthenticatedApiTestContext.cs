@@ -96,7 +96,12 @@ internal sealed class AuthenticatedApiTestContext : IDisposable
             client,
             HttpMethod.Post,
             "/api/v1/auth/login",
-            new LoginRequest(username, password, false));
+            new LoginRequest
+            {
+                Username = username,
+                Password = password,
+                RememberMe = false,
+            });
         response.EnsureSuccessStatusCode();
     }
 

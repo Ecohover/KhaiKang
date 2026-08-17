@@ -33,7 +33,7 @@ This page is the English entry point for KhaiKang documentation. Current MVP pro
 - [Test management](./data-model/test-management.md)
 - [Issue-Test Traceability](./data-model/issue-test-traceability.md)
 - [Audit metadata](./data-model/audit-metadata-fields.md)
-- [Backend Domain readability refactoring plan](./planning/backend-domain-refactoring.md)
+- [Backend readability refactoring plan](./planning/backend-domain-refactoring.md)
 
 ## Current Planning
 

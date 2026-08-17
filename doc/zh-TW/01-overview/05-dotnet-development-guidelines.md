@@ -63,10 +63,14 @@ KhaiKang.CommonUtils.Web
 ## C# 程式碼
 
 - 使用 file-scoped namespace、四個空格縮排與完整大括號。
-- 一個檔案只放一個主要 public type；只服務所屬 type 的小型 private nested type 可以例外。
+- 每個 top-level public class、record、interface、enum 或 struct 各自使用一個檔案，檔名必須與型別名稱相同；只服務所屬 type 的小型 private nested type 可以例外。
+- 同一 layer 內，同一 use case 的型別放在同一個以業務命名的資料夾；例如 `Contracts/IssueCommands/` 應一起放置 Command、Outcome、Result 與 Interface。業務資料夾維持在 layer root 下 1 至 2 層。不得建立名稱為 `Enums`、`Interfaces`、`Requests`、`Responses` 或 `Results` 的純技術資料夾；`IssueCommands` 這類名稱代表業務 use case，不屬於技術分類。真正跨多個資源共用的 coordinator 或 constants type，在找到有意義的 owner 前可以暫留 layer root。
+- Checked-in generated C# source 也遵守相同的 public type 與檔案配置；只有 accepted generator policy 明確定義的範圍可以例外。EF Core migration 可以保留必要的 timestamp-prefixed 檔名，但仍須遵守一檔一個 top-level public type；architecture check 不得靜默排除整個 generated 目錄。
 - Public API 使用 PascalCase，parameter 與 local 使用 camelCase，private field 使用 `_camelCase`。
 - 非同步方法使用 `Async` 後綴；ASP.NET endpoint handler 與 framework override 可以依慣例例外。
-- Public HTTP request 與跨模組 Application input contract 必須宣告明確的 type body 與具名 property，不使用 positional record。一至三個語意清楚的必填欄位可以使用明確 constructor 與 getter-only property；必填欄位更多時，使用 `required` init-only property，避免形成長 constructor。Optional 欄位使用 init-only property。小型 Value Object、response 或內部 immutable carrier 若 positional 形式確實更清楚，仍可使用。
+- 所有公開邊界 contract 都必須宣告明確的 type body 與具名 property；HTTP request、response、query、跨模組 command、directory entry 與公開 Application result 都不得使用 positional record。一至三個語意清楚的 input 必填欄位可以使用明確 constructor 與 getter-only property；必填欄位更多的 input 與 response model 使用 `required` init-only property，避免形成長 constructor。Optional 欄位使用 init-only property。只有小型 Domain Value Object 與真正 internal 的 implementation carrier，在 positional 形式確實更清楚時才能保留。
+- HTTP request body contract 命名為 `{Verb}{Resource}Request`；query／filter model 可以使用能表達意圖的 `Query` 名稱。跨模組 Application input 命名為 `{Verb}{Resource}Command`，其 output 使用完整 command 名稱，例如 `CreateIssueCommandOutcome` 與 `CreateIssueCommandResult`。其他 Application result 依 use case 或有共同語意的操作族群命名。公開 Result 使用明確 type body；nullable payload 可能形成不合法狀態時，使用 private constructor 與具名 success／failure factory。沒有 payload 的操作可以直接回傳 Outcome。
+- 只有 caller 不會面對不可能值、衝突的 payload invariant 或模糊 mapping 時，才共用 Outcome／Result。範圍過大的 `MutationOutcome` 應改成 use-case-specific type；若一組有共同語意的操作真正共享相同 contract，也不得機械式為每個 method 建立一組新型別。
 - 必填 reference member 使用 constructor 或 `required`，不得用 `string.Empty` 或 null-forgiving operator 偽裝完成初始化。
 - Public collection 優先暴露 `IReadOnlyList<T>`、`IReadOnlyCollection<T>` 或 `IEnumerable<T>`；不要公開可替換的 `List<T>`。
 - 沒有設計為擴充點的 class 應考慮 `sealed`，但 EF Core 或測試需求可以保留繼承能力。

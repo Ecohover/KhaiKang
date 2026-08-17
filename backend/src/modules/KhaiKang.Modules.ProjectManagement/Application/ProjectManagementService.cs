@@ -68,7 +68,7 @@ public sealed class ProjectManagementService(
             project => project.Code == normalizedCode,
             cancellationToken))
         {
-            return new CreateProjectResult(CreateProjectOutcome.CodeConflict);
+            return CreateProjectResult.Failure(CreateProjectOutcome.CodeConflict);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -116,11 +116,10 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateException)
         {
-            return new CreateProjectResult(CreateProjectOutcome.CodeConflict);
+            return CreateProjectResult.Failure(CreateProjectOutcome.CodeConflict);
         }
 
-        return new CreateProjectResult(
-            CreateProjectOutcome.Succeeded,
+        return CreateProjectResult.Success(
             ToResponse(
                 project,
                 [ownerRole.Name],
@@ -150,7 +149,7 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (membership is null)
         {
-            return new UpdateProjectResult(UpdateProjectOutcome.NotFound);
+            return UpdateProjectResult.Failure(UpdateProjectOutcome.NotFound);
         }
 
         var permissions = membership.Roles
@@ -161,18 +160,18 @@ public sealed class ProjectManagementService(
             .ToArray();
         if (!permissions.Contains(ProjectManagementConstants.ProjectUpdatePermission))
         {
-            return new UpdateProjectResult(UpdateProjectOutcome.Forbidden);
+            return UpdateProjectResult.Failure(UpdateProjectOutcome.Forbidden);
         }
 
         var requestedStatus = ProjectManagementCodes.ParseProjectStatus(request.Status);
         if (membership.Project.Status != requestedStatus && !canChangeStatus)
         {
-            return new UpdateProjectResult(UpdateProjectOutcome.Forbidden);
+            return UpdateProjectResult.Failure(UpdateProjectOutcome.Forbidden);
         }
 
         if (membership.Project.Version != request.Version)
         {
-            return new UpdateProjectResult(UpdateProjectOutcome.VersionConflict);
+            return UpdateProjectResult.Failure(UpdateProjectOutcome.VersionConflict);
         }
 
         var context = new ChangeContext(accountId, timeProvider.GetUtcNow());
@@ -193,11 +192,10 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return new UpdateProjectResult(UpdateProjectOutcome.VersionConflict);
+            return UpdateProjectResult.Failure(UpdateProjectOutcome.VersionConflict);
         }
 
-        return new UpdateProjectResult(
-            UpdateProjectOutcome.Succeeded,
+        return UpdateProjectResult.Success(
             ToResponse(
                 membership.Project,
                 membership.Roles.OrderBy(role => role.ProjectRole.SortOrder)
@@ -224,7 +222,12 @@ public sealed class ProjectManagementService(
             .AsNoTracking()
             .Where(role => role.IsSystem && role.IsActive)
             .OrderBy(role => role.SortOrder)
-            .Select(role => new ProjectRoleResponse(role.Code, role.Name, role.Description))
+            .Select(role => new ProjectRoleResponse
+            {
+                Code = role.Code,
+                Name = role.Name,
+                Description = role.Description,
+            })
             .ToArrayAsync(cancellationToken);
     }
 
@@ -272,19 +275,19 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return new(ProjectMemberMutationOutcome.NotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectMemberAddPermission) ||
             !HasPermission(actor, ProjectManagementConstants.ProjectRoleAssignPermission))
         {
-            return new(ProjectMemberMutationOutcome.Forbidden);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
         }
 
         var roles = await ResolveRolesAsync(request.RoleCodes, cancellationToken);
         if (roles is null)
         {
-            return new(ProjectMemberMutationOutcome.InvalidRoles);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.InvalidRoles);
         }
 
         var account = await accountDirectory.FindActiveByUsernameAsync(
@@ -292,7 +295,7 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (account is null)
         {
-            return new(ProjectMemberMutationOutcome.AccountNotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.AccountNotFound);
         }
 
         var member = await dbContext.ProjectMembers
@@ -302,7 +305,7 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member?.Status == ProjectMemberStatus.Active)
         {
-            return new(ProjectMemberMutationOutcome.AlreadyMember);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.AlreadyMember);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -329,8 +332,7 @@ public sealed class ProjectManagementService(
         dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectMemberAdded(member.Id, context));
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new(
-            ProjectMemberMutationOutcome.Succeeded,
+        return ProjectMemberMutationResult.Success(
             ToMemberResponse(member, account.Username, roles));
     }
 
@@ -347,18 +349,18 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return new(ProjectMemberMutationOutcome.NotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectRoleAssignPermission))
         {
-            return new(ProjectMemberMutationOutcome.Forbidden);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
         }
 
         var roles = await ResolveRolesAsync(request.RoleCodes, cancellationToken);
         if (roles is null)
         {
-            return new(ProjectMemberMutationOutcome.InvalidRoles);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.InvalidRoles);
         }
 
         var member = await dbContext.ProjectMembers
@@ -371,12 +373,12 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member is null)
         {
-            return new(ProjectMemberMutationOutcome.NotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
         }
 
         if (member.Version != request.Version)
         {
-            return new(ProjectMemberMutationOutcome.VersionConflict);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
         }
 
         var removesOwner = member.Roles.Any(mapping =>
@@ -384,7 +386,7 @@ public sealed class ProjectManagementService(
             roles.All(role => role.Code != ProjectManagementConstants.OwnerRoleCode);
         if (removesOwner && !await HasAnotherOwnerAsync(projectId, member.Id, cancellationToken))
         {
-            return new(ProjectMemberMutationOutcome.LastOwner);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.LastOwner);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -401,12 +403,11 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return new(ProjectMemberMutationOutcome.VersionConflict);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
         }
 
         var accounts = await accountDirectory.GetByIdsAsync([member.AccountId], cancellationToken);
-        return new(
-            ProjectMemberMutationOutcome.Succeeded,
+        return ProjectMemberMutationResult.Success(
             ToMemberResponse(
                 member,
                 accounts.GetValueOrDefault(member.AccountId)?.Username ?? member.AccountId.ToString(),
@@ -426,12 +427,12 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return new(ProjectMemberMutationOutcome.NotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectMemberRemovePermission))
         {
-            return new(ProjectMemberMutationOutcome.Forbidden);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
         }
 
         var member = await dbContext.ProjectMembers
@@ -444,19 +445,19 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member is null)
         {
-            return new(ProjectMemberMutationOutcome.NotFound);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
         }
 
         if (member.Version != version)
         {
-            return new(ProjectMemberMutationOutcome.VersionConflict);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
         }
 
         if (member.Roles.Any(mapping =>
                 mapping.ProjectRole.Code == ProjectManagementConstants.OwnerRoleCode) &&
             !await HasAnotherOwnerAsync(projectId, member.Id, cancellationToken))
         {
-            return new(ProjectMemberMutationOutcome.LastOwner);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.LastOwner);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -470,10 +471,10 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return new(ProjectMemberMutationOutcome.VersionConflict);
+            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
         }
 
-        return new(ProjectMemberMutationOutcome.Succeeded);
+        return ProjectMemberMutationResult.Removed();
     }
 
     private async Task<ProjectMember?> GetMembershipWithPermissionsAsync(
@@ -577,14 +578,16 @@ public sealed class ProjectManagementService(
         var roleCodes = roles?.Select(role => role.Code) ??
             member.Roles.OrderBy(mapping => mapping.ProjectRole.SortOrder)
                 .Select(mapping => mapping.ProjectRole.Code);
-        return new ProjectMemberResponse(
-            member.Id,
-            member.AccountId,
-            username,
-            member.Status.ToCode(),
-            roleCodes.ToArray(),
-            member.JoinedAt,
-            member.Version);
+        return new ProjectMemberResponse
+        {
+            Id = member.Id,
+            AccountId = member.AccountId,
+            Username = username,
+            Status = member.Status.ToCode(),
+            RoleCodes = roleCodes.ToArray(),
+            JoinedAt = member.JoinedAt,
+            Version = member.Version,
+        };
     }
 
     private static string? NormalizeDescription(string? description)
@@ -612,16 +615,18 @@ public sealed class ProjectManagementService(
         IReadOnlyList<string> roles,
         IReadOnlyList<string> permissions)
     {
-        return new ProjectResponse(
-            project.Id,
-            project.Code,
-            project.Name,
-            project.Description,
-            project.Status.ToCode(),
-            roles,
-            permissions,
-            project.CreatedAt,
-            project.UpdatedAt,
-            project.Version);
+        return new ProjectResponse
+        {
+            Id = project.Id,
+            Code = project.Code,
+            Name = project.Name,
+            Description = project.Description,
+            Status = project.Status.ToCode(),
+            CurrentUserRoles = roles,
+            CurrentUserPermissions = permissions,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt,
+            Version = project.Version,
+        };
     }
 }

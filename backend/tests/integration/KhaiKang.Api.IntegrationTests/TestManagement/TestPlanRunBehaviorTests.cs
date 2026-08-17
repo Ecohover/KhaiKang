@@ -21,22 +21,26 @@ public sealed class TestPlanRunBehaviorTests
 
         var staleUpdate = await api.PutJsonAsync(
             path,
-            new UpdateTestPlanRequest(
-                plan.Name,
-                plan.Description,
-                "active",
-                plan.Version + 1,
-                [testCase.Id]));
+            new UpdateTestPlanRequest
+            {
+                Name = plan.Name,
+                Description = plan.Description,
+                Status = "active",
+                Version = plan.Version + 1,
+                CaseIds = [testCase.Id],
+            });
         await AssertConflictCodeAsync(staleUpdate, "plan_version_conflict");
 
         var emptyActivePlan = await api.PutJsonAsync(
             path,
-            new UpdateTestPlanRequest(
-                plan.Name,
-                plan.Description,
-                "active",
-                plan.Version,
-                []));
+            new UpdateTestPlanRequest
+            {
+                Name = plan.Name,
+                Description = plan.Description,
+                Status = "active",
+                Version = plan.Version,
+                CaseIds = [],
+            });
         Assert.Equal(HttpStatusCode.BadRequest, emptyActivePlan.StatusCode);
     }
 
@@ -59,12 +63,14 @@ public sealed class TestPlanRunBehaviorTests
 
         var activateResponse = await api.PutJsonAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans/{draftPlan.Id}",
-            new UpdateTestPlanRequest(
-                draftPlan.Name,
-                draftPlan.Description,
-                "active",
-                draftPlan.Version,
-                [testCase.Id]));
+            new UpdateTestPlanRequest
+            {
+                Name = draftPlan.Name,
+                Description = draftPlan.Description,
+                Status = "active",
+                Version = draftPlan.Version,
+                CaseIds = [testCase.Id],
+            });
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
 
         var deactivateCaseResponse = await api.PutJsonAsync(

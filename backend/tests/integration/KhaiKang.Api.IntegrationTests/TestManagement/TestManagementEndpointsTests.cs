@@ -31,7 +31,12 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
 
         var loginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             csrfToken);
         loginResponse.EnsureSuccessStatusCode();
 
@@ -64,11 +69,13 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
 
         var suiteResponse = await PostAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/suites",
-            JsonContent.Create(new CreateTestSuiteRequest(
-                null,
-                "Authentication",
-                "Authentication scenarios",
-                1)),
+            JsonContent.Create(new CreateTestSuiteRequest
+            {
+                ParentId = null,
+                Name = "Authentication",
+                Description = "Authentication scenarios",
+                SortOrder = 1,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, suiteResponse.StatusCode);
         var suite = await suiteResponse.Content.ReadFromJsonAsync<TestSuiteResponse>();
@@ -241,12 +248,14 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
 
         var activatePlanResponse = await PutAsync(
             $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans/{draftPlan.Id}",
-            new UpdateTestPlanRequest(
-                draftPlan.Name,
-                draftPlan.Description,
-                "active",
-                draftPlan.Version,
-                [updatedCase.Id]));
+            new UpdateTestPlanRequest
+            {
+                Name = draftPlan.Name,
+                Description = draftPlan.Description,
+                Status = "active",
+                Version = draftPlan.Version,
+                CaseIds = [updatedCase.Id],
+            });
         activatePlanResponse.EnsureSuccessStatusCode();
         var activePlan = await activatePlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
         Assert.NotNull(activePlan);
@@ -433,7 +442,11 @@ public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory facto
     {
         return await PostAsync(
             "/api/v1/test-workspaces",
-            JsonContent.Create(new CreateTestWorkspaceRequest(name, prefix, null)),
+            JsonContent.Create(new CreateTestWorkspaceRequest(name)
+            {
+                Prefix = prefix,
+                Description = null,
+            }),
             await GetCsrfTokenAsync());
     }
 

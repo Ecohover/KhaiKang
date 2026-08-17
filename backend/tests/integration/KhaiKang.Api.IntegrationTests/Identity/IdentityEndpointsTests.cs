@@ -44,7 +44,12 @@ public sealed class IdentityEndpointsTests(ApiIntegrationTestFactory factory)
 
         var invalidLoginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", "incorrect-password", false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = "incorrect-password",
+                RememberMe = false,
+            }),
             anonymousCsrfToken);
         Assert.Equal(HttpStatusCode.Unauthorized, invalidLoginResponse.StatusCode);
         var invalidLoginProblem = await invalidLoginResponse.Content.ReadFromJsonAsync<ProblemDetails>();
@@ -55,7 +60,12 @@ public sealed class IdentityEndpointsTests(ApiIntegrationTestFactory factory)
 
         var loginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             anonymousCsrfToken);
         loginResponse.EnsureSuccessStatusCode();
         var authenticatedUser = await loginResponse.Content.ReadFromJsonAsync<AuthenticatedUserResponse>();
@@ -74,9 +84,11 @@ public sealed class IdentityEndpointsTests(ApiIntegrationTestFactory factory)
         var authenticatedCsrfToken = await GetCsrfTokenAsync();
         var changePasswordResponse = await PostAsync(
             "/api/v1/auth/password",
-            JsonContent.Create(new ChangePasswordRequest(
-                credentials.InitialPassword,
-                "a-secure-new-password")),
+            JsonContent.Create(new ChangePasswordRequest
+            {
+                CurrentPassword = credentials.InitialPassword,
+                NewPassword = "a-secure-new-password",
+            }),
             authenticatedCsrfToken);
         Assert.Equal(HttpStatusCode.NoContent, changePasswordResponse.StatusCode);
 

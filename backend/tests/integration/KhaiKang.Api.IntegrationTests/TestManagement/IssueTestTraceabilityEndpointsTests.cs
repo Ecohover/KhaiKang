@@ -29,13 +29,23 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var loginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             csrfToken);
         loginResponse.EnsureSuccessStatusCode();
 
         var projectResponse = await PostAsync(
             "/api/v1/projects",
-            JsonContent.Create(new CreateProjectRequest("TRACE", "Traceability", null)),
+            JsonContent.Create(new CreateProjectRequest(
+                code: "TRACE",
+                name: "Traceability")
+            {
+                Description = null,
+            }),
             await GetCsrfTokenAsync());
         projectResponse.EnsureSuccessStatusCode();
         var project = await projectResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -47,7 +57,11 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var workspaceResponse = await PostAsync(
             "/api/v1/test-workspaces",
-            JsonContent.Create(new CreateTestWorkspaceRequest("Checkout QA", "CQA", null)),
+            JsonContent.Create(new CreateTestWorkspaceRequest("Checkout QA")
+            {
+                Prefix = "CQA",
+                Description = null,
+            }),
             await GetCsrfTokenAsync());
         workspaceResponse.EnsureSuccessStatusCode();
         var workspace = await workspaceResponse.Content.ReadFromJsonAsync<TestWorkspaceResponse>();
@@ -64,7 +78,13 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var suiteResponse = await PostAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/suites",
-            JsonContent.Create(new CreateTestSuiteRequest(null, "Checkout", null, 1)),
+            JsonContent.Create(new CreateTestSuiteRequest
+            {
+                ParentId = null,
+                Name = "Checkout",
+                Description = null,
+                SortOrder = 1,
+            }),
             await GetCsrfTokenAsync());
         suiteResponse.EnsureSuccessStatusCode();
         var suite = await suiteResponse.Content.ReadFromJsonAsync<TestSuiteResponse>();
@@ -114,14 +134,24 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
         var invalidPlanResponse = await PostAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans",
             JsonContent.Create(new CreateTestPlanRequest(
-                "Invalid plan", null, [testCase.Id], requirement.Id)),
+                description: null,
+                caseIds: [testCase.Id])
+            {
+                Name = "Invalid plan",
+                TestIssueId = requirement.Id,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.BadRequest, invalidPlanResponse.StatusCode);
 
         var planResponse = await PostAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans",
             JsonContent.Create(new CreateTestPlanRequest(
-                "Checkout plan", null, [testCase.Id], testTask.Id)),
+                description: null,
+                caseIds: [testCase.Id])
+            {
+                Name = "Checkout plan",
+                TestIssueId = testTask.Id,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, planResponse.StatusCode);
         var draftPlan = await planResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
@@ -130,13 +160,15 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var activateResponse = await PutAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans/{draftPlan.Id}",
-            new UpdateTestPlanRequest(
-                draftPlan.Name,
-                draftPlan.Description,
-                "active",
-                draftPlan.Version,
-                [testCase.Id],
-                testTask.Id));
+            new UpdateTestPlanRequest
+            {
+                Name = draftPlan.Name,
+                Description = draftPlan.Description,
+                Status = "active",
+                Version = draftPlan.Version,
+                CaseIds = [testCase.Id],
+                TestIssueId = testTask.Id,
+            });
         activateResponse.EnsureSuccessStatusCode();
         var activePlan = await activateResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
         Assert.NotNull(activePlan);
@@ -152,13 +184,15 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var changePlanResponse = await PutAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/plans/{activePlan.Id}",
-            new UpdateTestPlanRequest(
-                activePlan.Name,
-                activePlan.Description,
-                "active",
-                activePlan.Version,
-                [testCase.Id],
-                nextTestTask.Id));
+            new UpdateTestPlanRequest
+            {
+                Name = activePlan.Name,
+                Description = activePlan.Description,
+                Status = "active",
+                Version = activePlan.Version,
+                CaseIds = [testCase.Id],
+                TestIssueId = nextTestTask.Id,
+            });
         changePlanResponse.EnsureSuccessStatusCode();
         var changedPlan = await changePlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
         Assert.NotNull(changedPlan);
@@ -171,12 +205,14 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
 
         var createBugResponse = await PostAsync(
             $"/api/v1/test-workspaces/{workspace.Id}/runs/{run.Id}/bugs",
-            JsonContent.Create(new CreateTestRunBugRequest(
-                project.Id,
-                "Checkout total is incorrect",
-                "high",
-                "The total differs from the confirmed cart.",
-                null)),
+            JsonContent.Create(new CreateTestRunBugRequest
+            {
+                ProjectId = project.Id,
+                Title = "Checkout total is incorrect",
+                PriorityCode = "high",
+                Description = "The total differs from the confirmed cart.",
+                AssigneeAccountId = null,
+            }),
             await GetCsrfTokenAsync());
         Assert.Equal(HttpStatusCode.Created, createBugResponse.StatusCode);
         var bugLink = await createBugResponse.Content.ReadFromJsonAsync<TestRunBugLinkResponse>();
@@ -184,6 +220,14 @@ public sealed class IssueTestTraceabilityEndpointsTests(ApiIntegrationTestFactor
         Assert.Equal(run.Id, bugLink.TestRunId);
         Assert.Equal(project.Id, bugLink.Issue.ProjectId);
         Assert.Equal("bug", bugLink.Issue.TypeCode);
+        Assert.Equal("Checkout total is incorrect", bugLink.Issue.Title);
+
+        var createdBug = await _client.GetFromJsonAsync<IssueResponse>(
+            $"/api/v1/projects/{project.Id}/issues/{bugLink.Issue.Id}");
+        Assert.NotNull(createdBug);
+        Assert.Equal("Checkout total is incorrect", createdBug.Title);
+        Assert.Equal("The total differs from the confirmed cart.", createdBug.Description);
+        Assert.Equal("high", createdBug.PriorityCode);
 
         var bugLinks = await _client.GetFromJsonAsync<TestRunBugLinkResponse[]>(
             $"/api/v1/test-workspaces/{workspace.Id}/runs/{run.Id}/bugs");

@@ -534,7 +534,13 @@ public sealed class TestCaseRequestContractTests
     {
         var response = await api.PostJsonAsync(
             $"/api/v1/test-workspaces/{workspaceId}/suites",
-            new CreateTestSuiteRequest(null, "Contract suite", null, 1));
+            new CreateTestSuiteRequest
+            {
+                ParentId = null,
+                Name = "Contract suite",
+                Description = null,
+                SortOrder = 1,
+            });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return Assert.IsType<TestSuiteResponse>(
             await response.Content.ReadFromJsonAsync<TestSuiteResponse>());

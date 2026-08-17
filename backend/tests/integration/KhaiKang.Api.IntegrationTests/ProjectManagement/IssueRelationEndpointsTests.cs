@@ -28,13 +28,23 @@ public sealed class IssueRelationEndpointsTests(ApiIntegrationTestFactory factor
 
         var loginResponse = await PostAsync(
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest("admin", credentials.InitialPassword, false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
             csrfToken);
         loginResponse.EnsureSuccessStatusCode();
 
         var projectResponse = await PostAsync(
             "/api/v1/projects",
-            JsonContent.Create(new CreateProjectRequest("trace", "Traceability", null)),
+            JsonContent.Create(new CreateProjectRequest(
+                code: "trace",
+                name: "Traceability")
+            {
+                Description = null,
+            }),
             await GetCsrfTokenAsync());
         projectResponse.EnsureSuccessStatusCode();
         var project = await projectResponse.Content.ReadFromJsonAsync<ProjectResponse>();
@@ -152,9 +162,9 @@ public sealed class IssueRelationEndpointsTests(ApiIntegrationTestFactory factor
         var response = await PostAsync(
             $"/api/v1/projects/{projectId}/issues/{issueId}/relations",
             JsonContent.Create(new CreateIssueRelationRequest(
-                relationTypeCode,
-                relatedIssueId,
-                direction)),
+                relationTypeCode: relationTypeCode,
+                relatedIssueId: relatedIssueId,
+                direction: direction)),
             await GetCsrfTokenAsync());
         Assert.Equal(expectedStatus, response.StatusCode);
         return response.IsSuccessStatusCode

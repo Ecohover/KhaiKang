@@ -38,7 +38,10 @@ public static class IdentityEndpointExtensions
         {
             var requiresInitialization = await identityService.RequiresInitializationAsync(
                 cancellationToken);
-            return Results.Ok(new SetupStatusResponse(requiresInitialization));
+            return Results.Ok(new SetupStatusResponse
+            {
+                RequiresInitialization = requiresInitialization,
+            });
         })
         .WithName("GetSetupStatus")
         .Produces<SetupStatusResponse>();
@@ -70,7 +73,10 @@ public static class IdentityEndpointExtensions
         auth.MapGet("/csrf-token", (IAntiforgery antiforgery, HttpContext context) =>
         {
             var tokens = antiforgery.GetAndStoreTokens(context);
-            return Results.Ok(new CsrfTokenResponse(tokens.RequestToken!));
+            return Results.Ok(new CsrfTokenResponse
+            {
+                Token = tokens.RequestToken!,
+            });
         })
         .WithName("GetCsrfToken")
         .Produces<CsrfTokenResponse>();
@@ -170,6 +176,12 @@ public static class IdentityEndpointExtensions
             IOptions<IdentityOptions> options,
             CancellationToken cancellationToken) =>
         {
+            var validation = ValidateChangePasswordRequest(request);
+            if (validation is not null)
+            {
+                return validation;
+            }
+
             if (!TryGetAccountId(principal, out var accountId) ||
                 !TryGetSessionId(principal, out var sessionId))
             {
@@ -431,14 +443,15 @@ public static class IdentityEndpointExtensions
 
     private static IResult? ValidateCreateAccountRequest(CreateAccountRequest request)
     {
-        var username = request.Username.Trim();
-        if (username.Length == 0)
+        if (string.IsNullOrWhiteSpace(request.Username))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 [nameof(request.Username)] = ["Username is required."],
             });
         }
+
+        var username = request.Username.Trim();
 
         if (username.Length > 100 ||
             !Regex.IsMatch(username, "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"))
@@ -476,24 +489,43 @@ public static class IdentityEndpointExtensions
 
     private static IResult? ValidateUpdateAccountRequest(UpdateAccountRequest request)
     {
-        var username = request.Username.Trim();
         var errors = new Dictionary<string, string[]>();
-        if (username.Length == 0)
+        if (string.IsNullOrWhiteSpace(request.Username))
         {
             errors[nameof(request.Username)] = ["Username is required."];
         }
-        else if (username.Length > 100 ||
-            !Regex.IsMatch(username, "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"))
+        else
         {
-            errors[nameof(request.Username)] =
-            [
-                "Username must start with a letter or number and contain only letters, numbers, '.', '_' or '-'.",
-            ];
+            var username = request.Username.Trim();
+            if (username.Length > 100 ||
+                !Regex.IsMatch(username, "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"))
+            {
+                errors[nameof(request.Username)] =
+                [
+                    "Username must start with a letter or number and contain only letters, numbers, '.', '_' or '-'.",
+                ];
+            }
         }
 
         if (request.Version < 1)
         {
             errors[nameof(request.Version)] = ["Version must be greater than zero."];
+        }
+
+        return errors.Count == 0 ? null : Results.ValidationProblem(errors);
+    }
+
+    private static IResult? ValidateChangePasswordRequest(ChangePasswordRequest request)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (request.CurrentPassword is null)
+        {
+            errors[nameof(request.CurrentPassword)] = ["Current password is required."];
+        }
+
+        if (request.NewPassword is null)
+        {
+            errors[nameof(request.NewPassword)] = ["New password is required."];
         }
 
         return errors.Count == 0 ? null : Results.ValidationProblem(errors);

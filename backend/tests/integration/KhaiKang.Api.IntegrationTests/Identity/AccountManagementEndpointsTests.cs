@@ -28,10 +28,12 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var loginResponse = await PostAsync(
             _adminClient,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest(
-                adminCredentials.Username,
-                adminCredentials.InitialPassword,
-                false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = adminCredentials.Username,
+                Password = adminCredentials.InitialPassword,
+                RememberMe = false,
+            }),
             anonymousCsrfToken);
         loginResponse.EnsureSuccessStatusCode();
         var admin = await loginResponse.Content.ReadFromJsonAsync<AuthenticatedUserResponse>();
@@ -41,7 +43,10 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var createResponse = await PostAsync(
             _adminClient,
             "/api/v1/accounts",
-            JsonContent.Create(new CreateAccountRequest("reviewer.one")),
+            JsonContent.Create(new CreateAccountRequest
+            {
+                Username = "reviewer.one",
+            }),
             adminCsrfToken);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateAccountResponse>();
@@ -55,7 +60,10 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var duplicateResponse = await PostAsync(
             _adminClient,
             "/api/v1/accounts",
-            JsonContent.Create(new CreateAccountRequest("REVIEWER.ONE")),
+            JsonContent.Create(new CreateAccountRequest
+            {
+                Username = "REVIEWER.ONE",
+            }),
             adminCsrfToken);
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
         await AssertProblemCodeAsync(duplicateResponse, "username_conflict");
@@ -63,7 +71,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var updateResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{created.Account.Id}",
-            JsonContent.Create(new UpdateAccountRequest("reviewer.two", created.Account.Version)),
+            JsonContent.Create(new UpdateAccountRequest
+            {
+                Username = "reviewer.two",
+                Version = created.Account.Version,
+            }),
             adminCsrfToken);
         updateResponse.EnsureSuccessStatusCode();
         var updated = await updateResponse.Content.ReadFromJsonAsync<AccountResponse>();
@@ -73,7 +85,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var conflictingUpdateResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{updated.Id}",
-            JsonContent.Create(new UpdateAccountRequest("admin", updated.Version)),
+            JsonContent.Create(new UpdateAccountRequest
+            {
+                Username = "admin",
+                Version = updated.Version,
+            }),
             adminCsrfToken);
         Assert.Equal(HttpStatusCode.Conflict, conflictingUpdateResponse.StatusCode);
         await AssertProblemCodeAsync(conflictingUpdateResponse, "username_conflict");
@@ -83,10 +99,12 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var userLoginResponse = await PostAsync(
             userClient,
             "/api/v1/auth/login",
-            JsonContent.Create(new LoginRequest(
-                updated.Username,
-                created.InitialPassword,
-                false)),
+            JsonContent.Create(new LoginRequest
+            {
+                Username = updated.Username,
+                Password = created.InitialPassword,
+                RememberMe = false,
+            }),
             userCsrfToken);
         userLoginResponse.EnsureSuccessStatusCode();
 
@@ -104,9 +122,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var selfUpdateResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{admin.Id}",
-            JsonContent.Create(new UpdateAccountRequest(
-                "new-admin",
-                currentAdminAccount.Version)),
+            JsonContent.Create(new UpdateAccountRequest
+            {
+                Username = "new-admin",
+                Version = currentAdminAccount.Version,
+            }),
             adminCsrfToken);
         Assert.Equal(HttpStatusCode.Conflict, selfUpdateResponse.StatusCode);
         await AssertProblemCodeAsync(selfUpdateResponse, "cannot_update_own_account");
@@ -114,9 +134,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var selfStatusResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{admin.Id}/status",
-            JsonContent.Create(new UpdateAccountStatusRequest(
-                "suspended",
-                currentAdminAccount.Version)),
+            JsonContent.Create(new UpdateAccountStatusRequest
+            {
+                Status = "suspended",
+                Version = currentAdminAccount.Version,
+            }),
             adminCsrfToken);
         Assert.Equal(HttpStatusCode.Conflict, selfStatusResponse.StatusCode);
         await AssertProblemCodeAsync(selfStatusResponse, "cannot_change_own_status");
@@ -124,9 +146,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var suspendResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{currentUserAccount.Id}/status",
-            JsonContent.Create(new UpdateAccountStatusRequest(
-                "suspended",
-                currentUserAccount.Version)),
+            JsonContent.Create(new UpdateAccountStatusRequest
+            {
+                Status = "suspended",
+                Version = currentUserAccount.Version,
+            }),
             adminCsrfToken);
         suspendResponse.EnsureSuccessStatusCode();
         var suspended = await suspendResponse.Content.ReadFromJsonAsync<AccountResponse>();
@@ -139,7 +163,11 @@ public sealed class AccountManagementEndpointsTests(ApiIntegrationTestFactory fa
         var restoreResponse = await PutAsync(
             _adminClient,
             $"/api/v1/accounts/{suspended.Id}/status",
-            JsonContent.Create(new UpdateAccountStatusRequest("active", suspended.Version)),
+            JsonContent.Create(new UpdateAccountStatusRequest
+            {
+                Status = "active",
+                Version = suspended.Version,
+            }),
             adminCsrfToken);
         restoreResponse.EnsureSuccessStatusCode();
         var restored = await restoreResponse.Content.ReadFromJsonAsync<AccountResponse>();

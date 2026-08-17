@@ -2,7 +2,7 @@
 
 > 狀態：Active
 >
-> 最後更新：2026-08-12
+> 最後更新：2026-08-13
 >
 > 適用分支：`ecohover/refactor/backend-clean-code`
 >
@@ -43,6 +43,7 @@ KhaiKang 採用下列優先順序：
 | `in-progress` | 目前批次正在處理 |
 | `waiting-human` | 需要人類決定業務語意或風險 |
 | `blocked` | 有明確環境或外部條件阻礙 |
+| `verified-awaiting-checkpoint` | Implementation、驗證與 review 已完成，但尚未建立經授權的 checkpoint commit |
 | `completed` | 驗收條件通過且已記錄證據 |
 
 ## 已接受決策
@@ -57,6 +58,27 @@ KhaiKang 採用下列優先順序：
 | D06 | Helper／Factory／Command 必須增加語意、驗證或真實重用；不建立純轉接抽象 | accepted |
 | D07 | 外部或私有 repository 只作為經驗參考，不複製公司程式碼、套件假設或 AI 工作流程依賴 | accepted |
 | D08 | 同一 feature branch 每個受影響 `DbContext` 原則上只保留一份未發布的最終 migration | accepted |
+| D09 | 每個 top-level public type 各自一檔且檔名相同；所有公開邊界 contract 統一使用 body-form，包含 Request／Response／Query／Command／Directory Entry 與公開 Application Result；只有 Domain 或真正 internal 的小型 immutable carrier 可保留 positional | accepted |
+| D10 | 同一 use case 的 Command／Outcome／Result／Interface 放在同一個業務資料夾；業務目錄維持在 layer root 下 1 至 2 層，不建立 `Enums`／`Interfaces`／`Requests`／`Responses`／`Results` 純技術資料夾；跨資源 coordinator／constants 可暫留 layer root | accepted |
+
+## Active Principle Workstreams
+
+重構以全 repository 原則為完成單位。Feature、module、resource 或資料夾只是在同一原則下控制 characterization、review、rollback 與 commit 風險的 checkpoint；完成單一 checkpoint 不得把全域原則標為完成。
+
+| ID | 原則與適用範圍 | AI Builder 責任 | Human 責任 | 狀態 | 全 repository DoD | 下一個 checkpoint |
+| --- | --- | --- | --- | --- | --- | --- |
+| P01 | 重構安全網：unit、integration、boundary characterization、external dependency isolation | 盤點 coverage、補 observable behavior 測試、維護 test evidence | 確認預期行為與相容風險 | in-progress | 所有被重構行為在正確 boundary 有保護，測試不鎖 private implementation | 依 active principle 補 operation matrix |
+| P02 | Domain／Application API 可讀性：三參數、同型 primitive、creation／change／context model | 維護 exact debt baseline，分 semantic family 重構 | 核准例外與 domain concept | in-progress | 長參數與模糊 primitive 債務歸零，或例外有 ADR 且 baseline 不增加 | I01 characterization 後處理 Identity API |
+| P03 | 公開 boundary contract：body-form、一型別一檔、required／nullable／wire compatibility | 維護 architecture／contract tests與跨模組 caller | 核准 public contract 變更 | verified-awaiting-checkpoint | 全部 public boundary 符合規則，OpenAPI／TypeScript／runtime 一致，例外有明確決策 | 先建立目前 C18 checkpoint |
+| P04 | Result／Outcome 語意：真正 operation family、payload invariant、完整 endpoint mapping | 建立全 repo inventory、characterization、垂直切片實作與 exact no-growth baseline | 決定哪些 operations 真正共享語意，核准錯誤契約變更 | in-progress | Broad Mutation／generic Result 債務歸零或例外有 ADR；不存在 impossible outcome／payload、假 `object` payload、未核准任意業務錯誤字串 | 完成 C17-1 reachable outcome／HTTP mapping characterization matrix |
+| P05 | 封閉狀態與 stable code：enum／Value Object、DB English code、table code/name | 盤點 string status與 mappings，補 round-trip test | 決定狀態集合與資料相容策略 | in-progress | 封閉狀態都有型別保護，資料庫與 client code 穩定且 mapping 可驗證 | 完成 Test Management 狀態 inventory |
+| P06 | Audit lifecycle 與 mutation context：actor／time／version共用邊界 | 盤點 lifecycle/nullability，補 audit/concurrency tests | 決定真正共用 lifecycle 與例外 | waiting-human | 共用 lifecycle一致、feature lifecycle留在 owner、EF mapping與 concurrency不變 | R06／I04 Human decision |
+| P07 | EF query／paging 可讀性：normalize→filter→order→count→page→project→execute | 盤點遮蔽流程的 abstraction並提出 feature-local 改寫 | 核准有價值的共用 abstraction | pending | 查詢可依業務流程閱讀，沒有為統一外觀導入 generic query framework | 建立 query inventory |
+| P08 | 抽象節制：helper／factory／interface／repository／base／parameter object | 提供語意、invariant或真實reuse證據；移除純轉接 | 判斷 abstraction 是否值得保留 | in-progress | 所有抽象有可說明價值，純轉接債務歸零或有核准例外 | C07／C08 inventory |
+| P09 | 實體組織：resource／use-case folder、一型別一檔、禁止技術分桶 | 維護 source architecture gate | 判斷跨資源 owner與例外 | verified-awaiting-checkpoint | 全 repo結構符合規則且 architecture allowlist不增加 | 先建立目前 C19／E10 checkpoint |
+| P10 | Enforcement／CI／migration policy：compiler、analyzer、format、contract、branch migration | 建立低誤判客觀 gate並逐批清債 | 核准 warning policy與 migration例外 | in-progress | 客觀規則進 CI、baseline只能縮小、每個受影響 DbContext合併前只有一份未發布最終 migration或有核准例外 | E06／E07 baseline |
+
+所有原則共用的完成條件：inventory 歸零或剩餘例外有 Human 核准與 durable rationale；適用的 Release build、unit、integration、format、contract／EF check 通過；獨立 review 無未處理 blocker／high／medium；Tracker 記錄證據與下一步。
 
 ## 風險 Gate
 
@@ -78,6 +100,7 @@ KhaiKang 採用下列優先順序：
 | R04 | 統一 public request／input contract 宣告方式 | Human + AI | completed | 雙語正式規範不再允許 public request／input 使用 positional record |
 | R05 | 定義 Helper／Factory／Command 建立門檻 | Human + AI | completed | 正式規範包含真實語意與重用門檻 |
 | R06 | 決定 `ProjectDetailsChange.Status` 等欄位是否應拆成獨立狀態轉移 | Human | waiting-human | 業務語意確認並記錄決策 |
+| R07 | 定義 public type 檔案、資料夾與 Result／Outcome 風格 | Human + AI | completed | 雙語規範要求所有公開 boundary type 使用 body-form；Result 的 nullable payload 以 factory 排除不合法狀態 |
 
 ### E：規範與 Enforcement
 
@@ -92,6 +115,7 @@ KhaiKang 採用下列優先順序：
 | E07 | Backend CI 加入 format 與必要 gate | AI | pending | 先以 `.gitattributes`／checkout policy 對齊 LF baseline，再於 PR 執行 format、build、unit、integration |
 | E08 | Architecture fitness test 納入 Application API | AI | pending | 排除 `CancellationToken`、DI 與 framework signature |
 | E09 | 維護規範債務基線 | AI | in-progress | 現有 allowlist 不得增加，完成項目立即移除 |
+| E10 | 防止純技術資料夾分類回歸 | AI | verified-awaiting-checkpoint | Source architecture test 阻擋五個純技術目錄名稱且允許 `IssueCommands` 等業務 use-case 名稱；完整 regression 與獨立 review 已通過，等待 checkpoint |
 
 ### C：修正過度精簡與假抽象
 
@@ -107,12 +131,56 @@ KhaiKang 採用下列優先順序：
 | C08 | 盤點純轉接 helpers | AI Reviewer | pending | 每項有明確移除理由，不進行機械式刪除 |
 | C09 | Project Management Issue request 改為 body-form public contract | AI + Human contract review | completed | 必填欄位使用短 constructor、optional 欄位使用具名 init；JSON、HTTP 與 OpenAPI shape 均維持 |
 | C10 | Test Case request 改為 body-form public contract | AI + Human contract review | completed | Create／Update／Step 已統一宣告形式；required、optional nullable 與 tag 三態語意已對齊 OpenAPI／TypeScript 並完成 regression matrix |
-| C11 | Test Plan request 改為 body-form public contract | AI + Human contract review | pending | 保留 CaseIds 與 TestIssueId wire contract |
-| C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | pending | HTTP 與跨模組 application contract 同批驗證 |
-| C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | pending | 先補缺少的 update endpoint characterization tests |
+| C11 | Test Plan request 改為 body-form public contract | AI + Human contract review | in-progress | 已隨 C18 完成宣告與 wire characterization，等待 checkpoint |
+| C12 | Run Bug 與 Issue application bridge request 調整 | AI + Human contract review | in-progress | HTTP、跨模組 application contract 與完整 regression 已通過，等待 checkpoint |
+| C13 | Suite／Workspace／Tag 與中型 request 後續整理 | AI | in-progress | 已隨 C18 完成宣告與 contract shape tests，等待 checkpoint；既有 Workspace canonical drift 另案處理 |
 | C14 | 落實 OpenAPI `additionalProperties: false` | AI + Human contract review | pending | 先盤點未知欄位的相容風險，再讓 runtime 與全域 canonical contract 一致 |
 | C15 | 統一 validation error key casing | AI + Human contract review | pending | 明確選擇 JSON camelCase 或 CLR property casing，建立相容策略與 regression matrix |
-| C16 | 清理其餘 public positional request／input contracts | AI | in-progress | 分模組、小批次轉換；每批維持 JSON／OpenAPI／TypeScript wire contract |
+| C16 | 清理其餘 public positional request／input contracts | AI | in-progress | 三模組 public request／input 已全部轉換且 allowlist 歸零，等待 checkpoint |
+| C17 | 拆分聚合 public type 檔案並收斂 operation Result／Outcome | AI + Human contract review | in-progress | 一型別一檔與 payload invariant 已落實；operation-family superset outcome／code 仍需後續語意重構 |
+| C18 | 全盤標準化公開邊界 contract | AI + Human contract review | in-progress | 三模組與 API host 公開 boundary contract 已 body-form、三類 architecture allowlist 歸零、完整驗證通過，等待 review／checkpoint |
+| C19 | Contracts／Application 依業務資源與 use case 分類 | AI + Human review | verified-awaiting-checkpoint | Identity 26、Project Management 49、Test Management 14，共 89 個檔案只搬移路徑；namespace／API／production behavior 不變，implementation／testing 已完成但尚未 commit |
+
+### C17 Result／Outcome 全域語意子項
+
+C17 是 P04 的 umbrella item；一型別一檔與資料夾整理已分別歸 P03／P09，不代表 Result／Outcome 語意已完成。不得要求每個 method 機械建立獨立 Result；只有 outcome 集合、payload invariant 或 caller mapping 不同時才拆分。
+
+| 子項 | Scope | 狀態 | 完成條件 |
+| --- | --- | --- | --- |
+| C17-1 | 全 repo operation inventory | in-progress | 每個 Application operation 記錄實際可達 Outcome、成功 payload／no payload、error identity、endpoint mapping、caller、tests與 keep-family／split／waiting-human 決策；operation identity baseline 已完成，reachable outcome／HTTP mapping test matrix 待補 |
+| C17-2 | Project mutations | in-progress | Project Member reachable outcome／HTTP mapping characterization 已完成；Issue、Project Member、Issue Relation 仍須依真正 semantic family 收斂，不可能 Outcome 與 payload 組合歸零 |
+| C17-3 | Attachments | pending | Upload、Delete、OpenContent 依不同 payload invariant 與 reachable failures 建模 |
+| C17-4 | Test Management | pending | `TestManagementResult<T>` 依 resource／operation family 分批移除，不以新 generic Result重新包裝 |
+| C17-5 | Completion gate | pending | Broad Result exact baseline歸零或有核准ADR；無假 `object` payload、未核准任意業務錯誤字串、漏接 Outcome mapping |
+
+### C17-1 Application Result／Outcome Inventory Baseline
+
+2026-08-13 source inventory 共找到 60 個使用 Application Result／Outcome 的 public operations。8 個已採 operation-specific model 且 payload invariant 已由 factory／direct Outcome 表達；52 個仍列為 broad Result semantic debt。這 52 個 operation identity 已寫入 `ApplicationResultSemanticBaselineTests`，新債務或已解決但未移除的 baseline entry 都會使 architecture test 失敗。
+
+| 語意族群 | Operations | 目前模型 | 成功 payload | 初步決策 | 尚需 characterization |
+| --- | ---: | --- | --- | --- | --- |
+| Identity account／authentication | 5 | operation-specific Result／Outcome | 依 use case 為 Account、Session＋User 或 no payload | `keep-family`；納入 completion review | 每個 reachable failure 與 endpoint mapping 完整性 |
+| Project create／update＋cross-module create issue | 3 | operation-specific Result／Outcome | Project 或 Issue；factory 排除 invalid payload | `keep-family`；`CreateIssueCommand` 的 defensive mapping 另檢查 | catch-all／upstream impossible mapping characterization |
+| Project Members | 3 | `ProjectMemberMutationResult` superset | Add／Update 有 Member；Remove 無 payload | `split` | Add／Update／Remove 的 reachable failure、HTTP status／problem code |
+| Issues | 4 | `IssueMutationResult` superset | 全部回 Issue，但 outcome 集合不同 | `split` 或經 Human 核准的 semantic family | Create／Update／Status／Assignee outcome matrix與跨模組 caller |
+| Issue Relations | 2 | `IssueRelationMutationResult` superset | Create 有 Relation；Delete 無 payload | `split` | Create-only hierarchy failures與Delete concurrency mapping |
+| Issue Attachments | 3 | 共用 `IssueAttachmentOutcome`，Upload／Delete 共用 Mutation Result | Upload 有 Attachment；Delete 無 payload；Open 有 stream metadata | `split` | Upload／Delete／OpenContent各自 reachable failure與storage mapping |
+| Test Management generic operations | 34 | `TestManagementResult<T>`＋五值 Outcome＋任意 `Code` | 31 個真 payload；3 個 `object` 假 no-payload | `split` by resource／semantic family | 50 個 observed error codes、HTTP mapping、cross-module mapping與no-payload語意 |
+| Test Case Attachments | 3 | 共用 Outcome，Upload／Delete 共用 Mutation Result | Upload有Attachment；Delete無payload；Open有stream metadata | `split` | Upload／Delete／OpenContent matrix |
+| Test Run Item Attachments | 3 | 共用 Outcome，Upload／Delete 共用 Mutation Result | Upload有Attachment；Delete無payload；Open有stream metadata | `split` | Run lifecycle failure與storage mapping |
+
+Exact baseline 只 enforcement 已知 broad type 的 operation identity，不能自動判斷兩個 operation 是否真的屬於同一 semantic family。新增或保留例外仍需 Human 與獨立 AI Review；不得以重新命名 generic Result、每個 method 機械建立新型別，或把 error code 搬到另一個任意字串欄位規避此原則。
+
+Project Member characterization checkpoint（2026-08-13，尚未 commit）：
+
+- `ProjectMemberOutcomeMappingTests` 已分別鎖定 Add、Update Roles、Remove 三個 public operations。
+- Add：Project／Account not found、invalid roles、already active、forbidden與201 payload。
+- Update Roles：Member not found、invalid roles、last owner、forbidden、version conflict與200 payload。
+- Remove：Member not found、last owner、forbidden、version conflict與204 no-content。
+- Problem codes `project_member_already_active`、`project_last_owner_required`、`project_member_version_conflict` 已納入 observable behavior 保護。
+- Targeted integration tests：3/3 passed；新增測試檔 format verification passed。
+- 加入 P04 baseline／characterization 後完整 Domain unit tests：169/169 passed；完整 API integration tests：109/109 passed；`git diff --check`：passed。
+- 本 checkpoint 只補 characterization，尚未拆分 `ProjectMemberMutationResult`／Outcome，不得宣稱 C17-2 或 P04 完成。
 
 ### I：Identity
 
@@ -141,7 +209,7 @@ KhaiKang 採用下列優先順序：
 
 ## C06 Request Declaration Inventory
 
-盤點只涵蓋 request 與跨模組 application input；大型 response 不因欄位多就改成 mutable class。後續轉換必須保留既有 JSON property name、OpenAPI required／nullable 語意與 TypeScript shape。
+本段盤點只涵蓋 request 與跨模組 application input；所有公開 response 的 body-form 與一型別一檔工作由 C18 統一追蹤。後續轉換必須保留既有 JSON property name、OpenAPI required／nullable 語意與 TypeScript shape。
 
 ### High priority
 
@@ -150,7 +218,7 @@ KhaiKang 採用下列優先順序：
 | C09 | `CreateIssueRequest`、`UpdateIssueRequest` | 多個同型別與 optional string；已有主要 HTTP integration coverage |
 | C10 | `CreateTestCaseRequest`、`UpdateTestCaseRequest` | 8／10 欄，包含多個 nullable 內容欄位與 collections |
 | C11 | `CreateTestPlanRequest`、`UpdateTestPlanRequest` | `TestIssueId` 為近期演進欄位，create／update contract 必須同步 |
-| C12 | `CreateTestRunBugRequest`、`IssueCommandRequest` | HTTP request 與跨模組 application contract 需一起維持語意 |
+| C12 | `CreateTestRunBugRequest`、`CreateIssueCommand` | HTTP request 與跨模組 application contract 需一起維持語意 |
 | C13 | `UpdateTestSuiteRequest` | 6 欄且容易錯置；目前缺直接 update happy-path integration coverage，必須先補測試 |
 
 ### Medium priority
@@ -176,6 +244,22 @@ KhaiKang 採用下列優先順序：
 4. Wire shape 未改時，OpenAPI 與 TypeScript 不做無意義 churn，但仍執行人工對照與 frontend type-check。
 5. 目前不為此盤點引進 OpenAPI parser 或 code generator；完整自動 schema gate 另列 enforcement 工作。
 
+## Public Type 與 Result／Outcome Inventory
+
+2026-08-12 盤點時共有 16 個檔案同時宣告多個 top-level public type，合計 84 個 public types；C12 拆分 `IIssueCommandService.cs` 後剩 15 個 aggregate files。另有 3 個單一 public type 的檔名與型別名不一致。Architecture baseline 已記錄現有債務，新增債務或已清除項目未移出 allowlist 都會失敗。
+
+後續依下列順序處理，不做全 repository 一次性搬移：
+
+1. 拆 Application public types 前，先盤點跨 project usage；不需要跨 assembly 的 accidental public API 優先縮為 `internal`，避免把債務永久化。
+2. C11／C13／C16 轉換 Request 時，同批依 Cases／Plans／Runs／Workspaces 等功能拆分 `TestManagementContracts.cs`。
+3. Identity／Project Contracts 依 resource 拆分；不建立 `Enums`／`Requests`／`Results` 等純技術資料夾。
+4. 先將真正 public、操作專屬 Outcome／Result 做純拆檔，再另批修正語意；檔案搬移不順便改行為。
+5. `IssueMutationResult`、`ProjectMemberMutationResult`、`IssueRelationMutationResult` 目前被 outcomes 不完全相同的操作共用，需依 use case 或真正共享語意的操作族群重新設計。
+6. 三組 Attachment `MutationResult` 同時服務 Upload／Delete，且 Content result 使用四個 nullable／同型別欄位；應依 Upload／Delete／OpenContent 語意分開檢視。
+7. `TestManagementResult<T>` 以模組級 Outcome 與 string Code 承載多個 use case，是較高風險的語意債務，最後配合 Service 拆分處理。
+8. 所有公開 Response 都改為 body-form；長 Response 使用 required init-only properties 避免 positional constructor 錯置，短 Response 也採同一公開邊界宣告方式以消除 AI 產生兩套風格的空間。
+9. `CreateIssueCommandResult` 已用 Success／Failure factory 排除成功無 payload 與失敗攜帶 payload；`CreateIssueCommandOutcome.NotFound` 仍代表建立成功後 directory read 失敗，create service 對既有 `VersionConflict` 的 defensive mapping 暫時保留，不能因此宣稱所有 operation outcome debt 已清除。
+
 ## Enforcement Matrix
 
 | Rule ID | 規則 | Gate | 目前狀態 |
@@ -183,9 +267,13 @@ KhaiKang 採用下列優先順序：
 | KK-DOTNET-001 | Nullable reference types 必須啟用 | compiler | enforced |
 | KK-DOTNET-002 | 新 public Domain／Application API 最多三個業務參數 | architecture test + AI review | Domain enforced；Application planned |
 | KK-DOTNET-003 | Parameter Object 不得是無語意的一次性資料袋 | AI review + human review | documented |
-| KK-DOTNET-004 | Public request／Application input 不使用 positional record | AI review + contract tests | documented；existing debt tracked by C09–C13／C16 |
+| KK-DOTNET-004 | Public request／Application input 不使用 positional record | source architecture baseline + contract tests | enforced；baseline debt 已歸零 |
 | KK-DOTNET-005 | 同一 mutation context 應完整傳遞 | unit test + AI review | planned |
 | KK-DOTNET-006 | Helper 不以 null／mode flag 隱藏不同 use case | AI review | documented |
+| KK-DOTNET-007 | 每個 top-level public type 一檔且檔名相同 | source architecture baseline + AI review | enforced；baseline debt 已歸零 |
+| KK-DOTNET-008 | Result／Outcome 依操作表達，不以 superset 隱藏不可能狀態 | exact source baseline + characterization tests + AI／Human review | partially enforced；payload invariant 已保護，52 個 broad Result operations 由 exact no-growth baseline 追蹤，operation-family debt tracked by C17 |
+| KK-DOTNET-009 | 公開 boundary contract 使用 body-form，不使用 positional record | source architecture baseline + contract tests | enforced；baseline debt 已歸零 |
+| KK-DOTNET-010 | Source folder 依業務資源／use case 分類，不使用五個純技術目錄名稱 | source architecture test + AI review | enforced；完整 regression 與獨立 review 已通過，尚未 commit |
 | KK-PERSIST-001 | Stable code 以命名常數集中 mapping | unit test + AI review | partially enforced |
 | KK-MIGRATION-001 | 每個 branch／DbContext 一份未發布最終 migration | PR review + EF pending-model check | documented |
 | KK-CONTRACT-001 | HTTP contract 先修改 OpenAPI並同步 C#／TypeScript | contract tests + review | partially enforced |
@@ -338,19 +426,65 @@ C10 implementation 驗證（2026-08-12，commit `a71f500`）：
 - OpenAPI YAML parse、new-file changed-format 與 `git diff --check`：passed；獨立 AI review 最終為 0 blocker／0 high／0 medium。
 - 未執行 EF pending-model check：本批未修改 entity、mapping 或 migration。
 
+C12 Run Bug／Issue command bridge 驗證（2026-08-12，尚未 commit）：
+
+- Red phase：architecture baseline 精確抓到 `IIssueCommandService.cs` 四個 public types 同檔、`IssueCommandRequest` 與 `CreateTestRunBugRequest` positional 宣告；raw HTTP 亦證明省略 `priorityCode`／`description`／`assigneeAccountId` 時 runtime 原本錯誤接受並建立 Bug。
+- `CreateTestRunBugRequest` 已改為 body-form，五個 OpenAPI required 欄位全部使用 `required init`；省略任一欄位回 `400`，required-but-nullable 欄位明確傳 `null` 仍可成功建立。
+- 跨模組 input 已改為 `CreateIssueCommand`，使用 Title／TypeCode constructor 與 optional init properties；interface、command、outcome、result 已放在 `Contracts/IssueCommands/` 並各自一檔，namespace 維持不變。
+- `CreateIssueCommandResult` 使用 private constructor 與 Success／Failure factories，排除成功無 Issue、失敗攜帶 Issue 與 `Failure(Succeeded)`；Result invariant tests：4/4 passed。
+- 成功 integration flow 已驗證 Title／Description／Priority 完整傳入 Project Issue；invalid priority、invalid assignee、inactive Project 與既有 traceability mapping 均有 regression coverage。
+- Source architecture baseline 以 path + type identity 記錄現有 aggregate debt，並檢查檔名及所有公開 boundary contract 的 positional 宣告，涵蓋 Request／Response／Query／Command／Directory Entry／Result 與 record class／struct／partial／readonly／generic variants；EF migration 只有 timestamp filename scoped exception，仍受一檔一 public type 檢查。
+- Backend Release build：passed，0 warnings／0 errors；完整 Domain unit tests：118/118 passed；完整 API integration tests：79/79 passed。
+- Frontend type-check：passed；web tests：29/29 passed；production build：passed（只有既有 large-chunk warning）。
+- New-file changed-format 與 `git diff --check`：passed；三個獨立 AI review 最終均為 0 blocker／0 high／0 medium。
+- OpenAPI／TypeScript wire shape 未修改；本批將 runtime required behavior 對齊既有 canonical OpenAPI。未執行 EF pending-model check，因未修改 entity、mapping 或 migration。
+- 本批尚未取得 commit／push 授權；C12 維持 `in-progress`，commit 後再改為 `completed` 並補入實際 hash。
+
+C18 公開邊界 contract 全盤標準化驗證（2026-08-12，尚未 commit）：
+
+- Identity、Project Management、Test Management 與 API host 的公開 Request／Response／Query／Command／Directory Entry 已統一為 explicit body-form；required／nullable 與 JSON property shape 由 integration contract tests 保護。
+- 原本的 aggregate contract／result 檔案已按資源與操作拆成一個 top-level public type 一檔，檔名與型別名一致；source architecture tests 的 multiple-public-type、filename mismatch、public positional boundary 三個 allowlist 均已歸零。
+- Identity／Project Management Result 與三組 attachment Result 已用 intention-revealing factories 排除成功缺 payload、失敗攜帶 payload及 `Failure(Succeeded)`；`TestManagementResult<T>` 已是 explicit body-form，validated internal constructor 與 Success／Failure factories會拒絕不合法狀態。
+- `TestManagementResult<T>` 仍服務多個 operation family，但直接 construction 已封閉，production callsites 全部使用 `Success／Failure` factory；operation-specific outcome／error code 的長期拆分仍由 C17 逐個業務族群處理。
+- 共用 `PagedResult<T>` 與 Project 短 Response 也已納入 body-form；architecture gate 會掃描 `backend/src` 全部非 Domain public positional record，避免依 Contracts／Application 路徑漏檢真正 HTTP boundary。
+- Release solution build：passed，0 warnings／0 errors；Domain unit tests：155/155 passed；API integration tests：106/106 passed；architecture baseline 包含在 unit suite 並已通過。
+- Frontend type-check：passed；web tests：29/29 passed；production build：passed，僅保留既有 large-chunk warning。
+- 本批變更 C# 檔 `dotnet format --verify-no-changes`：passed；`git diff --check`：passed。未執行 EF pending-model check，因未修改 entity、mapping 或 migration。
+- Canonical OpenAPI 與 TypeScript 未因 C# 宣告形式而變更；Create Project／Workspace description optionality、Workspace update prefix、Account lastLoginAt、C14 unknown-property 與 C15 error-key drift 均明確留在後續契約決策，未靜默混入本批。
+- 本批尚未取得 commit／push 授權；C11／C12／C13／C16／C17／C18 依 tracker workflow 維持 `in-progress`，建立 checkpoint 後再填入實際 commit hash。
+- 最終獨立 review 已複查共用 `PagedResult<T>`、短 Response、architecture gate 與 `TestManagementResult<T>` factory；前輪 findings 均已關閉，結果為 0 blocker／0 high／0 medium。
+
+C19 業務資料夾分類與防回歸 gate（2026-08-12，尚未 commit）：
+
+- Identity 26 個、Project Management 49 個、Test Management 14 個檔案，共 89 個檔案只搬移實體路徑；既有 namespace、public API、wire contract 與 production behavior 均未修改。
+- Contracts／Application 改依 Accounts、Authentication、Issues、IssueCommands、TestCases、TestRuns 等業務資源或 use case 分組；同一 use case 的 Command／Outcome／Result／Interface 放在一起。跨資源使用的 coordinator／constants 可保留在 layer root，不為了清空 root 製造假的 owner。
+- `PublicTypeLayoutBaselineTests` 新增 source folder gate，以不分大小寫的完整目錄名稱阻擋 `Enums`、`Interfaces`、`Requests`、`Responses`、`Results`；`IssueCommands` 與 `TestRuns` 的 self-test 明確證明業務目錄不會被誤擋。
+- Backend restore：passed，9 個 projects 均完成；Release solution build：passed，0 warnings／0 errors。
+- Domain unit tests：163/163 passed；API integration tests：106/106 passed；targeted architecture tests：26/26 passed。
+- Frontend type-check：passed；web tests：29/29 passed；production build：passed，只保留既有大於 500 kB 的 bundle chunk warning。
+- Changed C# format：159/159 files passed；`git diff --check`：passed。
+- 獨立 AI review：0 blocker／0 high／0 medium；C19 implementation／testing 與 E10 gate 均已完成。
+- 本批未取得 commit／push 授權，工作樹保留未提交狀態。
+
 ## 每批更新方式
+
+每一批必須隸屬一個 Active Principle Workstream。Module／feature 只作為實作 checkpoint，不是完成原則的依據。
 
 開始前：
 
 1. 確認 branch 與 `git status`。
-2. 將一個 Action Item 標成 `in-progress`。
-3. 記錄本批行為邊界、風險與測試策略。
+2. 確認 active principle 的全 repo inventory 與 exact debt baseline。
+3. 將一個 Action Item 或 principle checkpoint 標成 `in-progress`。
+4. 記錄本批 observable behavior、行為邊界、風險與測試策略。
+5. 行為或相容性有風險時先建立 characterization，不直接修改 production code。
 
 完成後：
 
 1. 記錄實際執行的 format、build、test 與 EF check。
-2. 建立單一目的的本機 commit；未經授權不 push。
-3. 在本文件記錄 commit、完成項目、未驗證項目與下一個 Resume Point。
+2. 確認 active principle 的 exact debt baseline 淨減且沒有新增例外。
+3. 建立單一原則、單一垂直切片的本機 commit；未經授權不 commit／push。
+4. 在本文件記錄 commit、剩餘全 repo 債務、未驗證項目與下一個 Resume Point。
+5. 只有全 repo DoD 達成，或剩餘例外有 Human 核准與 durable rationale，才把 principle 標成 `completed`。
 
 ## Resume Point
 
@@ -363,9 +497,14 @@ C10 implementation 驗證（2026-08-12，commit `a71f500`）：
 - Last completed enforcement batch：E05 stable SDK 鎖版，commit `73377a1`。
 - Last completed request-contract batch：C10 Test Case request，characterization `b004ddf`、null-step fix `fb409af`、implementation `a71f500`。
 - C16 first batch：Project Member characterization `055700f`、implementation `fb0003f`；umbrella item 維持 `in-progress`。
-- Current batch：無進行中的 production change；C10 implementation 與驗證已完成。
-- Expected working tree：完成本 tracker checkpoint 後應為 clean。
-- Next step：開始 C11 Test Plan body-form request characterization；保留 `CaseIds`、`TestIssueId`、required／nullable 與 validation error 行為，不混入 C14／C15 或 Test Plan domain 重構。
-- Human decisions：R06 與 I04 尚未決定；公開 request 宣告風格已由 Human 改為單一 non-positional type body，不得再保留短 request positional 例外。
+- Current batch：C19 業務資料夾分類與 E10 source folder gate 的 implementation、完整 regression 及獨立 review 均已完成；三模組共 89 個檔案只有路徑搬移，目前尚未 commit／push。
+- Active principle model：P03 公開邊界契約與 P09 實體組織為 `verified-awaiting-checkpoint`；P04 Result／Outcome 語意為下一個全域 active refactoring principle。單一 Project Member、Issue、Attachment 或 Test Management slice 只會是 P04 checkpoint，不得單獨宣告 P04 完成。
+- P04 inventory checkpoint：已盤點 60 個 Application Result／Outcome operations，其中 8 個初步 `keep-family`、52 個 broad Result semantic debt；`ApplicationResultSemanticBaselineTests` 已建立 exact no-growth baseline並以 targeted tests 6/6通過。C17-1 尚缺 reachable outcome／HTTP mapping characterization matrix，不得標為完成。
+- P04 first characterization slice：Project Member Add／Update Roles／Remove 的 reachable outcome、HTTP status、problem code與成功 payload／no-content已由 targeted integration tests 3/3保護；production Result／Outcome尚未修改。
+- Current debt target：aggregate public-type file、檔名 mismatch、Contracts／Application public positional record 與五個純技術 source folder 名稱目前均為零；Domain／真正 internal carrier 不納入公開邊界 gate，業務 use-case 目錄不視為技術分類。
+- Current uncommitted scope：既有 C12／C18、三模組 89 個業務資料夾路徑搬移、source folder architecture gate、雙語 guideline、principle-first refactoring plan／AI resume rules、P04 exact baseline／Project Member characterization tests 與本 tracker；未獲 commit 或 push 授權。2026-08-13 live status 為 29 modified、60 deleted、140 untracked，共 229 筆；index 為空。
+- Expected working tree：搬移與拆檔在 staging 前會同時呈現 tracked deletions 與 140 個 untracked targets；相較前一個 structural checkpoint 的 138 個 targets，多出的 2 個是 P04 architecture baseline 與 Project Member characterization test。這是未 staged 的預期狀態，不代表檔案遺失。在 Human 明確要求 commit 前保持 uncommitted，不把 Workspace prefix、Account lastLoginAt、C14 unknown-property 或 C15 error-key drift 靜默混入。
+- Next step：取得明確 commit 授權後先重新取得 live status，執行 `git add -A`，再以 `git diff --cached --stat`、`git diff --cached --summary` 與 `git diff --cached --check` 檢查 rename／新增檔與意外範圍；完成 cached review 後建立目前 structural／principle baseline checkpoint。工作樹乾淨後補完 C17-1 reachable outcome／HTTP mapping characterization matrix，再選第一個 P04 垂直切片；未獲授權不得自行提交或推送。
+- Human decisions：R06 與 I04 尚未決定；公開 boundary contract 宣告風格已由 Human 改為單一 non-positional type body，不得再保留小型 response／public Result positional 例外。TestManagement operation-family Result 與 error Code 的長期拆分粒度另列後續語意重構，不阻擋本次 factory invariant 收斂。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。
