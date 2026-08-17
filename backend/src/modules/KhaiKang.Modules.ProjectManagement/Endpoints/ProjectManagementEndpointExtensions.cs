@@ -191,7 +191,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 request,
                 cancellationToken);
-            return MapMemberMutation(result, StatusCodes.Status201Created);
+            return MapAddProjectMemberResult(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("AddProjectMember")
@@ -227,7 +227,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 request,
                 cancellationToken);
-            return MapMemberMutation(result, StatusCodes.Status200OK);
+            return MapUpdateProjectMemberRolesResult(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("UpdateProjectMemberRoles")
@@ -265,9 +265,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 version,
                 cancellationToken);
-            return result.Outcome == ProjectMemberMutationOutcome.Succeeded
-                ? Results.NoContent()
-                : MapMemberMutation(result, StatusCodes.Status200OK);
+            return MapRemoveProjectMemberOutcome(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("RemoveProjectMember")
@@ -371,34 +369,69 @@ public static partial class ProjectManagementEndpointExtensions
         }
     }
 
-    private static IResult MapMemberMutation(
-        ProjectMemberMutationResult result,
-        int successStatus)
+    private static IResult MapAddProjectMemberResult(AddProjectMemberResult result)
     {
         return result.Outcome switch
         {
-            ProjectMemberMutationOutcome.Succeeded when successStatus == StatusCodes.Status201Created =>
+            AddProjectMemberOutcome.Succeeded =>
                 Results.Json(result.Member, statusCode: StatusCodes.Status201Created),
-            ProjectMemberMutationOutcome.Succeeded => Results.Ok(result.Member),
-            ProjectMemberMutationOutcome.Forbidden => Results.Forbid(),
-            ProjectMemberMutationOutcome.NotFound or ProjectMemberMutationOutcome.AccountNotFound =>
+            AddProjectMemberOutcome.Forbidden => Results.Forbid(),
+            AddProjectMemberOutcome.NotFound or AddProjectMemberOutcome.AccountNotFound =>
                 Results.NotFound(),
-            ProjectMemberMutationOutcome.InvalidRoles => Results.ValidationProblem(
+            AddProjectMemberOutcome.InvalidRoles => Results.ValidationProblem(
                 new Dictionary<string, string[]>
                 {
                     ["roleCodes"] = ["One or more project roles are invalid."],
                 }),
-            ProjectMemberMutationOutcome.AlreadyMember => Problem(
+            AddProjectMemberOutcome.AlreadyMember => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/member-already-active",
                 "project_member_already_active",
                 "The account is already an active project member."),
-            ProjectMemberMutationOutcome.LastOwner => Problem(
+            _ => Results.NotFound(),
+        };
+    }
+
+    private static IResult MapUpdateProjectMemberRolesResult(
+        UpdateProjectMemberRolesResult result)
+    {
+        return result.Outcome switch
+        {
+            UpdateProjectMemberRolesOutcome.Succeeded => Results.Ok(result.Member),
+            UpdateProjectMemberRolesOutcome.Forbidden => Results.Forbid(),
+            UpdateProjectMemberRolesOutcome.NotFound => Results.NotFound(),
+            UpdateProjectMemberRolesOutcome.InvalidRoles => Results.ValidationProblem(
+                new Dictionary<string, string[]>
+                {
+                    ["roleCodes"] = ["One or more project roles are invalid."],
+                }),
+            UpdateProjectMemberRolesOutcome.LastOwner => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/last-owner",
                 "project_last_owner_required",
                 "The project must keep at least one active Owner."),
-            ProjectMemberMutationOutcome.VersionConflict => Problem(
+            UpdateProjectMemberRolesOutcome.VersionConflict => Problem(
+                StatusCodes.Status409Conflict,
+                "https://khaikang.dev/problems/projects/member-version-conflict",
+                "project_member_version_conflict",
+                "The project member was changed by another user. Reload and try again."),
+            _ => Results.NotFound(),
+        };
+    }
+
+    private static IResult MapRemoveProjectMemberOutcome(RemoveProjectMemberOutcome outcome)
+    {
+        return outcome switch
+        {
+            RemoveProjectMemberOutcome.Succeeded => Results.NoContent(),
+            RemoveProjectMemberOutcome.Forbidden => Results.Forbid(),
+            RemoveProjectMemberOutcome.NotFound => Results.NotFound(),
+            RemoveProjectMemberOutcome.LastOwner => Problem(
+                StatusCodes.Status409Conflict,
+                "https://khaikang.dev/problems/projects/last-owner",
+                "project_last_owner_required",
+                "The project must keep at least one active Owner."),
+            RemoveProjectMemberOutcome.VersionConflict => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/member-version-conflict",
                 "project_member_version_conflict",

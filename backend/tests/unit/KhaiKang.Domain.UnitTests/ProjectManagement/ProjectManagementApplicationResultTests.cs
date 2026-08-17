@@ -43,32 +43,64 @@ public sealed class ProjectManagementApplicationResultTests
     }
 
     [Fact]
-    public void RelationAndMemberResults_DistinguishPayloadSuccessFromDeleteSuccess()
+    public void RelationAndProjectMemberResults_EnforceTheirPayloadInvariants()
     {
         var relation = CreateRelation();
         var member = CreateMember();
 
         var created = IssueRelationMutationResult.Created(relation);
         var deleted = IssueRelationMutationResult.Deleted();
-        var memberUpdated = ProjectMemberMutationResult.Success(member);
-        var memberRemoved = ProjectMemberMutationResult.Removed();
+        var memberAdded = AddProjectMemberResult.Success(member);
+        var memberUpdated = UpdateProjectMemberRolesResult.Success(member);
 
         Assert.Same(relation, created.Relation);
         Assert.Null(deleted.Relation);
+        Assert.Same(member, memberAdded.Member);
         Assert.Same(member, memberUpdated.Member);
-        Assert.Null(memberRemoved.Member);
         Assert.All(
             new[] { created.Outcome, deleted.Outcome },
             outcome => Assert.Equal(IssueRelationMutationOutcome.Succeeded, outcome));
-        Assert.All(
-            new[] { memberUpdated.Outcome, memberRemoved.Outcome },
-            outcome => Assert.Equal(ProjectMemberMutationOutcome.Succeeded, outcome));
+        Assert.Equal(AddProjectMemberOutcome.Succeeded, memberAdded.Outcome);
+        Assert.Equal(UpdateProjectMemberRolesOutcome.Succeeded, memberUpdated.Outcome);
         Assert.Throws<ArgumentNullException>(() => IssueRelationMutationResult.Created(null!));
-        Assert.Throws<ArgumentNullException>(() => ProjectMemberMutationResult.Success(null!));
+        Assert.Throws<ArgumentNullException>(() => AddProjectMemberResult.Success(null!));
+        Assert.Throws<ArgumentNullException>(() => UpdateProjectMemberRolesResult.Success(null!));
         Assert.Throws<ArgumentOutOfRangeException>(
             () => IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Succeeded));
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Succeeded));
+            () => AddProjectMemberResult.Failure(AddProjectMemberOutcome.Succeeded));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => UpdateProjectMemberRolesResult.Failure(
+                UpdateProjectMemberRolesOutcome.Succeeded));
+    }
+
+    [Theory]
+    [InlineData(AddProjectMemberOutcome.NotFound)]
+    [InlineData(AddProjectMemberOutcome.AccountNotFound)]
+    [InlineData(AddProjectMemberOutcome.Forbidden)]
+    [InlineData(AddProjectMemberOutcome.AlreadyMember)]
+    [InlineData(AddProjectMemberOutcome.InvalidRoles)]
+    public void AddProjectMemberFailure_HasNoMemberPayload(AddProjectMemberOutcome outcome)
+    {
+        var result = AddProjectMemberResult.Failure(outcome);
+
+        Assert.Equal(outcome, result.Outcome);
+        Assert.Null(result.Member);
+    }
+
+    [Theory]
+    [InlineData(UpdateProjectMemberRolesOutcome.NotFound)]
+    [InlineData(UpdateProjectMemberRolesOutcome.Forbidden)]
+    [InlineData(UpdateProjectMemberRolesOutcome.InvalidRoles)]
+    [InlineData(UpdateProjectMemberRolesOutcome.LastOwner)]
+    [InlineData(UpdateProjectMemberRolesOutcome.VersionConflict)]
+    public void UpdateProjectMemberRolesFailure_HasNoMemberPayload(
+        UpdateProjectMemberRolesOutcome outcome)
+    {
+        var result = UpdateProjectMemberRolesResult.Failure(outcome);
+
+        Assert.Equal(outcome, result.Outcome);
+        Assert.Null(result.Member);
     }
 
     [Fact]

@@ -1,12 +1,10 @@
 namespace KhaiKang.Modules.ProjectManagement.Application;
 
-public enum ProjectMemberMutationOutcome
+public enum UpdateProjectMemberRolesOutcome
 {
     Succeeded,
     NotFound,
-    AccountNotFound,
     Forbidden,
-    AlreadyMember,
     InvalidRoles,
     LastOwner,
     VersionConflict,

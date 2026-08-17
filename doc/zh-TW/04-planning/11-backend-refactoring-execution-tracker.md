@@ -70,7 +70,7 @@ KhaiKang 採用下列優先順序：
 | P01 | 重構安全網：unit、integration、boundary characterization、external dependency isolation | 盤點 coverage、補 observable behavior 測試、維護 test evidence | 確認預期行為與相容風險 | in-progress | 所有被重構行為在正確 boundary 有保護，測試不鎖 private implementation | 依 active principle 補 operation matrix |
 | P02 | Domain／Application API 可讀性：三參數、同型 primitive、creation／change／context model | 維護 exact debt baseline，分 semantic family 重構 | 核准例外與 domain concept | in-progress | 長參數與模糊 primitive 債務歸零，或例外有 ADR 且 baseline 不增加 | I01 characterization 後處理 Identity API |
 | P03 | 公開 boundary contract：body-form、一型別一檔、required／nullable／wire compatibility | 維護 architecture／contract tests與跨模組 caller | 核准 public contract 變更 | in-progress | 全部 public boundary 符合規則，OpenAPI／TypeScript／runtime 一致，例外有明確決策 | 處理 Workspace canonical drift 與 C14／C15 |
-| P04 | Result／Outcome 語意：真正 operation family、payload invariant、完整 endpoint mapping | 建立全 repo inventory、characterization、垂直切片實作與 exact no-growth baseline | 決定哪些 operations 真正共享語意，核准錯誤契約變更 | in-progress | Broad Mutation／generic Result 債務歸零或例外有 ADR；不存在 impossible outcome／payload、假 `object` payload、未核准任意業務錯誤字串 | 完成 C17-1 reachable outcome／HTTP mapping characterization matrix |
+| P04 | Result／Outcome 語意：真正 operation family、payload invariant、完整 endpoint mapping | 建立全 repo inventory、characterization、垂直切片實作與 exact no-growth baseline | 決定哪些 operations 真正共享語意，核准錯誤契約變更 | in-progress | Broad Mutation／generic Result 債務歸零或例外有 ADR；不存在 impossible outcome／payload、假 `object` payload、未核准任意業務錯誤字串 | 依 C17-1 matrix 繼續完成下一個 vertical slice |
 | P05 | 封閉狀態與 stable code：enum／Value Object、DB English code、table code/name | 盤點 string status與 mappings，補 round-trip test | 決定狀態集合與資料相容策略 | in-progress | 封閉狀態都有型別保護，資料庫與 client code 穩定且 mapping 可驗證 | 完成 Test Management 狀態 inventory |
 | P06 | Audit lifecycle 與 mutation context：actor／time／version共用邊界 | 盤點 lifecycle/nullability，補 audit/concurrency tests | 決定真正共用 lifecycle 與例外 | waiting-human | 共用 lifecycle一致、feature lifecycle留在 owner、EF mapping與 concurrency不變 | R06／I04 Human decision |
 | P07 | EF query／paging 可讀性：normalize→filter→order→count→page→project→execute | 盤點遮蔽流程的 abstraction並提出 feature-local 改寫 | 核准有價值的共用 abstraction | pending | 查詢可依業務流程閱讀，沒有為統一外觀導入 generic query framework | 建立 query inventory |
@@ -147,21 +147,21 @@ C17 是 P04 的 umbrella item；一型別一檔與資料夾整理已分別歸 P0
 
 | 子項 | Scope | 狀態 | 完成條件 |
 | --- | --- | --- | --- |
-| C17-1 | 全 repo operation inventory | in-progress | 每個 Application operation 記錄實際可達 Outcome、成功 payload／no payload、error identity、endpoint mapping、caller、tests與 keep-family／split／waiting-human 決策；operation identity baseline 已完成，reachable outcome／HTTP mapping test matrix 待補 |
-| C17-2 | Project mutations | in-progress | Project Member reachable outcome／HTTP mapping characterization 已完成；Issue、Project Member、Issue Relation 仍須依真正 semantic family 收斂，不可能 Outcome 與 payload 組合歸零 |
+| C17-1 | 全 repo operation inventory | in-progress | 每個 Application operation 記錄實際可達 Outcome、成功 payload／no payload、error identity、endpoint mapping、caller、tests與 keep-family／split／waiting-human 決策；operation identity baseline 已完成，Identity／Project Member matrix 已補，Issue／Attachment／Test Management 待補 |
+| C17-2 | Project mutations | in-progress | Project Member 已完成操作專屬 Result／Outcome 拆分與 endpoint mapping；Issue、Issue Relation 仍須依真正 semantic family 收斂，不可能 Outcome 與 payload 組合歸零 |
 | C17-3 | Attachments | pending | Upload、Delete、OpenContent 依不同 payload invariant 與 reachable failures 建模 |
 | C17-4 | Test Management | pending | `TestManagementResult<T>` 依 resource／operation family 分批移除，不以新 generic Result重新包裝 |
 | C17-5 | Completion gate | pending | Broad Result exact baseline歸零或有核准ADR；無假 `object` payload、未核准任意業務錯誤字串、漏接 Outcome mapping |
 
 ### C17-1 Application Result／Outcome Inventory Baseline
 
-2026-08-13 source inventory 共找到 60 個使用 Application Result／Outcome 的 public operations。8 個已採 operation-specific model 且 payload invariant 已由 factory／direct Outcome 表達；52 個仍列為 broad Result semantic debt。這 52 個 operation identity 已寫入 `ApplicationResultSemanticBaselineTests`，新債務或已解決但未移除的 baseline entry 都會使 architecture test 失敗。
+2026-08-13 source inventory 共找到 60 個使用 Application Result／Outcome 的 public operations。8 個已採 operation-specific model 且 payload invariant 已由 factory／direct Outcome 表達；其餘 52 個曾列為 broad Result semantic debt。Project Member 垂直切片已移除其中 3 項，目前 exact baseline 為 49 個；新債務或已解決但未移除的 baseline entry 都會使 architecture test 失敗。
 
 | 語意族群 | Operations | 目前模型 | 成功 payload | 初步決策 | 尚需 characterization |
 | --- | ---: | --- | --- | --- | --- |
 | Identity account／authentication | 5 | operation-specific Result／Outcome | 依 use case 為 Account、Session＋User 或 no payload | `keep-family`；納入 completion review | 每個 reachable failure 與 endpoint mapping 完整性 |
 | Project create／update＋cross-module create issue | 3 | operation-specific Result／Outcome | Project 或 Issue；factory 排除 invalid payload | `keep-family`；`CreateIssueCommand` 的 defensive mapping 另檢查 | catch-all／upstream impossible mapping characterization |
-| Project Members | 3 | `ProjectMemberMutationResult` superset | Add／Update 有 Member；Remove 無 payload | `split` | Add／Update／Remove 的 reachable failure、HTTP status／problem code |
+| Project Members | 3 | Add／Update operation-specific Result；Remove direct Outcome | Add／Update 有 Member；Remove 無 payload | `split completed` | Add／Update／Remove 的 reachable failure、HTTP status／problem code已由 characterization 與 operation-specific mapper 保護 |
 | Issues | 4 | `IssueMutationResult` superset | 全部回 Issue，但 outcome 集合不同 | `split` 或經 Human 核准的 semantic family | Create／Update／Status／Assignee outcome matrix與跨模組 caller |
 | Issue Relations | 2 | `IssueRelationMutationResult` superset | Create 有 Relation；Delete 無 payload | `split` | Create-only hierarchy failures與Delete concurrency mapping |
 | Issue Attachments | 3 | 共用 `IssueAttachmentOutcome`，Upload／Delete 共用 Mutation Result | Upload 有 Attachment；Delete 無 payload；Open 有 stream metadata | `split` | Upload／Delete／OpenContent各自 reachable failure與storage mapping |
@@ -170,6 +170,19 @@ C17 是 P04 的 umbrella item；一型別一檔與資料夾整理已分別歸 P0
 | Test Run Item Attachments | 3 | 共用 Outcome，Upload／Delete 共用 Mutation Result | Upload有Attachment；Delete無payload；Open有stream metadata | `split` | Run lifecycle failure與storage mapping |
 
 Exact baseline 只 enforcement 已知 broad type 的 operation identity，不能自動判斷兩個 operation 是否真的屬於同一 semantic family。新增或保留例外仍需 Human 與獨立 AI Review；不得以重新命名 generic Result、每個 method 機械建立新型別，或把 error code 搬到另一個任意字串欄位規避此原則。
+
+Identity account／authentication characterization checkpoint（2026-08-17，尚未 commit）：
+
+| Operation | Reachable Outcome | Success payload／HTTP | Failure HTTP／identity | Evidence |
+| --- | --- | --- | --- | --- |
+| Create account | `Succeeded`、`UsernameConflict`、`UserRoleNotConfigured` | `201 Created`，`CreateAccountResponse` | `409 username_conflict`；`500 account_configuration_invalid` | `IdentityOutcomeMappingTests.CreateAccount_MapsEachReachableOutcome` |
+| Update account | `Succeeded`、`NotFound`、`UsernameConflict`、`CannotUpdateOwnAccount`、`VersionConflict` | `200 OK`，`AccountResponse` | `404 account_not_found`；`409 username_conflict`／`cannot_update_own_account`／`account_version_conflict` | `IdentityOutcomeMappingTests.UpdateAccount_MapsEachReachableOutcome` |
+| Update account status | `Succeeded`、`NotFound`、`CannotChangeOwnStatus`、`VersionConflict` | `200 OK`，`AccountResponse` | `404 account_not_found`；`409 cannot_change_own_status`／`account_version_conflict` | `IdentityOutcomeMappingTests.UpdateAccountStatus_MapsEachReachableOutcome` |
+| Login | `Succeeded`、`InvalidCredentials` | `200 OK`，`AuthenticatedUserResponse` | `401 invalid_credentials` | `IdentityEndpointsTests.AuthenticationFlow_InitializesAdminAndRevokesLoggedOutSession`；`IdentityOutcomeMappingTests.Authentication_MapsInvalidCredentialsAndPasswordFailures` |
+| Change password | `Succeeded`、`PasswordTooShort`、`InvalidCurrentPassword`、`SessionNotFound` | `204 NoContent` | short password 為 `400 ValidationProblem`；`400 invalid_current_password`；`SessionNotFound` 的 endpoint fallback 為 `401` | `IdentityEndpointsTests.AuthenticationFlow_InitializesAdminAndRevokesLoggedOutSession`；`IdentityOutcomeMappingTests.Authentication_MapsInvalidCredentialsAndPasswordFailures` |
+
+- `SessionNotFound` 需要通過已驗證的 account/session principal 才會進 Application；一般失效 session 會先被 authentication boundary 拒絕為 `401`。本 checkpoint 將它記為 endpoint fallback，而非以刪除關聯資料製造不自然的 HTTP 情境。
+- 這五個 operation 維持 `keep-family` 初步決策：每個 Result／Outcome 已是 operation-specific，factory 已禁止成功缺 payload 或 failure 帶 payload。此處只完成可觀察行為的 matrix；仍須與目前 49 個 broad Result debt 一起經 P04 completion review。
 
 Project Member characterization checkpoint（2026-08-13，尚未 commit）：
 
@@ -181,6 +194,14 @@ Project Member characterization checkpoint（2026-08-13，尚未 commit）：
 - Targeted integration tests：3/3 passed；新增測試檔 format verification passed。
 - 加入 P04 baseline／characterization 後完整 Domain unit tests：169/169 passed；完整 API integration tests：109/109 passed；`git diff --check`：passed。
 - 本 checkpoint 只補 characterization，尚未拆分 `ProjectMemberMutationResult`／Outcome，不得宣稱 C17-2 或 P04 完成。
+
+Project Member semantic vertical slice（2026-08-17，尚未 commit）：
+
+- 移除共用的 `ProjectMemberMutationOutcome`／`ProjectMemberMutationResult`，改為 `AddProjectMemberOutcome`／`AddProjectMemberResult`、`UpdateProjectMemberRolesOutcome`／`UpdateProjectMemberRolesResult` 與無 payload 的 `RemoveProjectMemberOutcome`。
+- Add 與 Update 的 Result 使用 `Success`／`Failure` factory：成功必有 Member，failure 不能攜帶 Member，且不能以 `Succeeded` 建立 failure；Remove 直接回傳 operation-specific Outcome。
+- Endpoint 改為三個 operation-specific mapper，移除以 success status 猜測 Add／Update 意圖、以及 Remove 的成功特判；HTTP status 與既有 problem code 不變。
+- `ApplicationResultSemanticBaselineTests` 的 broad debt baseline 由 52 減為 49；新增／更新 Result invariant unit tests 與既有 Project Member endpoint characterization 共通過：targeted unit 21/21、targeted integration 3/3。
+- 這是 P04 的一個垂直切片，不代表 C17-1、C17-2 或 P04 完成；Project Issue／Issue Relation 的 mutation semantic debt 仍在。
 - 2026-08-17 checkpoint 前重新驗證：9 個 backend projects restore 成功；Release build 0 warnings／0 errors；unit 169/169、integration 109/109；frontend type-check、29/29 tests、production build皆通過。Vite build 保留既有 766.93 kB chunk size warning，沒有 build failure。
 - Structural／public-boundary／P04 baseline implementation checkpoint：`82cf8c9`（`refactor: standardize backend boundaries and organization`）；branch publication 狀態以 live Git upstream 為準，不在此 evidence 重複維護。
 
@@ -256,7 +277,7 @@ Project Member characterization checkpoint（2026-08-13，尚未 commit）：
 2. C11／C13／C16 轉換 Request 時，同批依 Cases／Plans／Runs／Workspaces 等功能拆分 `TestManagementContracts.cs`。
 3. Identity／Project Contracts 依 resource 拆分；不建立 `Enums`／`Requests`／`Results` 等純技術資料夾。
 4. 先將真正 public、操作專屬 Outcome／Result 做純拆檔，再另批修正語意；檔案搬移不順便改行為。
-5. `IssueMutationResult`、`ProjectMemberMutationResult`、`IssueRelationMutationResult` 目前被 outcomes 不完全相同的操作共用，需依 use case 或真正共享語意的操作族群重新設計。
+5. `IssueMutationResult`、`IssueRelationMutationResult` 目前被 outcomes 不完全相同的操作共用，需依 use case 或真正共享語意的操作族群重新設計；Project Member 已於 P04 vertical slice 完成拆分。
 6. 三組 Attachment `MutationResult` 同時服務 Upload／Delete，且 Content result 使用四個 nullable／同型別欄位；應依 Upload／Delete／OpenContent 語意分開檢視。
 7. `TestManagementResult<T>` 以模組級 Outcome 與 string Code 承載多個 use case，是較高風險的語意債務，最後配合 Service 拆分處理。
 8. 所有公開 Response 都改為 body-form；長 Response 使用 required init-only properties 避免 positional constructor 錯置，短 Response 也採同一公開邊界宣告方式以消除 AI 產生兩套風格的空間。
@@ -273,7 +294,7 @@ Project Member characterization checkpoint（2026-08-13，尚未 commit）：
 | KK-DOTNET-005 | 同一 mutation context 應完整傳遞 | unit test + AI review | planned |
 | KK-DOTNET-006 | Helper 不以 null／mode flag 隱藏不同 use case | AI review | documented |
 | KK-DOTNET-007 | 每個 top-level public type 一檔且檔名相同 | source architecture baseline + AI review | enforced；baseline debt 已歸零 |
-| KK-DOTNET-008 | Result／Outcome 依操作表達，不以 superset 隱藏不可能狀態 | exact source baseline + characterization tests + AI／Human review | partially enforced；payload invariant 已保護，52 個 broad Result operations 由 exact no-growth baseline 追蹤，operation-family debt tracked by C17 |
+| KK-DOTNET-008 | Result／Outcome 依操作表達，不以 superset 隱藏不可能狀態 | exact source baseline + characterization tests + AI／Human review | partially enforced；payload invariant 已保護，49 個 broad Result operations 由 exact no-growth baseline 追蹤，operation-family debt tracked by C17 |
 | KK-DOTNET-009 | 公開 boundary contract 使用 body-form，不使用 positional record | source architecture baseline + contract tests | enforced；baseline debt 已歸零 |
 | KK-DOTNET-010 | Source folder 依業務資源／use case 分類，不使用五個純技術目錄名稱 | source architecture test + AI review | enforced；完整 regression 與獨立 review 已通過，尚未 commit |
 | KK-PERSIST-001 | Stable code 以命名常數集中 mapping | unit test + AI review | partially enforced |
@@ -501,13 +522,13 @@ C19 業務資料夾分類與防回歸 gate（2026-08-12，尚未 commit）：
 - C16 first batch：Project Member characterization `055700f`、implementation `fb0003f`；umbrella item 維持 `in-progress`。
 - Last structural／boundary checkpoint：`82cf8c9`；C11／C12／C13／C16／C18／C19 與 E10 已完成提交，branch publication 狀態以 live Git upstream 為準。
 - Active principle model：P09 實體組織已完成；P03 公開邊界宣告標準化已完成，但因 Workspace canonical drift 與 C14／C15 尚在，原則維持 `in-progress`；P04 Result／Outcome 語意為下一個全域 active refactoring principle。單一 Project Member、Issue、Attachment 或 Test Management slice 只會是 P04 checkpoint，不得單獨宣告 P04 完成。
-- P04 inventory checkpoint：已盤點 60 個 Application Result／Outcome operations，其中 8 個初步 `keep-family`、52 個 broad Result semantic debt；`ApplicationResultSemanticBaselineTests` 已建立 exact no-growth baseline並以 targeted tests 6/6通過。C17-1 尚缺 reachable outcome／HTTP mapping characterization matrix，不得標為完成。
-- P04 first characterization slice：Project Member Add／Update Roles／Remove 的 reachable outcome、HTTP status、problem code與成功 payload／no-content已由 targeted integration tests 3/3保護；production Result／Outcome尚未修改。
+- P04 inventory checkpoint：已盤點 60 個 Application Result／Outcome operations，其中 8 個初步 `keep-family`、52 個初始 broad Result semantic debt；Project Member semantic vertical slice 已移除 3 項，目前 `ApplicationResultSemanticBaselineTests` 的 exact no-growth baseline 為 49。C17-1 尚缺 Issue、Attachment 與 Test Management reachable outcome／HTTP mapping matrix，不得標為完成。
+- P04 completed slices：Project Member Add／Update Roles／Remove 的 reachable outcome、HTTP status、problem code與成功 payload／no-content已由 targeted integration tests 3/3保護，並已改為 operation-specific production Result／Outcome；其 Result／baseline targeted unit tests 21/21通過。Identity account／authentication 五個 operation 的 matrix 與新增 targeted integration tests 4/4亦已完成，但維持既有 keep-family model。
 - Current debt target：aggregate public-type file、檔名 mismatch、Contracts／Application public positional record 與五個純技術 source folder 名稱目前均為零；Domain／真正 internal carrier 不納入公開邊界 gate，業務 use-case 目錄不視為技術分類。
 - Checkpoint evidence：提交前 cached scope為204 files（25 rename、115 add、35 delete、29 modify），6,285 insertions／1,829 deletions；0 unstaged、0 untracked、0 binary、0禁止路徑，`git diff --cached --check`通過。
 - Expected working tree：本 tracker checkpoint 提交後應為 clean。不得把 Workspace prefix、Account lastLoginAt、C14 unknown-property 或 C15 error-key drift 靜默混入後續 P04 批次。
 - Local runtime checkpoint：2026-08-17 以 API `5220`、Web `5175` 驗證 `82cf8c9`；health、frontend proxy、database setup status、登入頁渲染與 browser console均正常，runtime error logs為空。
-- Next step：補完 C17-1 reachable outcome／HTTP mapping characterization matrix，再選第一個 P04 垂直切片；後續 commit／push仍需逐次取得授權。
+- Next step：補完 C17-1 的 Issue、Attachment 與 Test Management reachable outcome／HTTP mapping matrix；選擇下一個已完成 characterization 的 P04 production vertical slice，並以 exact baseline 淨減驗證。後續 commit／push仍需逐次取得授權。
 - Human decisions：R06 與 I04 尚未決定；公開 boundary contract 宣告風格已由 Human 改為單一 non-positional type body，不得再保留小型 response／public Result positional 例外。TestManagement operation-family Result 與 error Code 的長期拆分粒度另列後續語意重構，不阻擋本次 factory invariant 收斂。
 
 若此處與 Git／測試現況不一致，應先以 Git、正式規範與可重現測試為準，再更新本文件。

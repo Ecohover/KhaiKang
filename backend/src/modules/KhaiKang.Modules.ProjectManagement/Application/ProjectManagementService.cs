@@ -263,7 +263,7 @@ public sealed class ProjectManagementService(
             .ToArray();
     }
 
-    public async Task<ProjectMemberMutationResult> AddMemberAsync(
+    public async Task<AddProjectMemberResult> AddMemberAsync(
         Guid projectId,
         Guid actorAccountId,
         AddProjectMemberRequest request,
@@ -275,19 +275,19 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
+            return AddProjectMemberResult.Failure(AddProjectMemberOutcome.NotFound);
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectMemberAddPermission) ||
             !HasPermission(actor, ProjectManagementConstants.ProjectRoleAssignPermission))
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
+            return AddProjectMemberResult.Failure(AddProjectMemberOutcome.Forbidden);
         }
 
         var roles = await ResolveRolesAsync(request.RoleCodes, cancellationToken);
         if (roles is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.InvalidRoles);
+            return AddProjectMemberResult.Failure(AddProjectMemberOutcome.InvalidRoles);
         }
 
         var account = await accountDirectory.FindActiveByUsernameAsync(
@@ -295,7 +295,7 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (account is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.AccountNotFound);
+            return AddProjectMemberResult.Failure(AddProjectMemberOutcome.AccountNotFound);
         }
 
         var member = await dbContext.ProjectMembers
@@ -305,7 +305,7 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member?.Status == ProjectMemberStatus.Active)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.AlreadyMember);
+            return AddProjectMemberResult.Failure(AddProjectMemberOutcome.AlreadyMember);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -332,11 +332,11 @@ public sealed class ProjectManagementService(
         dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.ProjectMemberAdded(member.Id, context));
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ProjectMemberMutationResult.Success(
+        return AddProjectMemberResult.Success(
             ToMemberResponse(member, account.Username, roles));
     }
 
-    public async Task<ProjectMemberMutationResult> UpdateMemberRolesAsync(
+    public async Task<UpdateProjectMemberRolesResult> UpdateMemberRolesAsync(
         Guid projectId,
         Guid memberId,
         Guid actorAccountId,
@@ -349,18 +349,18 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.NotFound);
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectRoleAssignPermission))
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.Forbidden);
         }
 
         var roles = await ResolveRolesAsync(request.RoleCodes, cancellationToken);
         if (roles is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.InvalidRoles);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.InvalidRoles);
         }
 
         var member = await dbContext.ProjectMembers
@@ -373,12 +373,12 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.NotFound);
         }
 
         if (member.Version != request.Version)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.VersionConflict);
         }
 
         var removesOwner = member.Roles.Any(mapping =>
@@ -386,7 +386,7 @@ public sealed class ProjectManagementService(
             roles.All(role => role.Code != ProjectManagementConstants.OwnerRoleCode);
         if (removesOwner && !await HasAnotherOwnerAsync(projectId, member.Id, cancellationToken))
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.LastOwner);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.LastOwner);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -403,18 +403,18 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
+            return UpdateProjectMemberRolesResult.Failure(UpdateProjectMemberRolesOutcome.VersionConflict);
         }
 
         var accounts = await accountDirectory.GetByIdsAsync([member.AccountId], cancellationToken);
-        return ProjectMemberMutationResult.Success(
+        return UpdateProjectMemberRolesResult.Success(
             ToMemberResponse(
                 member,
                 accounts.GetValueOrDefault(member.AccountId)?.Username ?? member.AccountId.ToString(),
                 roles));
     }
 
-    public async Task<ProjectMemberMutationResult> RemoveMemberAsync(
+    public async Task<RemoveProjectMemberOutcome> RemoveMemberAsync(
         Guid projectId,
         Guid memberId,
         Guid actorAccountId,
@@ -427,12 +427,12 @@ public sealed class ProjectManagementService(
             cancellationToken);
         if (actor is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
+            return RemoveProjectMemberOutcome.NotFound;
         }
 
         if (!HasPermission(actor, ProjectManagementConstants.ProjectMemberRemovePermission))
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.Forbidden);
+            return RemoveProjectMemberOutcome.Forbidden;
         }
 
         var member = await dbContext.ProjectMembers
@@ -445,19 +445,19 @@ public sealed class ProjectManagementService(
                 cancellationToken);
         if (member is null)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.NotFound);
+            return RemoveProjectMemberOutcome.NotFound;
         }
 
         if (member.Version != version)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
+            return RemoveProjectMemberOutcome.VersionConflict;
         }
 
         if (member.Roles.Any(mapping =>
                 mapping.ProjectRole.Code == ProjectManagementConstants.OwnerRoleCode) &&
             !await HasAnotherOwnerAsync(projectId, member.Id, cancellationToken))
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.LastOwner);
+            return RemoveProjectMemberOutcome.LastOwner;
         }
 
         var now = timeProvider.GetUtcNow();
@@ -471,10 +471,10 @@ public sealed class ProjectManagementService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return ProjectMemberMutationResult.Failure(ProjectMemberMutationOutcome.VersionConflict);
+            return RemoveProjectMemberOutcome.VersionConflict;
         }
 
-        return ProjectMemberMutationResult.Removed();
+        return RemoveProjectMemberOutcome.Succeeded;
     }
 
     private async Task<ProjectMember?> GetMembershipWithPermissionsAsync(
