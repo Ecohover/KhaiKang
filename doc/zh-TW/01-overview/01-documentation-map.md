@@ -104,6 +104,7 @@
 - [Issue 與測試資產追溯實作計畫](../04-planning/09-issue-test-traceability-implementation-plan.md)
 - [後端可讀性重構計畫](../04-planning/10-backend-domain-refactoring-plan.md)
 - [後端可讀性重構執行追蹤](../04-planning/11-backend-refactoring-execution-tracker.md)
+- [Agent Integration 文件地圖與恢復交接](../04-planning/12-agent-integration-document-map-and-resume-handoff.md)
 
 ## 文件使用原則
 
