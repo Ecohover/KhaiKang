@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Columns3, List, Plus } from '@lucide/vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, List, Plus } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiAlert, UiButton, UiEmptyState, UiPagination, UiSelect } from '@khaikang/ui'
@@ -71,6 +71,20 @@ onMounted(async () => {
   }
 })
 
+watch(activeView, async (view) => {
+  if (view !== 'board') return
+
+  searchQuery.value = ''
+  filterType.value = ''
+  filterStatus.value = ''
+  filterPriority.value = ''
+  filterAssignee.value = ''
+  sortBy.value = 'updatedAt'
+  sortDirection.value = 'desc'
+  page.value = 1
+  await loadPage()
+})
+
 async function loadPage(): Promise<void> {
   loading.value = true
   error.value = ''
@@ -133,6 +147,16 @@ async function clearFilters(): Promise<void> {
   filterAssignee.value = ''
   sortBy.value = 'updatedAt'
   sortDirection.value = 'desc'
+  await applyFilters()
+}
+
+async function toggleSort(column: IssueSortBy): Promise<void> {
+  if (sortBy.value === column) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = column
+    sortDirection.value = column === 'issueNo' ? 'asc' : 'desc'
+  }
   await applyFilters()
 }
 
@@ -276,7 +300,7 @@ function formatDate(value: string): string {
         </template>
 
         <!-- TOOLBAR: SEARCH & FILTER AREA -->
-        <form class="issue-filter-form" @submit.prevent="applyFilters">
+        <form v-if="activeView === 'list'" class="issue-filter-form" @submit.prevent="applyFilters">
         <SharedFilterToolbar align="start" class="issue-filter-toolbar">
           <SharedSearchField
             v-model="searchQuery"
@@ -308,14 +332,6 @@ function formatDate(value: string): string {
               {{ member.username }}
             </option>
           </UiSelect>
-          <UiSelect v-model="sortBy" aria-label="排序欄位" @change="applyFilters">
-            <option value="updatedAt">最近更新</option>
-            <option value="issueNo">任務編號</option>
-          </UiSelect>
-          <UiSelect v-model="sortDirection" aria-label="排序方向" @change="applyFilters">
-            <option value="desc">由新到舊</option>
-            <option value="asc">由舊到新</option>
-          </UiSelect>
           <UiButton type="submit" variant="secondary">搜尋</UiButton>
           <UiButton type="button" variant="ghost" @click="clearFilters">清除</UiButton>
         </SharedFilterToolbar>
@@ -323,7 +339,35 @@ function formatDate(value: string): string {
 
       <div v-if="activeView === 'list'" class="issue-list">
         <div class="issue-list__header">
-          <span>{{ t('projects.issues.columns.key') }}</span><span>{{ t('projects.issues.columns.title') }}</span><span>{{ t('projects.issues.columns.status') }}</span><span>{{ t('projects.issues.columns.assignee') }}</span><span>{{ t('projects.issues.columns.updatedAt') }}</span>
+          <button
+            type="button"
+            class="column-sort"
+            :class="{ 'is-active': sortBy === 'issueNo' }"
+            :aria-label="t('projects.issues.sortByColumn', { column: t('projects.issues.columns.key') })"
+            :aria-pressed="sortBy === 'issueNo'"
+            @click="toggleSort('issueNo')"
+          >
+            <span>{{ t('projects.issues.columns.key') }}</span>
+            <ArrowUp v-if="sortBy === 'issueNo' && sortDirection === 'asc'" :size="14" aria-hidden="true" />
+            <ArrowDown v-else-if="sortBy === 'issueNo'" :size="14" aria-hidden="true" />
+            <ArrowUpDown v-else :size="14" aria-hidden="true" />
+          </button>
+          <span>{{ t('projects.issues.columns.title') }}</span>
+          <span>{{ t('projects.issues.columns.status') }}</span>
+          <span>{{ t('projects.issues.columns.assignee') }}</span>
+          <button
+            type="button"
+            class="column-sort"
+            :class="{ 'is-active': sortBy === 'updatedAt' }"
+            :aria-label="t('projects.issues.sortByColumn', { column: t('projects.issues.columns.updatedAt') })"
+            :aria-pressed="sortBy === 'updatedAt'"
+            @click="toggleSort('updatedAt')"
+          >
+            <span>{{ t('projects.issues.columns.updatedAt') }}</span>
+            <ArrowUp v-if="sortBy === 'updatedAt' && sortDirection === 'asc'" :size="14" aria-hidden="true" />
+            <ArrowDown v-else-if="sortBy === 'updatedAt'" :size="14" aria-hidden="true" />
+            <ArrowUpDown v-else :size="14" aria-hidden="true" />
+          </button>
         </div>
         <div v-for="issue in issues" :key="issue.id" class="issue-row">
           <strong>{{ issue.key }}</strong>
@@ -435,6 +479,8 @@ function formatDate(value: string): string {
 .issue-list { overflow: hidden; background: var(--kk-surface); border: 1px solid var(--kk-border); border-radius: var(--kk-radius); }
 .issue-list__header, .issue-row { display: grid; grid-template-columns: 90px minmax(240px, 1fr) 140px 150px 150px; gap: 12px; align-items: center; padding: 12px 16px; }
 .issue-list__header { color: var(--kk-text-muted); background: var(--kk-surface-subtle); border-bottom: 1px solid var(--kk-border); font-size: .75rem; font-weight: 700; }
+.column-sort { display: inline-flex; width: max-content; align-items: center; gap: 5px; padding: 0; color: inherit; background: transparent; border: 0; font: inherit; cursor: pointer; }
+.column-sort:hover, .column-sort.is-active { color: var(--kk-accent); }
 .issue-row { min-height: 58px; border-bottom: 1px solid var(--kk-border); font-size: .82rem; }
 .issue-row:last-child { border-bottom: 0; }
 .issue-row > strong { color: var(--kk-accent); }

@@ -8,7 +8,7 @@ public sealed class TestWorkspaceMember
         Guid id,
         Guid workspaceId,
         Guid accountId,
-        string role,
+        TestWorkspaceRole role,
         Guid actorId,
         DateTimeOffset now)
     {
@@ -24,8 +24,8 @@ public sealed class TestWorkspaceMember
     public Guid Id { get; private set; }
     public Guid TestWorkspaceId { get; private set; }
     public Guid AccountId { get; private set; }
-    public string Role { get; private set; } = null!;
-    public string Status { get; private set; } = "active";
+    public TestWorkspaceRole Role { get; private set; }
+    public TestWorkspaceMemberStatus Status { get; private set; } = TestWorkspaceMemberStatus.Active;
     public DateTimeOffset JoinedAt { get; private set; }
     public DateTimeOffset? RemovedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -35,7 +35,7 @@ public sealed class TestWorkspaceMember
     public int Version { get; private set; } = 1;
     public TestWorkspace Workspace { get; private set; } = null!;
 
-    public void ChangeRole(string role, Guid actorId, DateTimeOffset now)
+    public void ChangeRole(TestWorkspaceRole role, Guid actorId, DateTimeOffset now)
     {
         Role = role;
         UpdatedAt = now;
@@ -45,17 +45,17 @@ public sealed class TestWorkspaceMember
 
     public void Remove(Guid actorId, DateTimeOffset now)
     {
-        Status = "removed";
+        Status = TestWorkspaceMemberStatus.Removed;
         RemovedAt = now;
         UpdatedAt = now;
         UpdatedByAccountId = actorId;
         Version++;
     }
 
-    public void Restore(string role, Guid actorId, DateTimeOffset now)
+    public void Restore(TestWorkspaceRole role, Guid actorId, DateTimeOffset now)
     {
         Role = role;
-        Status = "active";
+        Status = TestWorkspaceMemberStatus.Active;
         RemovedAt = null;
         UpdatedAt = now;
         UpdatedByAccountId = actorId;

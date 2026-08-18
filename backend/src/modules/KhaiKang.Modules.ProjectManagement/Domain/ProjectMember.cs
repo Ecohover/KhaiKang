@@ -1,26 +1,23 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class ProjectMember
+public sealed class ProjectMember : AuditableEntity
 {
     private ProjectMember()
     {
     }
 
-    public ProjectMember(
-        Guid id,
-        Guid projectId,
-        Guid accountId,
-        DateTimeOffset joinedAt,
-        Guid actorAccountId)
+    private ProjectMember(ProjectMemberCreation creation, ChangeContext context)
     {
-        Id = id;
-        ProjectId = projectId;
-        AccountId = accountId;
-        JoinedAt = joinedAt;
-        CreatedAt = joinedAt;
-        CreatedByAccountId = actorAccountId;
-        UpdatedAt = joinedAt;
-        UpdatedByAccountId = actorAccountId;
+        Id = creation.Id;
+        ProjectId = creation.ProjectId;
+        AccountId = creation.AccountId;
+        JoinedAt = context.OccurredAt;
+        InitializeAudit(context);
+    }
+
+    public static ProjectMember Create(ProjectMemberCreation creation, ChangeContext context)
+    {
+        return new ProjectMember(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -31,47 +28,31 @@ public sealed class ProjectMember
 
     public Guid AccountId { get; private set; }
 
-    public string Status { get; private set; } = "active";
+    public ProjectMemberStatus Status { get; private set; } = ProjectMemberStatus.Active;
 
     public DateTimeOffset JoinedAt { get; private set; }
 
     public DateTimeOffset? RemovedAt { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; private set; }
-
-    public Guid? CreatedByAccountId { get; private set; }
-
-    public DateTimeOffset UpdatedAt { get; private set; }
-
-    public Guid? UpdatedByAccountId { get; private set; }
-
-    public int Version { get; private set; } = 1;
-
     public ICollection<ProjectMemberRole> Roles { get; } = [];
 
-    public void Restore(Guid actorAccountId, DateTimeOffset occurredAt)
+    public void Restore(ChangeContext context)
     {
-        Status = "active";
-        JoinedAt = occurredAt;
+        Status = ProjectMemberStatus.Active;
+        JoinedAt = context.OccurredAt;
         RemovedAt = null;
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        RecordChange(context);
     }
 
-    public void Remove(Guid actorAccountId, DateTimeOffset occurredAt)
+    public void Remove(ChangeContext context)
     {
-        Status = "removed";
-        RemovedAt = occurredAt;
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        Status = ProjectMemberStatus.Removed;
+        RemovedAt = context.OccurredAt;
+        RecordChange(context);
     }
 
-    public void RecordRoleChange(Guid actorAccountId, DateTimeOffset occurredAt)
+    public void RecordRoleChange(ChangeContext context)
     {
-        UpdatedAt = occurredAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        RecordChange(context);
     }
 }

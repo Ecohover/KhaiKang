@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.TestManagement.Application;
 using KhaiKang.Modules.TestManagement.Contracts;
+using KhaiKang.Modules.TestManagement.Domain;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -62,7 +63,8 @@ public static class TestManagementEndpointExtensions
             TestManagementService service, CancellationToken token) =>
         {
             if (ValidateName(request.Name, request.Description) is { } invalid) return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["request"] = ["Status or version is invalid."],
@@ -217,7 +219,8 @@ public static class TestManagementEndpointExtensions
         {
             if (ValidateSuite(request.Name, request.Description, request.SortOrder) is { } invalid)
                 return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["request"] = ["Status or version is invalid."],
@@ -240,6 +243,8 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, CreateTestCaseRequest request, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>
         {
+            if (ValidateCaseReferences(request.SuiteId, request.TagIds) is { } invalidReferences)
+                return invalidReferences;
             if (ValidateCase(request.Title, request.Description, request.Preconditions,
                 request.OverallExpectedResult, request.SortOrder, request.Steps) is { } invalid)
                 return invalid;
@@ -265,10 +270,13 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, Guid caseId, UpdateTestCaseRequest request, ClaimsPrincipal principal,
             TestManagementService service, CancellationToken token) =>
         {
+            if (ValidateCaseReferences(request.SuiteId, request.TagIds) is { } invalidReferences)
+                return invalidReferences;
             if (ValidateCase(request.Title, request.Description, request.Preconditions,
                 request.OverallExpectedResult, request.SortOrder, request.Steps) is { } invalid)
                 return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["testCase"] = ["Status or version is invalid."],
@@ -316,7 +324,7 @@ public static class TestManagementEndpointExtensions
         {
             if (ValidatePlan(request.Name, request.Description, request.CaseIds) is { } invalid)
                 return invalid;
-            if (request.Status is not ("draft" or "active" or "archived") ||
+            if (!TestManagementCodes.TryParsePlanStatus(request.Status, out _) ||
                 request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -404,7 +412,8 @@ public static class TestManagementEndpointExtensions
             Guid workspaceId, Guid runId, UpdateTestRunStatusRequest request,
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
         {
-            if (request.Status is not ("in_progress" or "completed" or "cancelled") ||
+            if (!TestManagementCodes.TryParseRunStatus(request.Status, out var status) ||
+                status == TestRunStatus.NotStarted ||
                 request.Version < 1 || request.Summary?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -440,7 +449,8 @@ public static class TestManagementEndpointExtensions
             ClaimsPrincipal principal, TestManagementService service, CancellationToken token) =>
         {
             if (ValidateTag(request.Name, request.Description) is { } invalid) return invalid;
-            if (request.Status is not ("active" or "inactive") || request.Version < 1)
+            if (!TestManagementCodes.TryParseAssetStatus(request.Status, out _) ||
+                request.Version < 1)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["tag"] = ["Status or version is invalid."] });
             if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
             return Map(await service.UpdateTagAsync(tagId, accountId, request, token));
@@ -454,15 +464,16 @@ public static class TestManagementEndpointExtensions
     private static Guid? AccountId(ClaimsPrincipal principal) =>
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var value) ? value : null;
 
-    private static IResult Map<T>(TestManagementResult<T> result) => result.Outcome switch
-    {
-        TestManagementOutcome.Succeeded => Results.Ok(result.Value),
-        TestManagementOutcome.Forbidden => Results.Forbid(),
-        TestManagementOutcome.NotFound => Results.NotFound(),
-        TestManagementOutcome.Invalid => Results.ValidationProblem(
-            new Dictionary<string, string[]> { ["request"] = [result.Code ?? "Invalid request."] }),
-        _ => Problem(result.Code ?? "test_management_conflict"),
-    };
+    private static IResult Map<T>(TestManagementResult<T> result)
+        where T : class => result.Outcome switch
+        {
+            TestManagementOutcome.Succeeded => Results.Ok(result.Value),
+            TestManagementOutcome.Forbidden => Results.Forbid(),
+            TestManagementOutcome.NotFound => Results.NotFound(),
+            TestManagementOutcome.Invalid => Results.ValidationProblem(
+                new Dictionary<string, string[]> { ["request"] = [result.Code ?? "Invalid request."] }),
+            _ => Problem(result.Code ?? "test_management_conflict"),
+        };
 
     private static IResult Problem(string code) => Results.Problem(
         statusCode: 409,
@@ -497,7 +508,7 @@ public static class TestManagementEndpointExtensions
         string? preconditions,
         string? overallExpectedResult,
         int sortOrder,
-        IReadOnlyList<CreateTestCaseStepRequest>? steps)
+        IReadOnlyList<CreateTestCaseStepRequest?>? steps)
     {
         var textIsInvalid =
             string.IsNullOrWhiteSpace(title) ||
@@ -510,6 +521,7 @@ public static class TestManagementEndpointExtensions
             steps is null ||
             steps.Count is < 1 or > 100 ||
             steps.Any(step =>
+                step is null ||
                 string.IsNullOrWhiteSpace(step.Action) ||
                 step.Action.Length > 4000 ||
                 string.IsNullOrWhiteSpace(step.ExpectedResult) ||
@@ -528,13 +540,36 @@ public static class TestManagementEndpointExtensions
         });
     }
 
+    private static IResult? ValidateCaseReferences(
+        Guid suiteId,
+        IReadOnlyList<Guid>? tagIds)
+    {
+        if (suiteId == Guid.Empty)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["testCase"] = ["A valid suite is required."],
+            });
+        }
+
+        if (tagIds is not null && tagIds.Count != tagIds.Distinct().Count())
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["tagIds"] = ["Tag IDs must be unique."],
+            });
+        }
+
+        return null;
+    }
+
     private static IResult? ValidateTag(string name, string? description) =>
         string.IsNullOrWhiteSpace(name) || name.Length > 50 || description?.Length > 4000
             ? Results.ValidationProblem(new Dictionary<string, string[]> { ["tag"] = ["Tag name or description is invalid."] })
             : null;
 
     private static bool ValidRole(string role) =>
-        role is "owner" or "manager" or "tester" or "viewer";
+        TestManagementCodes.TryParseWorkspaceRole(role, out _);
 
     private static IResult? ValidatePlan(
         string? name, string? description, IReadOnlyList<Guid>? caseIds)
@@ -550,7 +585,7 @@ public static class TestManagementEndpointExtensions
 
     private static IResult? ValidateResult(RecordTestResultRequest request)
     {
-        if (request.Status is not ("not_run" or "passed" or "failed" or "blocked" or "skipped") ||
+        if (!TestManagementCodes.TryParseResultStatus(request.Status, out _) ||
             request.Version < 1 || request.ActualResult?.Length > 4000)
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {

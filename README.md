@@ -66,8 +66,8 @@ API or PostgreSQL service directly.
 
 ### Run from source
 
-Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
-PostgreSQL, Node.js 22, and pnpm 10.
+Prerequisites: the exact [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+declared by [`global.json`](./global.json), PostgreSQL, Node.js 22, and pnpm 10.
 
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config

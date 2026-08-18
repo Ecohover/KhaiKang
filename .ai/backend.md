@@ -30,6 +30,10 @@ Read this file only for changes under `backend/`.
 - Use standard .NET Configuration and validated options. Do not add a custom
   environment-variable abstraction or read environment variables in features.
 - Use PostgreSQL and EF Core by default. Schema changes require migrations.
+- Before a feature branch is merged, squash its unpublished schema work into
+  one final migration per affected `DbContext`. Multiple migrations for the
+  same context require a documented reason, such as an already-deployed
+  migration, staged data movement, or an operationally phased rollout.
 - Store time in UTC and convert only at presentation boundaries.
 - Do not add mapping, mediator, repository, or result-wrapper libraries without
   a demonstrated need and an accepted project decision.

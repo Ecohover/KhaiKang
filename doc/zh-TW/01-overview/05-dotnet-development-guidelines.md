@@ -1,6 +1,6 @@
 # .NET 開發準則
 
-> 狀態：Accepted。這份文件定義已採用的開發基線，但尚未將 SDK、MSBuild、NuGet、analyzer 或 CI 限制套用到專案；可執行限制會在後續獨立變更處理。
+> 狀態：Accepted。這份文件定義已採用的開發基線；SDK 選版已由 `global.json` 與 CI 落實，其餘 MSBuild、NuGet、analyzer 與 format 限制仍會在後續獨立變更處理。
 
 ## 目的
 
@@ -33,7 +33,8 @@
 - Nullable reference types、.NET analyzers 與 code style build enforcement 必須啟用。
 - 正式 CI 應將 compiler 與已採用 analyzer 的 warning 視為 error；本機仍使用一般 `dotnet build`，不要求額外 wrapper script。
 - 不得用全域 `NoWarn` 隱藏問題；必要的局部 suppression 必須包含具體理由。
-- `dotnet restore`、`dotnet build`、`dotnet format --verify-no-changes` 與 `dotnet test` 是後端 pull request 的基本驗證。
+- `dotnet restore`、`dotnet build` 與 `dotnet test` 是目前後端 pull request 的基本驗證。
+- E07 建立全 repository 格式 baseline 前，修改過的 C# 檔案必須使用 `dotnet format --verify-no-changes --include <paths>` 檢查，且不得增加既有格式債務；目前尚不把全 solution format 驗證列為 pull request gate。
 
 ## Project 與依賴方向
 
@@ -62,14 +63,27 @@ KhaiKang.CommonUtils.Web
 ## C# 程式碼
 
 - 使用 file-scoped namespace、四個空格縮排與完整大括號。
-- 一個檔案只放一個主要 public type；只服務所屬 type 的小型 private nested type 可以例外。
+- 每個 top-level public class、record、interface、enum 或 struct 各自使用一個檔案，檔名必須與型別名稱相同；只服務所屬 type 的小型 private nested type 可以例外。
+- 同一 layer 內，同一 use case 的型別放在同一個以業務命名的資料夾；例如 `Contracts/IssueCommands/` 應一起放置 Command、Outcome、Result 與 Interface。業務資料夾維持在 layer root 下 1 至 2 層。不得建立名稱為 `Enums`、`Interfaces`、`Requests`、`Responses` 或 `Results` 的純技術資料夾；`IssueCommands` 這類名稱代表業務 use case，不屬於技術分類。真正跨多個資源共用的 coordinator 或 constants type，在找到有意義的 owner 前可以暫留 layer root。
+- Checked-in generated C# source 也遵守相同的 public type 與檔案配置；只有 accepted generator policy 明確定義的範圍可以例外。EF Core migration 可以保留必要的 timestamp-prefixed 檔名，但仍須遵守一檔一個 top-level public type；architecture check 不得靜默排除整個 generated 目錄。
 - Public API 使用 PascalCase，parameter 與 local 使用 camelCase，private field 使用 `_camelCase`。
 - 非同步方法使用 `Async` 後綴；ASP.NET endpoint handler 與 framework override 可以依慣例例外。
-- Request、response 與 value object 優先使用 immutable `record`、constructor 或 `init` property。
+- 所有公開邊界 contract 都必須宣告明確的 type body 與具名 property；HTTP request、response、query、跨模組 command、directory entry 與公開 Application result 都不得使用 positional record。一至三個語意清楚的 input 必填欄位可以使用明確 constructor 與 getter-only property；必填欄位更多的 input 與 response model 使用 `required` init-only property，避免形成長 constructor。Optional 欄位使用 init-only property。只有小型 Domain Value Object 與真正 internal 的 implementation carrier，在 positional 形式確實更清楚時才能保留。
+- HTTP request body contract 命名為 `{Verb}{Resource}Request`；query／filter model 可以使用能表達意圖的 `Query` 名稱。跨模組 Application input 命名為 `{Verb}{Resource}Command`，其 output 使用完整 command 名稱，例如 `CreateIssueCommandOutcome` 與 `CreateIssueCommandResult`。其他 Application result 依 use case 或有共同語意的操作族群命名。公開 Result 使用明確 type body；nullable payload 可能形成不合法狀態時，使用 private constructor 與具名 success／failure factory。沒有 payload 的操作可以直接回傳 Outcome。
+- 只有 caller 不會面對不可能值、衝突的 payload invariant 或模糊 mapping 時，才共用 Outcome／Result。範圍過大的 `MutationOutcome` 應改成 use-case-specific type；若一組有共同語意的操作真正共享相同 contract，也不得機械式為每個 method 建立一組新型別。
 - 必填 reference member 使用 constructor 或 `required`，不得用 `string.Empty` 或 null-forgiving operator 偽裝完成初始化。
 - Public collection 優先暴露 `IReadOnlyList<T>`、`IReadOnlyCollection<T>` 或 `IEnumerable<T>`；不要公開可替換的 `List<T>`。
 - 沒有設計為擴充點的 class 應考慮 `sealed`，但 EF Core 或測試需求可以保留繼承能力。
 - Primary constructor 可以使用，但不是強制規則；可讀性與依賴清楚度優先。
+- Domain 中封閉的狀態、類型、角色或結果必須使用 enum 或 Value Object 表達；未驗證的字串不得一路傳入 Domain 或 Application 邏輯。
+- 程式碼應使用領域語言，並依序呈現判斷與流程。若較短的語法、深層巢狀 expression 或語法糖讓業務流程更難閱讀，就不算改善。
+- 新增的 public Domain 與 Application API 原則上不得超過三個業務參數；`CancellationToken`、dependency-injection constructor 與 framework-required signature 不計入。此限制不得機械式套用到 private helper：清楚命名的少量 private 參數比一次性參數袋更容易閱讀。既有長參數 API 視為待清理債務；確有必要的 public 例外必須在 pull request 說明，持續性例外則以 ADR 記錄。
+- 多個同型別 primitive、`string`、`Guid` 或時間參數若容易放錯位置，應以具領域名稱的 immutable Parameter Object、Value Object 或 Strongly Typed ID 組合。Parameter Object 必須代表 use case、domain concept、共同生命週期，或在有意義的邊界上承載 invariant。不得建立後立即拆回原參數而只為符合數量門檻；也不得只因具名 property 數量多，就把內聚的 creation／change model 再拆成更多小型別。
+- 建立與修改同一概念的資料應使用不同且能表達意圖的 type，例如 `IssueCreation` 與 `IssueDetailsChange`；HTTP request DTO 不直接充當 Domain Parameter Object。
+- Mutation context 建立後應在 use case 中完整傳遞，不拆成 actor 與發生時間後再於下游 helper 重建相同 context。
+- Helper、Factory、Command 與 abstraction 必須增加領域語意、驗證、政策或已證明的重用。避免只有轉呼叫的 helper，也不以 null、optional mode value 或 boolean flag 讓一個 helper 代表不同 use case；應先拆成能表達意圖的操作，只抽出真正相同的規則。
+- 多個 entity 真正共享相同 audit lifecycle 時，可以使用一層淺層的 `AuditableEntity` 基底集中 `CreatedAt`、`CreatedByAccountId`、`UpdatedAt`、`UpdatedByAccountId` 與 `Version`，以及一致的初始化與異動方法。不得建立只為形式統一的深層 entity 階層。
+- 業務生命週期欄位不屬於通用 audit metadata，例如 `CompletedAt` 應保留在 `Issue`；共用基底不得吸收 feature-specific state 或規則。
 - XML documentation 用英文撰寫，只要求在公開 extension point、library API 或無法從名稱理解的 contract；不強制替每個 public member 重述程式碼。
 - 不加入只為減少幾行程式碼的 abstraction、base service 或 helper。
 
@@ -117,8 +131,13 @@ KhaiKang.CommonUtils.Web
 
 - PostgreSQL 是 system of record，EF Core 是預設 data access technology。
 - 初期直接使用明確的 `DbContext` 與 feature query/use case；不預設建立 generic repository 或 unit-of-work wrapper。
+- 封閉的 enum 或 Value Object 必須以穩定英文 code 寫入資料庫，不得儲存 enum 整數值或語系化顯示文字。轉換只存在於 persistence 與 transport boundary；已持久化的 code 若要重新命名，屬於資料契約變更，必須有明確 migration 或相容方案。
+- 穩定 code 的字串值必須在所屬 mapping type 集中宣告為具語意的 `private const string`，並由序列化與解析共用；不得在多個分支重複 literal，也不得以 enum 名稱、大小寫轉換或 reflection 自動推導持久化 code。
+- 由資料表管理的分類資料必須分開保存穩定英文 `code` 與使用者顯示用 `name`。業務資料以分類主鍵關聯；API 在需要機器可讀識別時回傳穩定 code。
+- EF Core 查詢應保持明確且容易順讀。Collection use case 原則上依序呈現正規化、過濾、排序、計數、分頁、投影與執行；當 predicate 或排序規則遮蔽主流程時，抽成 feature-local 且能表達意圖的方法，不以 generic query-options abstraction 隱藏一般 EF 行為。
 - Entity 與 EF Core configuration 由所屬功能模組管理；其他模組不得直接修改其 table。
 - Schema 變更必須有 migration；正式啟動流程不得使用 `EnsureCreated` 代替 migration。
+- 功能分支準備合併主線前，每個受影響的 `DbContext` 只保留一份尚未發布的最終 migration。同一 context 若需保留多份，必須是已部署 migration、分階段資料搬移或分段上線等特殊情境，並在 pull request 記錄原因。
 - Read-only query 應使用 projection，並在不需要 tracking 時使用 `AsNoTracking`。
 - 避免 N+1 query、無界限 collection 與先載入完整 entity 再丟棄大部分欄位。
 - Database transaction 以 application use case 為邊界，不跨外部 network call 長時間持有。
@@ -144,6 +163,8 @@ KhaiKang.CommonUtils.Web
 - 測試不得依賴執行順序、任意 sleep、開發者機器資料或已存在的外部服務。
 - Arrange、Act、Assert 能提升可讀性時使用空行分段，不加入只重述程式碼的註解。
 - 新功能至少涵蓋成功路徑、主要 validation、authorization 與重要 conflict/not-found contract。
+- 漸進式重構應先建立 characterization tests，保護對外行為、業務 invariant、audit metadata 與 optimistic concurrency version，再改變內部結構。
+- 尚未清除的架構債務可以用明確 allowlist 建立 fitness test；allowlist 只記錄既有債務，不得讓新程式碼擴大，且每完成一項重構就必須同步移除對應項目。
 
 ## Dependency 治理
 
@@ -160,8 +181,10 @@ KhaiKang.CommonUtils.Web
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
-dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build
 ```
+
+若本批修改 C#，還需以 `--include` 將 `dotnet format` 限定在受影響路徑。
+全 solution format gate 會等 E07 記錄並清除既有 baseline 後再啟用。
 
 若因環境限制無法執行其中一項，pull request 必須說明未執行項目、原因與替代驗證。

@@ -5,6 +5,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiAttachmentLink, UiButton, UiCreateActions, UiFormActionBar, UiFormSection, UiInput } from '@khaikang/ui'
 import AppMarkdown from '../components/AppMarkdown.vue'
+import IssueRelationsPanel from '../components/IssueRelationsPanel.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
   IssueMetadataResponse,
@@ -30,6 +31,7 @@ const attachments = ref<IssueAttachmentResponse[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const savingAssignee = ref(false)
+const savingStatus = ref(false)
 const uploadingAttachment = ref(false)
 const error = ref('')
 const versionConflict = ref(false)
@@ -45,6 +47,7 @@ const form = reactive({
   definitionOfDone: '',
   completionSummary: '',
 })
+const statusCode = ref('')
 const { showCreated, showUpdated } = useSaveNotice()
 const { isDirty, markClean } = useFormDirtyState(() => ({ ...form }))
 
@@ -58,12 +61,21 @@ const canCreate = computed(
 const canAssign = computed(
   () => project.value?.currentUserPermissions.includes('issue.assignee.change') ?? false,
 )
+const canChangeStatus = computed(() => Boolean(
+  isActiveProject.value && project.value?.currentUserPermissions.includes('issue.status.change'),
+))
 const canUploadAttachments = computed(() => Boolean(
   issueId.value && isActiveProject.value &&
   project.value?.currentUserPermissions.includes('issue.attachment.upload'),
 ))
 const canDeleteAttachments = computed(() => Boolean(
   isActiveProject.value && project.value?.currentUserPermissions.includes('issue.attachment.delete'),
+))
+const canCreateRelations = computed(() => Boolean(
+  isActiveProject.value && project.value?.currentUserPermissions.includes('issue.relation.create'),
+))
+const canDeleteRelations = computed(() => Boolean(
+  isActiveProject.value && project.value?.currentUserPermissions.includes('issue.update'),
 ))
 const attachmentDialogLabels = computed(() => ({
   attachmentDialog: t('common.markdown.attachmentDialog'),
@@ -85,7 +97,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 onBeforeRouteLeave(() => {
-  if (allowNavigation.value || !isDirty.value || saving.value || savingAssignee.value) {
+  if (allowNavigation.value || !isDirty.value || saving.value || savingAssignee.value || savingStatus.value) {
     return true
   }
 
@@ -93,7 +105,7 @@ onBeforeRouteLeave(() => {
 })
 
 function handleBeforeUnload(event: BeforeUnloadEvent): void {
-  if (!isDirty.value || allowNavigation.value || saving.value || savingAssignee.value) return
+  if (!isDirty.value || allowNavigation.value || saving.value || savingAssignee.value || savingStatus.value) return
 
   event.preventDefault()
   event.returnValue = ''
@@ -145,6 +157,7 @@ async function loadPage(): Promise<void> {
 
 function applyIssue(value: IssueResponse): void {
   issue.value = value
+  statusCode.value = value.statusCode
   form.title = value.title
   form.typeCode = value.typeCode
   form.priorityCode = value.priorityCode
@@ -290,6 +303,39 @@ function formatDateTime(value: string | null): string {
   return d(new Date(value), 'dateTime')
 }
 
+async function changeStatus(nextStatusCode: string): Promise<void> {
+  if (!issue.value || !issueId.value || !canChangeStatus.value) return
+
+  const previousStatusCode = issue.value.statusCode
+  if (previousStatusCode === nextStatusCode) return
+
+  savingStatus.value = true
+  error.value = ''
+  try {
+    const result = await apiClient.updateIssueStatus(
+      projectId.value,
+      issueId.value,
+      { statusCode: nextStatusCode, version: issue.value.version },
+      await secureHeaders(),
+    )
+    if (!result.data) {
+      statusCode.value = previousStatusCode
+      error.value = problemMessage(result.error, t('projects.issues.statusUpdateFailed'))
+      versionConflict.value = result.error?.code === 'issue_version_conflict'
+      return
+    }
+
+    issue.value = result.data
+    statusCode.value = result.data.statusCode
+    showUpdated(t('projects.issues.record'), result.data.key)
+  } catch {
+    statusCode.value = previousStatusCode
+    error.value = t('projects.issues.connectionFailed')
+  } finally {
+    savingStatus.value = false
+  }
+}
+
 async function uploadIssueAttachment(file: File): Promise<IssueAttachmentResponse> {
   if (!issueId.value || !canUploadAttachments.value) throw new Error('Attachment upload is unavailable.')
   const result = await apiClient.uploadIssueAttachment(
@@ -421,10 +467,22 @@ function attachmentSize(fileSize: number): string {
             :disabled="!canAssign || !isActiveProject || savingAssignee"
             @change="isEditing && changeAssignee(($event.target as HTMLSelectElement).value || null)"
           ><option :value="null">{{ t('projects.issues.unassigned') }}</option><option v-for="member in members" :key="member.id" :value="member.accountId">{{ member.username }}</option></select></label>
-          <div v-if="issue" class="field"><span>{{ t('projects.issues.fields.currentStatus') }}</span><div class="read-value">{{ issue.statusName }}</div></div>
+          <label v-if="issue" class="field"><span>{{ t('projects.issues.fields.currentStatus') }}</span><select
+            v-model="statusCode"
+            :disabled="!canChangeStatus || savingStatus"
+            @change="changeStatus(($event.target as HTMLSelectElement).value)"
+          ><option v-for="status in metadata.statuses" :key="status.code" :value="status.code">{{ status.name }}</option></select></label>
           <div class="field field--full"><span>{{ t('projects.issues.fields.description') }}</span><AppMarkdown v-model="form.description" :mode="contentReadOnly ? 'display' : 'edit'" :placeholder="t('projects.issues.fields.descriptionPlaceholder')" :disabled="!isActiveProject" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div>
         </div>
       </UiFormSection>
+
+      <IssueRelationsPanel
+        v-if="isEditing && issueId"
+        :project-id="projectId"
+        :issue-id="issueId"
+        :can-create="canCreateRelations"
+        :can-delete="canDeleteRelations"
+      />
 
       <UiFormSection><template #header><FileText :size="19" aria-hidden="true" /><div><h3>{{ t('projects.issues.userStory.title') }}</h3><p>{{ t('projects.issues.userStory.description') }}</p></div></template><div class="field"><AppMarkdown v-model="form.userStory" :mode="contentReadOnly ? 'display' : 'edit'" placeholder="As a... I want... So that..." :disabled="!isActiveProject" :upload-image="canUploadAttachments ? uploadIssueImage : undefined" :upload-attachment="canUploadAttachments ? uploadIssueFile : undefined" /></div></UiFormSection>
 

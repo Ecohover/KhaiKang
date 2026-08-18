@@ -1,0 +1,484 @@
+using System.Net;
+using System.Net.Http.Json;
+using KhaiKang.Modules.Identity.Contracts;
+using KhaiKang.Modules.TestManagement.Contracts;
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace KhaiKang.Api.IntegrationTests;
+
+public sealed class TestManagementEndpointsTests(ApiIntegrationTestFactory factory)
+    : IClassFixture<ApiIntegrationTestFactory>
+{
+    private readonly HttpClient _client = factory.CreateClient(
+        new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+            HandleCookies = true,
+        });
+
+    [Fact]
+    public async Task TestManagement_CreateWorkspaceSuiteAndCase_PersistsOrderedSteps()
+    {
+        var csrfToken = await GetCsrfTokenAsync();
+        var initializeResponse = await PostAsync(
+            "/api/v1/setup/initialize",
+            content: null,
+            csrfToken);
+        initializeResponse.EnsureSuccessStatusCode();
+        var credentials = await initializeResponse.Content.ReadFromJsonAsync<InitializeAdminResponse>();
+        Assert.NotNull(credentials);
+
+        var loginResponse = await PostAsync(
+            "/api/v1/auth/login",
+            JsonContent.Create(new LoginRequest
+            {
+                Username = "admin",
+                Password = credentials.InitialPassword,
+                RememberMe = false,
+            }),
+            csrfToken);
+        loginResponse.EnsureSuccessStatusCode();
+
+        var explicitResponse = await CreateWorkspaceAsync("Regression", "qa");
+        Assert.Equal(HttpStatusCode.Created, explicitResponse.StatusCode);
+        var explicitWorkspace =
+            await explicitResponse.Content.ReadFromJsonAsync<TestWorkspaceResponse>();
+        Assert.NotNull(explicitWorkspace);
+        Assert.Equal("QA", explicitWorkspace.Prefix);
+
+        var generatedResponse = await CreateWorkspaceAsync("Web Checkout", null);
+        Assert.Equal(HttpStatusCode.Created, generatedResponse.StatusCode);
+        var generatedWorkspace =
+            await generatedResponse.Content.ReadFromJsonAsync<TestWorkspaceResponse>();
+        Assert.NotNull(generatedWorkspace);
+        Assert.Equal("WEBCHE", generatedWorkspace.Prefix);
+
+        var generatedConflictResponse = await CreateWorkspaceAsync("Web Checkers", null);
+        Assert.Equal(HttpStatusCode.Created, generatedConflictResponse.StatusCode);
+        var generatedConflictWorkspace =
+            await generatedConflictResponse.Content.ReadFromJsonAsync<TestWorkspaceResponse>();
+        Assert.NotNull(generatedConflictWorkspace);
+        Assert.Equal("WEBCHE2", generatedConflictWorkspace.Prefix);
+
+        var duplicateResponse = await CreateWorkspaceAsync("API Regression", "QA");
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+
+        var invalidResponse = await CreateWorkspaceAsync("Invalid Prefix", "1bad");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
+
+        var suiteResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/suites",
+            JsonContent.Create(new CreateTestSuiteRequest
+            {
+                ParentId = null,
+                Name = "Authentication",
+                Description = "Authentication scenarios",
+                SortOrder = 1,
+            }),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, suiteResponse.StatusCode);
+        var suite = await suiteResponse.Content.ReadFromJsonAsync<TestSuiteResponse>();
+        Assert.NotNull(suite);
+
+        var tagResponse = await PostAsync(
+            "/api/v1/test-tags",
+            JsonContent.Create(new CreateTestTagRequest("smoke", "Critical sign-in coverage.")),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, tagResponse.StatusCode);
+        var tag = await tagResponse.Content.ReadFromJsonAsync<TestTagResponse>();
+        Assert.NotNull(tag);
+
+        var createCaseResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases",
+            JsonContent.Create(new CreateTestCaseRequest(
+                suiteId: suite.Id,
+                title: "Sign in with valid credentials",
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "Open the sign-in page.",
+                        expectedResult: "The sign-in form is displayed."),
+                    new CreateTestCaseStepRequest(
+                        action: "Submit valid credentials.",
+                        expectedResult: "The home page is displayed."),
+                ])
+            {
+                Description = "Verifies the normal sign-in flow.",
+                Preconditions = "An active account exists.",
+                OverallExpectedResult = "The user reaches the home page.",
+                SortOrder = 1,
+                TagIds = [tag.Id],
+            }),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, createCaseResponse.StatusCode);
+        var testCase = await createCaseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
+        Assert.NotNull(testCase);
+        Assert.Equal(suite.Id, testCase.SuiteId);
+        Assert.Equal(1, testCase.CaseNo);
+        Assert.Equal(tag.Id, Assert.Single(testCase.Tags).Id);
+        Assert.Collection(
+            testCase.Steps,
+            step => Assert.Equal(1, step.StepNo),
+            step => Assert.Equal(2, step.StepNo));
+
+        var caseListResponse = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases?suiteId={suite.Id}");
+        caseListResponse.EnsureSuccessStatusCode();
+        var cases = await caseListResponse.Content.ReadFromJsonAsync<TestCaseResponse[]>();
+        var listedCase = Assert.Single(Assert.IsType<TestCaseResponse[]>(cases));
+        Assert.Equal(testCase.Id, listedCase.Id);
+        Assert.Equal(2, listedCase.Steps.Count);
+
+        var getCaseResponse = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{testCase.Id}");
+        getCaseResponse.EnsureSuccessStatusCode();
+        var fetchedCase = await getCaseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
+        Assert.NotNull(fetchedCase);
+        Assert.Equal(testCase.Id, fetchedCase.Id);
+
+        var updateCaseRequest = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{testCase.Id}")
+        {
+            Content = JsonContent.Create(new UpdateTestCaseRequest(
+                suiteId: suite.Id,
+                title: "Sign in with valid credentials - Updated",
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "1. Enter **valid** credentials.",
+                        expectedResult: "The [home page](https://example.test/home) is displayed."),
+                ])
+            {
+                Description = "## Updated description\n\n- visible to the team",
+                Preconditions = "**Updated** preconditions.",
+                OverallExpectedResult = "[Updated expected result](https://example.test/expected).",
+                SortOrder = 2,
+                Status = "active",
+                Version = testCase.Version,
+                TagIds = [tag.Id],
+            }),
+        };
+        updateCaseRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        var updateCaseResponse = await _client.SendAsync(updateCaseRequest);
+        Assert.Equal(HttpStatusCode.OK, updateCaseResponse.StatusCode);
+        var updatedCase = await updateCaseResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
+        Assert.NotNull(updatedCase);
+        Assert.Equal("Sign in with valid credentials - Updated", updatedCase.Title);
+        Assert.Equal(2, updatedCase.Version);
+        Assert.Equal("## Updated description\n\n- visible to the team", updatedCase.Description);
+        Assert.Equal("**Updated** preconditions.", updatedCase.Preconditions);
+        Assert.Equal("[Updated expected result](https://example.test/expected).", updatedCase.OverallExpectedResult);
+        Assert.Equal(tag.Id, Assert.Single(updatedCase.Tags).Id);
+        Assert.Single(updatedCase.Steps);
+
+        var attachmentBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        using var attachmentContent = new MultipartFormDataContent();
+        var attachmentFile = new ByteArrayContent(attachmentBytes);
+        attachmentFile.Headers.ContentType = new("image/png");
+        attachmentContent.Add(attachmentFile, "file", "case-evidence.png");
+        var uploadAttachmentResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments",
+            attachmentContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, uploadAttachmentResponse.StatusCode);
+        var attachment = await uploadAttachmentResponse.Content.ReadFromJsonAsync<TestCaseAttachmentResponse>();
+        Assert.NotNull(attachment);
+        Assert.Equal(updatedCase.Id, attachment.TestCaseId);
+        Assert.Equal("case-evidence.png", attachment.OriginalFileName);
+        Assert.Equal("image/png", attachment.ContentType);
+        Assert.Equal(attachmentBytes.Length, attachment.FileSize);
+        Assert.Equal(64, attachment.FileHash.Length);
+
+        var listedAttachments = await _client.GetFromJsonAsync<TestCaseAttachmentResponse[]>(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments");
+        Assert.NotNull(listedAttachments);
+        Assert.Equal(attachment.Id, Assert.Single(listedAttachments).Id);
+
+        var attachmentDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments/{attachment.Id}/content?inline=true");
+        attachmentDownload.EnsureSuccessStatusCode();
+        Assert.Equal("image/png", attachmentDownload.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(attachmentBytes, await attachmentDownload.Content.ReadAsByteArrayAsync());
+
+        var expectedResultWithImage =
+            $"ooo\n\n![case-evidence.png](/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}/attachments/{attachment.Id}/content?inline=true#size=12)";
+        var addExpectedImageResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
+            new UpdateTestCaseRequest(
+                suiteId: suite.Id,
+                title: updatedCase.Title,
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "1. Enter **valid** credentials.",
+                        expectedResult: expectedResultWithImage),
+                ])
+            {
+                Description = updatedCase.Description,
+                Preconditions = updatedCase.Preconditions,
+                OverallExpectedResult = updatedCase.OverallExpectedResult,
+                SortOrder = updatedCase.SortOrder,
+                Status = updatedCase.Status,
+                Version = updatedCase.Version,
+                TagIds = [tag.Id],
+            });
+        addExpectedImageResponse.EnsureSuccessStatusCode();
+        updatedCase = await addExpectedImageResponse.Content.ReadFromJsonAsync<TestCaseResponse>();
+        Assert.NotNull(updatedCase);
+        Assert.Equal(expectedResultWithImage, Assert.Single(updatedCase.Steps).ExpectedResult);
+
+        var createPlanResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans",
+            JsonContent.Create(new
+            {
+                description = "Fixed release scope.",
+                caseIds = new[] { updatedCase.Id },
+            }),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, createPlanResponse.StatusCode);
+        var draftPlan = await createPlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
+        Assert.NotNull(draftPlan);
+        Assert.Equal("draft", draftPlan.Status);
+        Assert.Matches("^TestPlan\\d{8}$", draftPlan.Name);
+        Assert.Equal(1, draftPlan.PlanNo);
+        Assert.Equal("QA-TP1", draftPlan.Code);
+        Assert.Equal(updatedCase.Id, Assert.Single(draftPlan.Items).CaseId);
+
+        var activatePlanResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/plans/{draftPlan.Id}",
+            new UpdateTestPlanRequest
+            {
+                Name = draftPlan.Name,
+                Description = draftPlan.Description,
+                Status = "active",
+                Version = draftPlan.Version,
+                CaseIds = [updatedCase.Id],
+            });
+        activatePlanResponse.EnsureSuccessStatusCode();
+        var activePlan = await activatePlanResponse.Content.ReadFromJsonAsync<TestPlanResponse>();
+        Assert.NotNull(activePlan);
+        Assert.Equal("active", activePlan.Status);
+
+        var createRunResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs",
+            JsonContent.Create(new CreateTestRunRequest(activePlan.Id, "Release 2026.07")),
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, createRunResponse.StatusCode);
+        var run = await createRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(run);
+        Assert.Equal(1, run.RunNo);
+        Assert.Equal("QA-TP1-R1", run.Code);
+        var runItem = Assert.Single(run.Items);
+        var runStep = Assert.Single(runItem.Steps);
+        Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
+        Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
+        Assert.Equal(expectedResultWithImage, runStep.ExpectedResult);
+
+        var changeSourceResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/cases/{updatedCase.Id}",
+            new UpdateTestCaseRequest(
+                suiteId: suite.Id,
+                title: "Source changed after run",
+                steps:
+                [
+                    new CreateTestCaseStepRequest(
+                        action: "Changed source step.",
+                        expectedResult: "Changed source expected result."),
+                ])
+            {
+                Description = "Changed source description.",
+                SortOrder = 2,
+                Status = "active",
+                Version = updatedCase.Version,
+            });
+        changeSourceResponse.EnsureSuccessStatusCode();
+
+        var fetchedRunResponse = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}");
+        fetchedRunResponse.EnsureSuccessStatusCode();
+        var fetchedRun = await fetchedRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(fetchedRun);
+        runItem = Assert.Single(fetchedRun.Items);
+        runStep = Assert.Single(runItem.Steps);
+        Assert.Equal("Sign in with valid credentials - Updated", runItem.CaseTitle);
+        Assert.Equal("1. Enter **valid** credentials.", runStep.Action);
+        Assert.Equal(expectedResultWithImage, runStep.ExpectedResult);
+
+        var stepResultResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/steps/{runStep.Id}",
+            new RecordTestResultRequest("passed", "Displayed as expected.", runStep.Version));
+        stepResultResponse.EnsureSuccessStatusCode();
+        var stepRecordedRun =
+            await stepResultResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(stepRecordedRun);
+        Assert.Equal("in_progress", stepRecordedRun.Status);
+
+        runItem = Assert.Single(stepRecordedRun.Items);
+        var runEvidenceBytes = "run evidence"u8.ToArray();
+        using var runEvidenceContent = new MultipartFormDataContent();
+        var runEvidenceFile = new ByteArrayContent(runEvidenceBytes);
+        runEvidenceFile.Headers.ContentType = new("text/plain");
+        runEvidenceContent.Add(runEvidenceFile, "file", "run-evidence.txt");
+        var uploadRunEvidenceResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            runEvidenceContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Created, uploadRunEvidenceResponse.StatusCode);
+        var runEvidence = await uploadRunEvidenceResponse.Content
+            .ReadFromJsonAsync<TestRunItemAttachmentResponse>();
+        Assert.NotNull(runEvidence);
+        Assert.Equal(runItem.Id, runEvidence.TestRunItemId);
+        Assert.Equal("run-evidence.txt", runEvidence.OriginalFileName);
+
+        var listedRunEvidence = await _client
+            .GetFromJsonAsync<TestRunItemAttachmentResponse[]>(
+                $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments");
+        Assert.NotNull(listedRunEvidence);
+        Assert.Equal(runEvidence.Id, Assert.Single(listedRunEvidence).Id);
+
+        var runEvidenceDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}/content");
+        runEvidenceDownload.EnsureSuccessStatusCode();
+        Assert.Equal(runEvidenceBytes, await runEvidenceDownload.Content.ReadAsByteArrayAsync());
+
+        var deleteRunEvidenceRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}");
+        deleteRunEvidenceRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        var deleteRunEvidenceResponse = await _client.SendAsync(deleteRunEvidenceRequest);
+        Assert.Equal(HttpStatusCode.NoContent, deleteRunEvidenceResponse.StatusCode);
+
+        var deletedRunEvidenceDownload = await _client.GetAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{runEvidence.Id}/content");
+        Assert.Equal(HttpStatusCode.NotFound, deletedRunEvidenceDownload.StatusCode);
+
+        using var retainedEvidenceContent = new MultipartFormDataContent();
+        retainedEvidenceContent.Add(
+            new ByteArrayContent("retained evidence"u8.ToArray()),
+            "file",
+            "retained-evidence.txt");
+        var retainedEvidenceResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            retainedEvidenceContent,
+            await GetCsrfTokenAsync());
+        retainedEvidenceResponse.EnsureSuccessStatusCode();
+        var retainedEvidence = await retainedEvidenceResponse.Content
+            .ReadFromJsonAsync<TestRunItemAttachmentResponse>();
+        Assert.NotNull(retainedEvidence);
+
+        var itemResultResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
+            new RecordTestResultRequest("passed", "Scenario passed.", runItem.Version));
+        itemResultResponse.EnsureSuccessStatusCode();
+        var itemRecordedRun =
+            await itemResultResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(itemRecordedRun);
+        Assert.Equal(1, itemRecordedRun.Progress.Passed);
+
+        var completeResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/status",
+            new UpdateTestRunStatusRequest(
+                "completed", "Release accepted.", itemRecordedRun.Version));
+        completeResponse.EnsureSuccessStatusCode();
+        var completedRun = await completeResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(completedRun);
+        Assert.Equal("completed", completedRun.Status);
+
+        runItem = Assert.Single(completedRun.Items);
+        using var terminalEvidenceContent = new MultipartFormDataContent();
+        terminalEvidenceContent.Add(
+            new ByteArrayContent("late evidence"u8.ToArray()),
+            "file",
+            "late-evidence.txt");
+        var terminalUploadResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments",
+            terminalEvidenceContent,
+            await GetCsrfTokenAsync());
+        Assert.Equal(HttpStatusCode.Conflict, terminalUploadResponse.StatusCode);
+
+        var terminalDeleteRequest = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}/attachments/{retainedEvidence.Id}");
+        terminalDeleteRequest.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        var terminalDeleteResponse = await _client.SendAsync(terminalDeleteRequest);
+        Assert.Equal(HttpStatusCode.Conflict, terminalDeleteResponse.StatusCode);
+
+        var immutableResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{run.Id}/items/{runItem.Id}",
+            new RecordTestResultRequest("failed", "Must not change.", runItem.Version));
+        Assert.Equal(HttpStatusCode.Conflict, immutableResponse.StatusCode);
+
+        var retryRunResponse = await PostAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs",
+            JsonContent.Create(new CreateTestRunRequest(run.PlanId, "Cancelled run can resume.")),
+            await GetCsrfTokenAsync());
+        retryRunResponse.EnsureSuccessStatusCode();
+        var retryRun = await retryRunResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(retryRun);
+
+        var cancelledResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{retryRun.Id}/status",
+            new UpdateTestRunStatusRequest("cancelled", "Paused for later.", retryRun.Version));
+        cancelledResponse.EnsureSuccessStatusCode();
+        var cancelledRun = await cancelledResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(cancelledRun);
+        Assert.Equal("cancelled", cancelledRun.Status);
+        Assert.NotNull(cancelledRun.CompletedAt);
+
+        var restartResponse = await PutAsync(
+            $"/api/v1/test-workspaces/{explicitWorkspace.Id}/runs/{cancelledRun.Id}/status",
+            new UpdateTestRunStatusRequest("in_progress", null, cancelledRun.Version));
+        restartResponse.EnsureSuccessStatusCode();
+        var restartedRun = await restartResponse.Content.ReadFromJsonAsync<TestRunResponse>();
+        Assert.NotNull(restartedRun);
+        Assert.Equal("in_progress", restartedRun.Status);
+        Assert.NotNull(restartedRun.StartedAt);
+        Assert.Null(restartedRun.CompletedAt);
+    }
+
+    private async Task<HttpResponseMessage> CreateWorkspaceAsync(string name, string? prefix)
+    {
+        return await PostAsync(
+            "/api/v1/test-workspaces",
+            JsonContent.Create(new CreateTestWorkspaceRequest(name)
+            {
+                Prefix = prefix,
+                Description = null,
+            }),
+            await GetCsrfTokenAsync());
+    }
+
+    private async Task<string> GetCsrfTokenAsync()
+    {
+        var response = await _client.GetAsync("/api/v1/auth/csrf-token");
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CsrfTokenResponse>();
+        Assert.NotNull(payload);
+        return payload.Token;
+    }
+
+    private Task<HttpResponseMessage> PostAsync(
+        string path,
+        HttpContent? content,
+        string csrfToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = content,
+        };
+        request.Headers.Add("X-XSRF-TOKEN", csrfToken);
+        return _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> PutAsync<T>(string path, T value)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, path)
+        {
+            Content = JsonContent.Create(value),
+        };
+        request.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync());
+        return await _client.SendAsync(request);
+    }
+}

@@ -6,7 +6,7 @@ Status: synchronized on 2026-08-09. Traditional Chinese counterpart: [專案管�
 
 The MVP provides a Kanban-oriented project and issue core without Sprint coupling. It includes projects, members, fixed project roles, issue types/statuses/priorities, issue list and board views, assignment, free status transitions, completion information, filtering, sorting, and attachments.
 
-Custom workflow editors, custom roles, custom fields, Issue tags, sub-tasks, comments, relations, watchers, notifications, and AI execution are not part of the MVP.
+Custom workflow editors, custom roles, custom fields, Issue tags, comments, watchers, notifications, and AI execution are not part of the MVP. Basic fixed Issue relations are delivered by the traceability phase.
 
 ## Projects, Membership, and Roles
 
@@ -33,6 +33,12 @@ The list supports keyword, type, status, priority, assignee/unassigned, sorting,
 Existing Issues support list, multipart upload, content download, and soft delete. PostgreSQL stores metadata only; `IFileStorage` stores bytes under an opaque UUID-based key. The original file name is retained for display and download. The configured maximum size defaults to 20 MiB.
 
 Authorization uses `issue.read`, `issue.attachment.upload`, and `issue.attachment.delete`. Inactive projects reject writes. Path traversal, empty files, oversized files, missing parents, and cross-project access must be rejected.
+
+## Issue Relations and Test Traceability
+
+The [Issue-Test Traceability specification](./issue-test-traceability.md) defines the fixed `related`, `parent_of`, `blocks`, `duplicates`, and `tests` Issue relations. Project Management owns their types and relation records. Direction is retained except for symmetric `related`; hierarchy prevents multiple parents and cycles.
+
+Test Management links Cases to requirement Issues, stores one current Test Issue on a Plan, snapshots that Issue on Run creation, and records Bugs created from the Run. Test Management uses a minimal Project Management application contract rather than reading its DbContext.
 
 ## Security and Audit
 

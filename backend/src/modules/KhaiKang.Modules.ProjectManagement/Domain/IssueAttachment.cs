@@ -1,34 +1,28 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class IssueAttachment
+public sealed class IssueAttachment : AuditableEntity
 {
     private IssueAttachment() { }
 
-    public IssueAttachment(
-        Guid id,
-        Guid issueId,
-        Guid uploadedByAccountId,
-        string originalFileName,
-        string storageProvider,
-        string storageKey,
-        string contentType,
-        long fileSize,
-        string fileHash,
-        DateTimeOffset createdAt)
+    private IssueAttachment(IssueAttachmentCreation creation, ChangeContext context)
     {
-        Id = id;
-        IssueId = issueId;
-        UploadedByAccountId = uploadedByAccountId;
-        OriginalFileName = originalFileName;
-        StorageProvider = storageProvider;
-        StorageKey = storageKey;
-        ContentType = contentType;
-        FileSize = fileSize;
-        FileHash = fileHash;
-        CreatedAt = createdAt;
-        CreatedByAccountId = uploadedByAccountId;
-        UpdatedAt = createdAt;
-        UpdatedByAccountId = uploadedByAccountId;
+        Id = creation.Id;
+        IssueId = creation.IssueId;
+        UploadedByAccountId = context.ActorAccountId;
+        OriginalFileName = creation.OriginalFileName;
+        StorageProvider = creation.StorageProvider;
+        StorageKey = creation.StorageKey;
+        ContentType = creation.ContentType;
+        FileSize = creation.FileSize;
+        FileHash = creation.FileHash;
+        InitializeAudit(context);
+    }
+
+    public static IssueAttachment Create(
+        IssueAttachmentCreation creation,
+        ChangeContext context)
+    {
+        return new IssueAttachment(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -43,19 +37,11 @@ public sealed class IssueAttachment
     public string FileHash { get; private set; } = null!;
     public bool IsDeleted { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public Guid? CreatedByAccountId { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public Guid? UpdatedByAccountId { get; private set; }
-    public int Version { get; private set; } = 1;
-
-    public void MarkDeleted(Guid actorAccountId, DateTimeOffset deletedAt)
+    public void MarkDeleted(ChangeContext context)
     {
         if (IsDeleted) return;
         IsDeleted = true;
-        DeletedAt = deletedAt;
-        UpdatedAt = deletedAt;
-        UpdatedByAccountId = actorAccountId;
-        Version++;
+        DeletedAt = context.OccurredAt;
+        RecordChange(context);
     }
 }

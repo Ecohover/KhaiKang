@@ -8,6 +8,7 @@ Read only the matching document:
 | Task scope | Context to read |
 | --- | --- |
 | Changes under `backend/` | `.ai/backend.md` |
+| Incremental backend readability refactoring | `.ai/backend-refactoring.md` |
 | Changes under `frontend/` | `.ai/frontend.md` |
 | Changes under `contract/` or public HTTP API changes | `.ai/contract.md` |
 | Build, test, formatting, or completion reporting | `.ai/verification.md` |

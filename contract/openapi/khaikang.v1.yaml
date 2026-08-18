@@ -871,6 +871,84 @@ paths:
           description: The project or task does not exist or is not visible to the current member.
         '409':
           description: The project is inactive, or the task was updated by another user.
+  /api/v1/projects/{projectId}/issue-relation-types:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Issues]
+      operationId: ListIssueRelationTypes
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active fixed Issue relation types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IssueRelationTypeResponse' }
+        '401': { description: No valid authenticated session exists. }
+        '404': { description: The project does not exist or is not visible. }
+  /api/v1/projects/{projectId}/issues/{issueId}/relations:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Issues]
+      operationId: ListIssueRelations
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active incoming, outgoing, and symmetric relations visible from the Issue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IssueRelationResponse' }
+        '401': { description: No valid authenticated session exists. }
+        '404': { description: The project or Issue does not exist or is not visible. }
+    post:
+      tags: [Issues]
+      operationId: CreateIssueRelation
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateIssueRelationRequest' }
+      responses:
+        '201':
+          description: The Issue relation was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IssueRelationResponse' }
+        '400': { description: Relation type, direction, target, or self-relation validation failed. }
+        '401': { description: No valid authenticated session exists. }
+        '403': { description: The current member lacks issue.relation.create. }
+        '404': { description: The project or either Issue does not exist or is not visible. }
+        '409': { description: The project is inactive, the relation exists, or a hierarchy parent/cycle rule failed. }
+  /api/v1/projects/{projectId}/issues/{issueId}/relations/{relationId}:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: relationId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Issues]
+      operationId: DeleteIssueRelation
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/CsrfToken' }
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, format: int32, minimum: 1 }
+      responses:
+        '204': { description: The Issue relation was soft-deleted. }
+        '400': { description: The relation version is invalid. }
+        '401': { description: No valid authenticated session exists. }
+        '403': { description: The current member lacks issue.update. }
+        '404': { description: The project, Issue, or active relation does not exist or is not visible. }
+        '409': { description: The project is inactive or the relation version is stale. }
   /api/v1/projects/{projectId}/issues/{issueId}/attachments:
     parameters:
       - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1351,6 +1429,61 @@ paths:
         '403': { description: Current role cannot manage test case attachments. }
         '404': { description: Test case or workspace not found. }
         '413': { description: File exceeds the configured size limit. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/requirement-issues:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestCaseRequirementIssues
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Requirement Issues directly validated by the Case and readable by the caller.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestCaseRequirementLinkResponse' } }
+        '404': { description: Workspace or Case is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: LinkTestCaseRequirementIssue
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkTestCaseRequirementIssueRequest' }
+      responses:
+        '201':
+          description: The Case-to-requirement link was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseRequirementLinkResponse' }
+        '400': { description: The Issue or Workspace-Project scope is invalid. }
+        '403': { description: The caller lacks Workspace management or issue.update. }
+        '404': { description: Workspace, Case, or Issue is not visible. }
+        '409': { description: The active link already exists. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/requirement-issues/{linkId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Test Management]
+      operationId: UnlinkTestCaseRequirementIssue
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/CsrfToken' }
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, format: int32, minimum: 1 }
+      responses:
+        '204': { description: The Case-to-requirement link was soft-deleted. }
+        '403': { description: The caller lacks Workspace management or issue.update. }
+        '404': { description: Workspace, Case, or active link is not visible. }
+        '409': { description: Link version conflict. }
   /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/attachments/{attachmentId}:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1550,6 +1683,41 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TestRunResponse' }
         '404': { description: Run or workspace not found. }
+  /api/v1/test-workspaces/{workspaceId}/runs/{runId}/bugs:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestRunBugs
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Bug Issues created from this Run and visible to the current member.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TestRunBugLinkResponse' } }
+        '404': { description: Run or workspace not found. }
+    post:
+      tags: [Test Management]
+      operationId: CreateTestRunBug
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTestRunBugRequest' }
+      responses:
+        '201':
+          description: Bug Issue created with this Run recorded as its origin.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRunBugLinkResponse' }
+        '400': { description: Project is outside the Workspace or an Issue option is invalid. }
+        '403': { description: Workspace role or Project Issue permission is insufficient. }
+        '404': { description: Run, workspace, or target Project not found. }
+        '409': { description: Workspace or Project is inactive, or creation conflicts. }
   /api/v1/test-workspaces/{workspaceId}/runs/{runId}/items/{itemId}:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1847,9 +2015,6 @@ components:
       required:
         - suiteId
         - title
-        - description
-        - preconditions
-        - overallExpectedResult
         - sortOrder
         - steps
       properties:
@@ -1860,7 +2025,7 @@ components:
         overallExpectedResult: { type: [string, 'null'], maxLength: 4000 }
         sortOrder: { type: integer, minimum: 0 }
         tagIds:
-          type: array
+          type: [array, 'null']
           uniqueItems: true
           items: { type: string, format: uuid }
         steps:
@@ -1874,9 +2039,6 @@ components:
       required:
         - suiteId
         - title
-        - description
-        - preconditions
-        - overallExpectedResult
         - sortOrder
         - status
         - version
@@ -1891,7 +2053,7 @@ components:
         status: { type: string, enum: [active, inactive] }
         version: { type: integer, minimum: 1 }
         tagIds:
-          type: array
+          type: [array, 'null']
           uniqueItems: true
           items: { type: string, format: uuid }
         steps:
@@ -2008,6 +2170,7 @@ components:
           maxLength: 200
           description: Defaults to TestPlanyyyyMMdd in Asia/Taipei when omitted, null, or blank.
         description: { type: [string, 'null'], maxLength: 4000 }
+        testIssueId: { type: [string, 'null'], format: uuid }
         caseIds:
           type: array
           maxItems: 1000
@@ -2023,6 +2186,7 @@ components:
           maxLength: 200
           description: Defaults to TestPlanyyyyMMdd in Asia/Taipei when omitted, null, or blank.
         description: { type: [string, 'null'], maxLength: 4000 }
+        testIssueId: { type: [string, 'null'], format: uuid }
         caseIds:
           type: array
           maxItems: 1000
@@ -2042,7 +2206,7 @@ components:
     TestPlanResponse:
       type: object
       additionalProperties: false
-      required: [id, workspaceId, planNo, code, name, description, status, items, createdAt, updatedAt, version]
+      required: [id, workspaceId, planNo, code, name, description, status, items, createdAt, updatedAt, version, testIssue]
       properties:
         id: { type: string, format: uuid }
         workspaceId: { type: string, format: uuid }
@@ -2057,6 +2221,10 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1 }
+        testIssue:
+          oneOf:
+            - $ref: '#/components/schemas/TestTraceIssueResponse'
+            - type: 'null'
     CreateTestRunRequest:
       type: object
       additionalProperties: false
@@ -2126,7 +2294,7 @@ components:
     TestRunResponse:
       type: object
       additionalProperties: false
-      required: [id, planId, runNo, code, name, status, startedByAccountId, startedAt, completedAt, summary, progress, items, createdAt, updatedAt, version]
+      required: [id, planId, runNo, code, name, status, startedByAccountId, startedAt, completedAt, summary, progress, items, createdAt, updatedAt, version, testIssue]
       properties:
         id: { type: string, format: uuid }
         planId: { type: string, format: uuid }
@@ -2145,6 +2313,59 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer, minimum: 1 }
+        testIssue:
+          oneOf:
+            - $ref: '#/components/schemas/TestTraceIssueResponse'
+            - type: 'null'
+    TestTraceIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, projectCode, issueNo, key, title, typeCode, statusCode]
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        projectCode: { type: string }
+        issueNo: { type: integer, format: int32 }
+        key: { type: string }
+        title: { type: string }
+        typeCode: { type: string }
+        statusCode: { type: string }
+    LinkTestCaseRequirementIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [requirementIssueId]
+      properties:
+        requirementIssueId: { type: string, format: uuid }
+    TestCaseRequirementLinkResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testCaseId, issue, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        testCaseId: { type: string, format: uuid }
+        issue: { $ref: '#/components/schemas/TestTraceIssueResponse' }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
+    CreateTestRunBugRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId, title, priorityCode, description, assigneeAccountId]
+      properties:
+        projectId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        priorityCode: { type: [string, 'null'] }
+        description: { type: [string, 'null'], maxLength: 20000 }
+        assigneeAccountId: { type: [string, 'null'], format: uuid }
+    TestRunBugLinkResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testRunId, issue, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        testRunId: { type: string, format: uuid }
+        issue: { $ref: '#/components/schemas/TestTraceIssueResponse' }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
     HealthResponse:
       type: object
       additionalProperties: false
@@ -2627,6 +2848,57 @@ components:
         version:
           type: integer
           format: int32
+          minimum: 1
+    IssueRelationTypeResponse:
+      type: object
+      additionalProperties: false
+      required: [id, code, forwardLabel, reverseLabel, directionKind]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        forwardLabel: { type: string }
+        reverseLabel: { type: string }
+        directionKind:
+          type: string
+          enum: [symmetric, directed, hierarchical]
+    IssueRelationIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [id, issueNo, key, title, typeCode, statusCode]
+      properties:
+        id: { type: string, format: uuid }
+        issueNo: { type: integer, format: int32 }
+        key: { type: string }
+        title: { type: string }
+        typeCode: { type: string }
+        statusCode: { type: string }
+    IssueRelationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, projectId, relationTypeCode, forwardLabel, reverseLabel, directionKind, sourceIssue, targetIssue, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        relationTypeCode: { type: string }
+        forwardLabel: { type: string }
+        reverseLabel: { type: string }
+        directionKind:
+          type: string
+          enum: [symmetric, directed, hierarchical]
+        sourceIssue: { $ref: '#/components/schemas/IssueRelationIssueResponse' }
+        targetIssue: { $ref: '#/components/schemas/IssueRelationIssueResponse' }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
+    CreateIssueRelationRequest:
+      type: object
+      additionalProperties: false
+      required: [relationTypeCode, relatedIssueId, direction]
+      properties:
+        relationTypeCode: { type: string, minLength: 1, maxLength: 50 }
+        relatedIssueId: { type: string, format: uuid }
+        direction:
+          type: string
+          enum: [forward, reverse]
     IssueAttachmentResponse:
       type: object
       additionalProperties: false

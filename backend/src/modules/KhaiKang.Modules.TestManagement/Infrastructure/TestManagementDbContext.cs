@@ -21,6 +21,8 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<TestRunItemStepResult> RunItemStepResults => Set<TestRunItemStepResult>();
     public DbSet<TestCaseAttachment> CaseAttachments => Set<TestCaseAttachment>();
     public DbSet<TestRunItemAttachment> RunItemAttachments => Set<TestRunItemAttachment>();
+    public DbSet<TestCaseRequirementLink> CaseRequirementLinks => Set<TestCaseRequirementLink>();
+    public DbSet<TestRunBugLink> RunBugLinks => Set<TestRunBugLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +36,11 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         projectReference.HasKey(x => x.Id);
         projectReference.Property(x => x.Id).HasColumnName("id");
 
+        var issueReference = modelBuilder.Entity<IssueReference>();
+        issueReference.ToTable("issues", table => table.ExcludeFromMigrations());
+        issueReference.HasKey(x => x.Id);
+        issueReference.Property(x => x.Id).HasColumnName("id");
+
         var workspace = modelBuilder.Entity<TestWorkspace>();
         workspace.ToTable("test_workspaces");
         workspace.HasKey(x => x.Id).HasName("pk_test_workspaces");
@@ -43,7 +50,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         workspace.Property(x => x.Prefix).HasColumnName("prefix").HasMaxLength(10);
         workspace.HasIndex(x => x.Prefix).IsUnique().HasDatabaseName("uq_test_workspaces_prefix");
         workspace.Property(x => x.Description).HasColumnName("description");
-        workspace.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        workspace.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(workspace);
 
         var member = modelBuilder.Entity<TestWorkspaceMember>();
@@ -52,8 +64,18 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         member.Property(x => x.Id).HasColumnName("id");
         member.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
         member.Property(x => x.AccountId).HasColumnName("account_id");
-        member.Property(x => x.Role).HasColumnName("role").HasMaxLength(20);
-        member.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        member.Property(x => x.Role)
+            .HasColumnName("role")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseWorkspaceRole(value));
+        member.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseWorkspaceMemberStatus(value));
         member.Property(x => x.JoinedAt).HasColumnName("joined_at");
         member.Property(x => x.RemovedAt).HasColumnName("removed_at");
         Audit(member);
@@ -97,7 +119,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         suite.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
         suite.Property(x => x.Description).HasColumnName("description");
         suite.Property(x => x.SortOrder).HasColumnName("sort_order");
-        suite.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        suite.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(suite);
         suite.HasIndex(x => new { x.TestWorkspaceId, x.ParentId, x.SortOrder })
             .HasDatabaseName("idx_test_suites_workspace_parent_sort_order");
@@ -119,7 +146,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         testCase.Property(x => x.Preconditions).HasColumnName("preconditions");
         testCase.Property(x => x.OverallExpectedResult).HasColumnName("overall_expected_result");
         testCase.Property(x => x.SortOrder).HasColumnName("sort_order");
-        testCase.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        testCase.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(testCase);
         testCase.HasIndex(x => x.TestSuiteId).HasDatabaseName("idx_test_cases_test_suite_id");
         testCase.HasIndex(x => new { x.TestWorkspaceId, x.CaseNo }).IsUnique()
@@ -154,7 +186,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         tag.Property(x => x.Id).HasColumnName("id");
         tag.Property(x => x.Name).HasColumnName("name").HasMaxLength(50);
         tag.Property(x => x.Description).HasColumnName("description");
-        tag.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        tag.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseAssetStatus(value));
         Audit(tag);
         tag.HasIndex(x => x.Status).HasDatabaseName("idx_test_tags_status");
         tag.HasIndex(x => x.Name).IsUnique().HasDatabaseName("uq_test_tags_name");
@@ -176,14 +213,24 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
             .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_test_case_tags_tag");
 
         var plan = modelBuilder.Entity<TestPlan>();
-        plan.ToTable("test_plans");
+        plan.ToTable("test_plans", table => table.HasCheckConstraint(
+            "ck_test_plans_test_issue_pair",
+            "(test_issue_project_id IS NULL AND test_issue_id IS NULL) OR " +
+            "(test_issue_project_id IS NOT NULL AND test_issue_id IS NOT NULL)"));
         plan.HasKey(x => x.Id).HasName("pk_test_plans");
         plan.Property(x => x.Id).HasColumnName("id");
         plan.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
         plan.Property(x => x.PlanNo).HasColumnName("plan_no");
         plan.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
         plan.Property(x => x.Description).HasColumnName("description");
-        plan.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        plan.Property(x => x.TestIssueProjectId).HasColumnName("test_issue_project_id");
+        plan.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
+        plan.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParsePlanStatus(value));
         Audit(plan);
         plan.HasIndex(x => new { x.TestWorkspaceId, x.Status })
             .HasDatabaseName("idx_test_plans_workspace_status");
@@ -192,6 +239,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         plan.HasOne(x => x.Workspace).WithMany()
             .HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("fk_test_plans_workspace");
+        plan.HasOne<ProjectReference>().WithMany()
+            .HasForeignKey(x => x.TestIssueProjectId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_plans_test_issue_project");
+        plan.HasOne<IssueReference>().WithMany()
+            .HasForeignKey(x => x.TestIssueId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_plans_test_issue");
 
         var planItem = modelBuilder.Entity<TestPlanItem>();
         planItem.ToTable("test_plan_items");
@@ -213,13 +266,23 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
             .HasConstraintName("fk_test_plan_items_case");
 
         var run = modelBuilder.Entity<TestRun>();
-        run.ToTable("test_runs");
+        run.ToTable("test_runs", table => table.HasCheckConstraint(
+            "ck_test_runs_test_issue_pair",
+            "(test_issue_project_id IS NULL AND test_issue_id IS NULL) OR " +
+            "(test_issue_project_id IS NOT NULL AND test_issue_id IS NOT NULL)"));
         run.HasKey(x => x.Id).HasName("pk_test_runs");
         run.Property(x => x.Id).HasColumnName("id");
         run.Property(x => x.TestPlanId).HasColumnName("test_plan_id");
         run.Property(x => x.RunNo).HasColumnName("run_no");
         run.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
-        run.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        run.Property(x => x.TestIssueProjectId).HasColumnName("test_issue_project_id");
+        run.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
+        run.Property(x => x.Status)
+            .HasColumnName("status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseRunStatus(value));
         run.Property(x => x.StartedByAccountId).HasColumnName("started_by_account_id");
         run.Property(x => x.StartedAt).HasColumnName("started_at");
         run.Property(x => x.CompletedAt).HasColumnName("completed_at");
@@ -235,6 +298,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         run.HasOne<AccountReference>().WithMany()
             .HasForeignKey(x => x.StartedByAccountId).OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_test_runs_started_by_account");
+        run.HasOne<ProjectReference>().WithMany()
+            .HasForeignKey(x => x.TestIssueProjectId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_runs_test_issue_project");
+        run.HasOne<IssueReference>().WithMany()
+            .HasForeignKey(x => x.TestIssueId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_runs_test_issue");
 
         var runItem = modelBuilder.Entity<TestRunItem>();
         runItem.ToTable("test_run_items");
@@ -247,7 +316,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runItem.Property(x => x.CaseDescription).HasColumnName("case_description");
         runItem.Property(x => x.Preconditions).HasColumnName("preconditions");
         runItem.Property(x => x.OverallExpectedResult).HasColumnName("overall_expected_result");
-        runItem.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runItem.Property(x => x.ResultStatus)
+            .HasColumnName("result_status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseResultStatus(value));
         runItem.Property(x => x.ActualResult).HasColumnName("actual_result");
         runItem.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
         runItem.Property(x => x.ExecutedAt).HasColumnName("executed_at");
@@ -272,7 +346,12 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runStep.Property(x => x.StepNo).HasColumnName("step_no");
         runStep.Property(x => x.Action).HasColumnName("action");
         runStep.Property(x => x.ExpectedResult).HasColumnName("expected_result");
-        runStep.Property(x => x.ResultStatus).HasColumnName("result_status").HasMaxLength(20);
+        runStep.Property(x => x.ResultStatus)
+            .HasColumnName("result_status")
+            .HasMaxLength(20)
+            .HasConversion(
+                value => value.ToCode(),
+                value => TestManagementCodes.ParseResultStatus(value));
         runStep.Property(x => x.ActualResult).HasColumnName("actual_result");
         runStep.Property(x => x.ExecutedByAccountId).HasColumnName("executed_by_account_id");
         runStep.Property(x => x.ExecutedAt).HasColumnName("executed_at");
@@ -327,6 +406,72 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
             .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_test_run_item_attachments_item");
         runAttachment.HasOne<AccountReference>().WithMany().HasForeignKey(x => x.UploadedByAccountId)
             .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_test_run_item_attachments_uploaded_by_account");
+
+        var requirementLink = modelBuilder.Entity<TestCaseRequirementLink>();
+        requirementLink.ToTable("test_case_requirement_links", table => table.HasCheckConstraint(
+            "ck_test_case_requirement_links_deleted_metadata",
+            "(is_deleted = false AND deleted_at IS NULL AND deleted_by_account_id IS NULL) OR " +
+            "(is_deleted = true AND deleted_at IS NOT NULL AND deleted_by_account_id IS NOT NULL)"));
+        requirementLink.HasKey(x => x.Id).HasName("pk_test_case_requirement_links");
+        requirementLink.Property(x => x.Id).HasColumnName("id");
+        requirementLink.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
+        requirementLink.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        requirementLink.Property(x => x.ProjectId).HasColumnName("project_id");
+        requirementLink.Property(x => x.RequirementIssueId).HasColumnName("requirement_issue_id");
+        requirementLink.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+        requirementLink.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        requirementLink.Property(x => x.DeletedByAccountId).HasColumnName("deleted_by_account_id");
+        Audit(requirementLink);
+        requirementLink.HasIndex(x => new { x.RequirementIssueId, x.IsDeleted })
+            .HasDatabaseName("idx_test_case_requirement_links_issue_active");
+        requirementLink.HasIndex(x => new { x.TestWorkspaceId, x.ProjectId, x.IsDeleted })
+            .HasDatabaseName("idx_test_case_requirement_links_workspace_project_active");
+        requirementLink.HasIndex(x => new { x.TestCaseId, x.RequirementIssueId })
+            .IsUnique().HasFilter("is_deleted = false")
+            .HasDatabaseName("uq_test_case_requirement_links_active");
+        requirementLink.HasOne(x => x.Workspace).WithMany()
+            .HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_case_requirement_links_workspace");
+        requirementLink.HasOne(x => x.TestCase).WithMany()
+            .HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_case_requirement_links_case");
+        requirementLink.HasOne<ProjectReference>().WithMany()
+            .HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_case_requirement_links_project");
+        requirementLink.HasOne<IssueReference>().WithMany()
+            .HasForeignKey(x => x.RequirementIssueId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_case_requirement_links_issue");
+        requirementLink.HasOne<AccountReference>().WithMany()
+            .HasForeignKey(x => x.DeletedByAccountId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_case_requirement_links_deleted_by_account");
+
+        var runBugLink = modelBuilder.Entity<TestRunBugLink>();
+        runBugLink.ToTable("test_run_bug_links");
+        runBugLink.HasKey(x => x.Id).HasName("pk_test_run_bug_links");
+        runBugLink.Property(x => x.Id).HasColumnName("id");
+        runBugLink.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
+        runBugLink.Property(x => x.TestRunId).HasColumnName("test_run_id");
+        runBugLink.Property(x => x.ProjectId).HasColumnName("project_id");
+        runBugLink.Property(x => x.BugIssueId).HasColumnName("bug_issue_id");
+        Audit(runBugLink);
+        runBugLink.HasIndex(x => x.TestRunId)
+            .HasDatabaseName("idx_test_run_bug_links_run");
+        runBugLink.HasIndex(x => new { x.TestWorkspaceId, x.ProjectId })
+            .HasDatabaseName("idx_test_run_bug_links_workspace_project");
+        runBugLink.HasIndex(x => x.BugIssueId).IsUnique()
+            .HasDatabaseName("uq_test_run_bug_links_bug_issue");
+        runBugLink.HasOne(x => x.Workspace).WithMany()
+            .HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_run_bug_links_workspace");
+        runBugLink.HasOne(x => x.TestRun).WithMany()
+            .HasForeignKey(x => x.TestRunId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_test_run_bug_links_run");
+        runBugLink.HasOne<ProjectReference>().WithMany()
+            .HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_run_bug_links_project");
+        runBugLink.HasOne<IssueReference>().WithMany()
+            .HasForeignKey(x => x.BugIssueId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_test_run_bug_links_issue");
     }
 
     private static void Audit<TEntity>(

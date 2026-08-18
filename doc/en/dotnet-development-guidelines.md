@@ -1,6 +1,6 @@
 # .NET Development Guidelines
 
-> Status: Accepted. This document defines the adopted development baseline. SDK, MSBuild, NuGet, analyzer, and CI enforcement have not yet been applied and will be introduced as a separate change.
+> Status: Accepted. This document defines the adopted development baseline. SDK selection is enforced by `global.json` and CI; additional MSBuild, NuGet, analyzer, and format enforcement remains planned as separate changes.
 
 ## Purpose
 
@@ -33,7 +33,8 @@ These rules do not prescribe a fixed template. They allow different contributors
 - Nullable reference types, .NET analyzers, and build-time code-style enforcement MUST remain enabled.
 - Release CI SHOULD treat compiler warnings and adopted analyzer warnings as errors. Local development still uses ordinary `dotnet build` without a custom wrapper.
 - Do not hide issues with a global `NoWarn`; a narrow suppression MUST include a specific rationale.
-- `dotnet restore`, `dotnet build`, `dotnet format --verify-no-changes`, and `dotnet test` are the baseline backend pull-request checks.
+- `dotnet restore`, `dotnet build`, and `dotnet test` are the current baseline backend pull-request checks.
+- Until E07 establishes a repository-wide format baseline, changed C# files MUST be checked with `dotnet format --verify-no-changes --include <paths>` and MUST NOT increase existing format debt. Full-solution format verification is not yet a pull-request gate.
 
 ## Projects and Dependency Direction
 
@@ -63,14 +64,27 @@ KhaiKang.CommonUtils.Web
 ## C# Code
 
 - Use file-scoped namespaces, four-space indentation, and braces for control flow.
-- Keep one primary public type per file. A small private nested type may remain with its owner.
+- Keep each top-level public class, record, interface, enum, or struct in its own file, and match the file name to the type name. A small private nested type may remain with its owner.
+- Within a layer, keep the types for one use case together in the same business-named folder. For example, `Contracts/IssueCommands/` keeps its Command, Outcome, Result, and Interface together. Keep feature folders one or two levels below the layer root. Do not create pure technical folders named `Enums`, `Interfaces`, `Requests`, `Responses`, or `Results`; a name such as `IssueCommands` is a business use-case folder, not a technical bucket. A coordinator or constants type genuinely shared across resources may remain at the layer root until it has a meaningful owner.
+- Checked-in generated C# source follows the same public type and file layout unless an accepted generator policy defines a scoped exception. EF Core migration files may keep the required timestamp-prefixed file name while still obeying one top-level public type per file. Do not silently exclude generated directories from architecture checks.
 - Use PascalCase for public APIs, camelCase for parameters and locals, and `_camelCase` for private fields.
 - Awaitable methods use an `Async` suffix; ASP.NET endpoint handlers and framework overrides may follow framework conventions.
-- Prefer immutable records, constructors, or init-only properties for requests, responses, and value objects.
+- Every public boundary contract MUST declare an explicit type body with named properties; do not declare HTTP requests, responses, queries, cross-module commands, directory entries, or public Application results as positional records. One to three unambiguous required input fields may use an explicit constructor with getter-only properties. Inputs with more required fields and response models use `required` init-only properties instead of long constructors. Optional fields use init-only properties. Positional records remain available only for small Domain value objects and genuinely internal immutable implementation carriers when that form is clearer.
+- Name HTTP request-body contracts `{Verb}{Resource}Request`; query and filter models may use an intention-revealing `Query` name. Name cross-module application inputs `{Verb}{Resource}Command`, and name their paired outputs from the complete command name, such as `CreateIssueCommandOutcome` and `CreateIssueCommandResult`. Other Application results use a use-case or semantic operation-family name. Public results use an explicit type body; use private constructors and named success/failure factories when a nullable payload could otherwise create invalid state combinations. An operation without a payload may return its outcome directly.
+- Reuse an outcome or result only when callers do not face impossible values, conflicting payload invariants, or ambiguous mappings. Prefer a use-case-specific type over a broad superset such as `MutationOutcome`; do not mechanically create a separate type pair for every method when a semantic operation family genuinely shares one contract.
 - Required reference members use a constructor or `required`; do not fake initialization with `string.Empty` or the null-forgiving operator.
 - Public collections expose `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, or `IEnumerable<T>` when callers should not mutate them.
 - Consider `sealed` for classes that are not extension points, while allowing inheritance where EF Core or testing genuinely needs it.
 - Primary constructors are allowed but not mandatory. Readability and explicit dependencies take precedence.
+- Model a closed set of domain states, types, roles, or results with an enum or value object. Do not pass unvalidated string values through Domain or Application code.
+- Prefer code that reads in domain language and exposes its decisions in order. Shorter syntax, deeply nested expressions, and clever language features are not improvements when they make the business flow harder to follow.
+- New public Domain and Application APIs MUST normally accept no more than three business parameters. `CancellationToken`, dependency-injection constructors, and framework-required signatures are excluded. The limit does not apply mechanically to private helpers: a short list of clearly named private parameters is preferable to a one-use parameter bag. Existing long parameter lists are tracked refactoring debt. Necessary public exceptions require a pull-request explanation, and lasting exceptions require an ADR.
+- Group ambiguous same-type primitives, strings, GUIDs, or timestamps into an immutable, domain-named Parameter Object, Value Object, or Strongly Typed ID. A Parameter Object must represent a use case, domain concept, shared lifecycle, or invariant across a meaningful boundary. Do not create an object that is immediately unpacked only to satisfy the parameter-count rule, and do not split a cohesive creation or change model merely because it contains several named properties.
+- Creation and modification use distinct intention-revealing types, such as `IssueCreation` and `IssueDetailsChange`. An HTTP request DTO does not double as a Domain Parameter Object.
+- Pass an established mutation context intact through the use case. Do not split actor and occurrence time into primitives and rebuild the same context in a downstream helper.
+- Helpers, factories, commands, and abstractions must add domain language, validation, policy, or demonstrated reuse. Avoid pure forwarding helpers and helpers that use null, optional mode values, or boolean flags to represent unrelated use cases. Prefer separate intention-revealing operations and extract only their genuinely shared rule.
+- When multiple entities genuinely share one audit lifecycle, a single shallow `AuditableEntity` base may own `CreatedAt`, `CreatedByAccountId`, `UpdatedAt`, `UpdatedByAccountId`, `Version`, and their consistent initialization/change behavior. Do not introduce a deep entity hierarchy for structural uniformity.
+- Business lifecycle fields are not generic audit metadata. For example, `CompletedAt` remains on `Issue`; a shared base MUST NOT absorb feature-specific state or rules.
 - Write XML documentation in English for public extension points, library APIs, and contracts whose behavior is not clear from their names. Do not restate every public member.
 - Do not introduce abstractions, base services, or helpers merely to reduce line count.
 
@@ -131,8 +145,13 @@ KhaiKang.CommonUtils.Web
 
 - PostgreSQL is the system of record and EF Core is the default data-access technology.
 - Start with an explicit `DbContext` and feature queries/use cases. Do not add a generic repository or unit-of-work wrapper by default.
+- Persist a closed enum or value-object set as a stable English code, never as its numeric enum value or localized display text. Conversion belongs at the persistence and transport boundaries. Renaming a persisted code is a data-contract change and requires an explicit migration or compatibility plan.
+- Declare each stable code string once as an intention-revealing `private const string` in its owning mapping type and reuse it for serialization and parsing. Do not repeat literals across branches or derive persisted codes automatically from enum names, casing rules, or reflection.
+- A database-managed classification table keeps a stable English `code` separate from its user-facing `name`. Business rows reference the classification key; APIs expose the stable code where clients need machine-readable identity.
+- Keep EF Core queries explicit and readable. A collection use case SHOULD make normalization, filtering, ordering, counting, paging, projection, and execution visible in that order. Extract feature-local, intention-revealing methods when a predicate or ordering rule obscures the main flow; do not hide ordinary EF behavior behind a generic query-options abstraction.
 - A feature module owns its entities and EF Core configuration. Other modules do not modify its tables directly.
 - Schema changes require migrations. Production startup MUST NOT substitute `EnsureCreated` for migrations.
+- Before merging a feature branch, keep only one unpublished final migration per affected `DbContext`. Multiple migrations for one context require a documented exception such as an already-deployed migration, staged data movement, or an operationally phased rollout.
 - Read-only queries SHOULD project required data and use `AsNoTracking` when tracking is unnecessary.
 - Avoid N+1 queries, unbounded collections, and loading complete entities only to discard most fields.
 - Database transactions align with application use cases and do not remain open across external network calls.
@@ -158,6 +177,8 @@ KhaiKang.CommonUtils.Web
 - Tests do not depend on execution order, arbitrary sleeps, developer-machine data, or pre-existing external services.
 - Separate Arrange, Act, and Assert with whitespace when it improves readability; do not add comments that only restate code.
 - New features cover the success path, material validation, authorization, and important conflict/not-found contracts.
+- Before an incremental refactor, add characterization tests for observable behavior, business invariants, audit metadata, and optimistic-concurrency version changes.
+- An explicit allowlist may baseline unresolved architecture debt in a fitness test. The allowlist records existing debt only, MUST NOT grow for new code, and removes an entry whenever that debt is refactored.
 
 ## Dependency Governance
 
@@ -174,8 +195,11 @@ Before requesting review for a backend change, run:
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config
 dotnet build backend/KhaiKang.Backend.slnx --configuration Release --no-restore
-dotnet format backend/KhaiKang.Backend.slnx --verify-no-changes --no-restore
 dotnet test backend/KhaiKang.Backend.slnx --configuration Release --no-build
 ```
+
+For changes to C# files, also run `dotnet format` with `--include` limited to the
+affected paths. The full-solution format gate remains deferred until E07 records
+and clears the existing baseline.
 
 If an environment prevents a check, the pull request states which check was skipped, why, and what alternative verification was performed.

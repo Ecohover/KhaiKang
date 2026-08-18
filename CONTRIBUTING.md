@@ -19,8 +19,15 @@ opening a public issue.
 
 ## Development Setup
 
-The backend currently requires the stable .NET 10 SDK. Standard .NET CLI
-commands are sufficient; no company-internal tooling is required.
+The backend uses the exact stable .NET 10 SDK version declared by `global.json`.
+Install that SDK before running commands from the repository root; a newer
+feature band does not replace the pinned version. Standard .NET CLI commands
+are sufficient, and no company-internal tooling is required.
+
+Run `dotnet --version` from the repository root and confirm that it matches the
+`sdk.version` value in `global.json`. If the main installer highlights a newer
+feature band, select the requested version from the
+[.NET download archive](https://dotnet.microsoft.com/download/dotnet).
 
 ```shell
 dotnet restore backend/KhaiKang.Backend.slnx --configfile backend/NuGet.config

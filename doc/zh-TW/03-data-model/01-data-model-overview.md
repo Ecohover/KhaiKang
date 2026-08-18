@@ -15,6 +15,7 @@
 - [專案管理資料模型](./02-project-management-data-model.md)
 - [Audit Info 結構](./99-audit-metadata-fields.md)
 - [測試案例管理資料模型](./03-test-case-management-data-model.md)
+- [Issue 與測試資產追溯資料模型](./05-issue-test-traceability-data-model.md)
 
 ## 使用原則
 
@@ -66,6 +67,7 @@
 - `issue_comments`
 - `issue_attachments`
 - `issue_relations`
+- `issue_relation_types`、`issue_relations` 與測試專用追溯資料（目前實作階段）
 
 另外：
 

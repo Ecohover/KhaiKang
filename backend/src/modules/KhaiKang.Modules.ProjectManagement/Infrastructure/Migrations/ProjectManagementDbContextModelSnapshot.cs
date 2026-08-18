@@ -350,6 +350,244 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueRelation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by_account_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("RelationTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relation_type_id");
+
+                    b.Property<Guid>("SourceIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_issue_id");
+
+                    b.Property<Guid>("TargetIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_issue_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_relations");
+
+                    b.HasIndex("CreatedByAccountId");
+
+                    b.HasIndex("DeletedByAccountId");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("idx_issue_relations_project");
+
+                    b.HasIndex("TargetIssueId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_issue_relations_active_parent")
+                        .HasFilter("is_deleted = false AND relation_type_id = '9fe7e36b-a461-4bfa-8ba8-3e5d201184c2'");
+
+                    b.HasIndex("UpdatedByAccountId");
+
+                    b.HasIndex("SourceIssueId", "IsDeleted")
+                        .HasDatabaseName("idx_issue_relations_source_active");
+
+                    b.HasIndex("TargetIssueId", "IsDeleted")
+                        .HasDatabaseName("idx_issue_relations_target_active");
+
+                    b.HasIndex("RelationTypeId", "SourceIssueId", "TargetIssueId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_issue_relations_active")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("issue_relations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_issue_relations_deleted_metadata", "(is_deleted = false AND deleted_at IS NULL AND deleted_by_account_id IS NULL) OR (is_deleted = true AND deleted_at IS NOT NULL AND deleted_by_account_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_issue_relations_distinct_issues", "source_issue_id <> target_issue_id");
+                        });
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueRelationType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<string>("DirectionKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("direction_kind");
+
+                    b.Property<string>("ForwardLabel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("forward_label");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("ReverseLabel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reverse_label");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_relation_types");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("uq_issue_relation_types_code");
+
+                    b.ToTable("issue_relation_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2f01d4ad-70e3-4c7f-9b7c-27f5d32001a1"),
+                            Code = "related",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DirectionKind = "symmetric",
+                            ForwardLabel = "Relates to",
+                            IsActive = true,
+                            IsSystem = true,
+                            ReverseLabel = "Relates to",
+                            SortOrder = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("9fe7e36b-a461-4bfa-8ba8-3e5d201184c2"),
+                            Code = "parent_of",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DirectionKind = "hierarchical",
+                            ForwardLabel = "Parent of",
+                            IsActive = true,
+                            IsSystem = true,
+                            ReverseLabel = "Child of",
+                            SortOrder = 2,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("04fd64b0-e17c-41a4-9907-d36dc630b377"),
+                            Code = "blocks",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DirectionKind = "directed",
+                            ForwardLabel = "Blocks",
+                            IsActive = true,
+                            IsSystem = true,
+                            ReverseLabel = "Blocked by",
+                            SortOrder = 3,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("5be46e72-6c93-4766-8599-31e90ed45248"),
+                            Code = "duplicates",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DirectionKind = "directed",
+                            ForwardLabel = "Duplicates",
+                            IsActive = true,
+                            IsSystem = true,
+                            ReverseLabel = "Duplicated by",
+                            SortOrder = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("c8d1fd1f-3528-4b20-bb6e-febda1adcb71"),
+                            Code = "tests",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DirectionKind = "directed",
+                            ForwardLabel = "Tests / verifies",
+                            IsActive = true,
+                            IsSystem = true,
+                            ReverseLabel = "Tested / verified by",
+                            SortOrder = 5,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 8, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        });
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueStatus", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1503,6 +1741,63 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasConstraintName("fk_issue_attachments_uploaded_by_account");
 
                     b.Navigation("Issue");
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueRelation", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issue_relations_created_by_account");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issue_relations_deleted_by_account");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Domain.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_project");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Domain.IssueRelationType", "RelationType")
+                        .WithMany()
+                        .HasForeignKey("RelationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_type");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Domain.Issue", "SourceIssue")
+                        .WithMany()
+                        .HasForeignKey("SourceIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_source_issue");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Domain.Issue", "TargetIssue")
+                        .WithMany()
+                        .HasForeignKey("TargetIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_target_issue");
+
+                    b.HasOne("KhaiKang.Modules.ProjectManagement.Infrastructure.AccountReference", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issue_relations_updated_by_account");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("RelationType");
+
+                    b.Navigation("SourceIssue");
+
+                    b.Navigation("TargetIssue");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.Project", b =>

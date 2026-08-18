@@ -10,6 +10,7 @@ import type { TestResultStatus, TestRunItemAttachmentResponse, TestRunItemRespon
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
 import TestWorkspaceSectionFrame from '../components/TestWorkspaceSectionFrame.vue'
+import TestRunTracePanel from '../components/TestRunTracePanel.vue'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
@@ -34,6 +35,10 @@ const canModifyEvidence = computed(() =>
   isExecuting.value &&
   workspace.value?.status === 'active' &&
   ['owner', 'manager', 'tester'].includes(workspace.value.currentUserRole),
+)
+const canCreateBugs = computed(() =>
+  workspace.value?.status === 'active' &&
+  ['owner', 'manager'].includes(workspace.value.currentUserRole),
 )
 const attachmentDialogLabels = computed(() => ({
   attachmentDialog: t('common.markdown.attachmentDialog'),
@@ -341,6 +346,12 @@ onMounted(load)
     <div class="progress-bar">
       <span :style="{ width: `${run.progress.total ? ((run.progress.total - run.progress.notRun) / run.progress.total) * 100 : 0}%` }" />
     </div>
+    <TestRunTracePanel
+      :workspace-id="workspaceId"
+      :run-id="run.id"
+      :test-issue="run.testIssue"
+      :can-create-bug="canCreateBugs"
+    />
     <article
       v-for="item in run.items"
       :key="item.id"

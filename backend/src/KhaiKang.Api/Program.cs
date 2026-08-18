@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using KhaiKang.Api.Contracts;
 using KhaiKang.CommonUtils.Web.DependencyInjection;
 using KhaiKang.Modules.Identity.DependencyInjection;
@@ -9,7 +11,6 @@ using KhaiKang.Modules.TestManagement.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,11 +76,13 @@ system.MapGet("/info", (IHostEnvironment environment) =>
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
         .InformationalVersion ?? "0.0.0-dev";
 
-    return Results.Ok(new SystemInfoResponse(
-        "KhaiKang.Api",
-        version,
-        environment.EnvironmentName,
-        DateTimeOffset.UtcNow));
+    return Results.Ok(new SystemInfoResponse
+    {
+        ServiceName = "KhaiKang.Api",
+        Version = version,
+        Environment = environment.EnvironmentName,
+        ServerTime = DateTimeOffset.UtcNow,
+    });
 })
 .WithName("GetSystemInfo")
 .Produces<SystemInfoResponse>();

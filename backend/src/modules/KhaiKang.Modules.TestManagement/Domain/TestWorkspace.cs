@@ -20,7 +20,7 @@ public sealed class TestWorkspace
     public string Name { get; private set; } = null!;
     public string Prefix { get; private set; } = null!;
     public string? Description { get; private set; }
-    public string Status { get; private set; } = "active";
+    public TestAssetStatus Status { get; private set; } = TestAssetStatus.Active;
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedByAccountId { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -30,7 +30,12 @@ public sealed class TestWorkspace
     public ICollection<TestWorkspaceProject> Projects { get; } = [];
     public ICollection<TestSuite> Suites { get; } = [];
 
-    public void Update(string name, string? description, string status, Guid actorId, DateTimeOffset now)
+    public void Update(
+        string name,
+        string? description,
+        TestAssetStatus status,
+        Guid actorId,
+        DateTimeOffset now)
     {
         Name = name;
         Description = description;

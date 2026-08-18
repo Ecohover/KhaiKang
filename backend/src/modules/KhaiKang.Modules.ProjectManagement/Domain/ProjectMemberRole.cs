@@ -1,25 +1,24 @@
 namespace KhaiKang.Modules.ProjectManagement.Domain;
 
-public sealed class ProjectMemberRole
+public sealed class ProjectMemberRole : AuditableEntity
 {
     private ProjectMemberRole()
     {
     }
 
-    public ProjectMemberRole(
-        Guid id,
-        Guid projectMemberId,
-        Guid projectRoleId,
-        DateTimeOffset createdAt,
-        Guid actorAccountId)
+    private ProjectMemberRole(ProjectMemberRoleCreation creation, ChangeContext context)
     {
-        Id = id;
-        ProjectMemberId = projectMemberId;
-        ProjectRoleId = projectRoleId;
-        CreatedAt = createdAt;
-        CreatedByAccountId = actorAccountId;
-        UpdatedAt = createdAt;
-        UpdatedByAccountId = actorAccountId;
+        Id = creation.Id;
+        ProjectMemberId = creation.ProjectMemberId;
+        ProjectRoleId = creation.ProjectRoleId;
+        InitializeAudit(context);
+    }
+
+    public static ProjectMemberRole Create(
+        ProjectMemberRoleCreation creation,
+        ChangeContext context)
+    {
+        return new ProjectMemberRole(creation, context);
     }
 
     public Guid Id { get; private set; }
@@ -32,13 +31,4 @@ public sealed class ProjectMemberRole
 
     public ProjectRole ProjectRole { get; private set; } = null!;
 
-    public DateTimeOffset CreatedAt { get; private set; }
-
-    public Guid? CreatedByAccountId { get; private set; }
-
-    public DateTimeOffset UpdatedAt { get; private set; }
-
-    public Guid? UpdatedByAccountId { get; private set; }
-
-    public int Version { get; private set; } = 1;
 }

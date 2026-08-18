@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using KhaiKang.Modules.ProjectManagement.Application;
 using KhaiKang.Modules.ProjectManagement.Contracts;
+using KhaiKang.Modules.ProjectManagement.Domain;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -174,7 +175,7 @@ public static partial class ProjectManagementEndpointExtensions
             ProjectManagementService service,
             CancellationToken cancellationToken) =>
         {
-            var validation = ValidateMemberRequest(request.Username, request.RoleCodes);
+            var validation = ValidateAddProjectMemberRequest(request);
             if (validation is not null)
             {
                 return validation;
@@ -190,7 +191,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 request,
                 cancellationToken);
-            return MapMemberMutation(result, StatusCodes.Status201Created);
+            return MapAddProjectMemberResult(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("AddProjectMember")
@@ -209,7 +210,7 @@ public static partial class ProjectManagementEndpointExtensions
             ProjectManagementService service,
             CancellationToken cancellationToken) =>
         {
-            var validation = ValidateMemberRequest(null, request.RoleCodes, request.Version);
+            var validation = ValidateUpdateProjectMemberRolesRequest(request);
             if (validation is not null)
             {
                 return validation;
@@ -226,7 +227,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 request,
                 cancellationToken);
-            return MapMemberMutation(result, StatusCodes.Status200OK);
+            return MapUpdateProjectMemberRolesResult(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("UpdateProjectMemberRoles")
@@ -264,9 +265,7 @@ public static partial class ProjectManagementEndpointExtensions
                 accountId,
                 version,
                 cancellationToken);
-            return result.Outcome == ProjectMemberMutationOutcome.Succeeded
-                ? Results.NoContent()
-                : MapMemberMutation(result, StatusCodes.Status200OK);
+            return MapRemoveProjectMemberOutcome(result);
         })
         .WithMetadata(new RequireAntiforgeryTokenAttribute(true))
         .WithName("RemoveProjectMember")
@@ -301,7 +300,7 @@ public static partial class ProjectManagementEndpointExtensions
         var errors = new Dictionary<string, string[]>();
         ValidateName(request.Name, errors);
         ValidateDescription(request.Description, errors);
-        if (request.Status is not ("active" or "inactive"))
+        if (!ProjectManagementCodes.IsProjectStatusCode(request.Status))
         {
             errors["status"] = ["Project status must be active or inactive."];
         }
@@ -332,24 +331,24 @@ public static partial class ProjectManagementEndpointExtensions
         }
     }
 
-    private static IResult? ValidateMemberRequest(
-        string? username,
-        IReadOnlyList<string> roleCodes,
-        int? version = null)
+    private static IResult? ValidateAddProjectMemberRequest(AddProjectMemberRequest request)
     {
         var errors = new Dictionary<string, string[]>();
-        if (username is not null &&
-            (string.IsNullOrWhiteSpace(username) || username.Length > 200))
+        if (string.IsNullOrWhiteSpace(request.Username) || request.Username.Length > 200)
         {
             errors["username"] = ["Username is required and cannot exceed 200 characters."];
         }
 
-        if (roleCodes.Count is < 1 or > 4 || roleCodes.Any(string.IsNullOrWhiteSpace))
-        {
-            errors["roleCodes"] = ["Select between one and four valid project roles."];
-        }
+        ValidateRoleCodes(request.RoleCodes, errors);
+        return errors.Count == 0 ? null : Results.ValidationProblem(errors);
+    }
 
-        if (version is < 1)
+    private static IResult? ValidateUpdateProjectMemberRolesRequest(
+        UpdateProjectMemberRolesRequest request)
+    {
+        var errors = new Dictionary<string, string[]>();
+        ValidateRoleCodes(request.RoleCodes, errors);
+        if (request.Version < 1)
         {
             errors["version"] = ["Member version must be greater than zero."];
         }
@@ -357,34 +356,82 @@ public static partial class ProjectManagementEndpointExtensions
         return errors.Count == 0 ? null : Results.ValidationProblem(errors);
     }
 
-    private static IResult MapMemberMutation(
-        ProjectMemberMutationResult result,
-        int successStatus)
+    private static void ValidateRoleCodes(
+        IReadOnlyCollection<string>? roleCodes,
+        IDictionary<string, string[]> errors)
+    {
+        if (roleCodes is null ||
+            roleCodes.Count is < 1 or > 4 ||
+            roleCodes.Any(string.IsNullOrWhiteSpace) ||
+            roleCodes.Distinct(StringComparer.Ordinal).Count() != roleCodes.Count)
+        {
+            errors["roleCodes"] = ["Select between one and four valid project roles."];
+        }
+    }
+
+    private static IResult MapAddProjectMemberResult(AddProjectMemberResult result)
     {
         return result.Outcome switch
         {
-            ProjectMemberMutationOutcome.Succeeded when successStatus == StatusCodes.Status201Created =>
+            AddProjectMemberOutcome.Succeeded =>
                 Results.Json(result.Member, statusCode: StatusCodes.Status201Created),
-            ProjectMemberMutationOutcome.Succeeded => Results.Ok(result.Member),
-            ProjectMemberMutationOutcome.Forbidden => Results.Forbid(),
-            ProjectMemberMutationOutcome.NotFound or ProjectMemberMutationOutcome.AccountNotFound =>
+            AddProjectMemberOutcome.Forbidden => Results.Forbid(),
+            AddProjectMemberOutcome.NotFound or AddProjectMemberOutcome.AccountNotFound =>
                 Results.NotFound(),
-            ProjectMemberMutationOutcome.InvalidRoles => Results.ValidationProblem(
+            AddProjectMemberOutcome.InvalidRoles => Results.ValidationProblem(
                 new Dictionary<string, string[]>
                 {
                     ["roleCodes"] = ["One or more project roles are invalid."],
                 }),
-            ProjectMemberMutationOutcome.AlreadyMember => Problem(
+            AddProjectMemberOutcome.AlreadyMember => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/member-already-active",
                 "project_member_already_active",
                 "The account is already an active project member."),
-            ProjectMemberMutationOutcome.LastOwner => Problem(
+            _ => Results.NotFound(),
+        };
+    }
+
+    private static IResult MapUpdateProjectMemberRolesResult(
+        UpdateProjectMemberRolesResult result)
+    {
+        return result.Outcome switch
+        {
+            UpdateProjectMemberRolesOutcome.Succeeded => Results.Ok(result.Member),
+            UpdateProjectMemberRolesOutcome.Forbidden => Results.Forbid(),
+            UpdateProjectMemberRolesOutcome.NotFound => Results.NotFound(),
+            UpdateProjectMemberRolesOutcome.InvalidRoles => Results.ValidationProblem(
+                new Dictionary<string, string[]>
+                {
+                    ["roleCodes"] = ["One or more project roles are invalid."],
+                }),
+            UpdateProjectMemberRolesOutcome.LastOwner => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/last-owner",
                 "project_last_owner_required",
                 "The project must keep at least one active Owner."),
-            ProjectMemberMutationOutcome.VersionConflict => Problem(
+            UpdateProjectMemberRolesOutcome.VersionConflict => Problem(
+                StatusCodes.Status409Conflict,
+                "https://khaikang.dev/problems/projects/member-version-conflict",
+                "project_member_version_conflict",
+                "The project member was changed by another user. Reload and try again."),
+            _ => Results.NotFound(),
+        };
+    }
+
+    private static IResult MapRemoveProjectMemberOutcome(RemoveProjectMemberOutcome outcome)
+    {
+        return outcome switch
+        {
+            RemoveProjectMemberOutcome.Succeeded => Results.NoContent(),
+            RemoveProjectMemberOutcome.Forbidden => Results.Forbid(),
+            RemoveProjectMemberOutcome.NotFound => Results.NotFound(),
+            RemoveProjectMemberOutcome.LastOwner => Problem(
+                StatusCodes.Status409Conflict,
+                "https://khaikang.dev/problems/projects/last-owner",
+                "project_last_owner_required",
+                "The project must keep at least one active Owner."),
+            RemoveProjectMemberOutcome.VersionConflict => Problem(
                 StatusCodes.Status409Conflict,
                 "https://khaikang.dev/problems/projects/member-version-conflict",
                 "project_member_version_conflict",
