@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { List, Plus } from '@lucide/vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiButton } from '@khaikang/ui'
 import ResourcePageHeader from '../components/ResourcePageHeader.vue'
@@ -17,10 +17,10 @@ import {
 } from '../navigation'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const projectId = computed(() => String(route.params.projectId))
 const project = ref<ProjectResponse>()
-const addingMember = ref(false)
 
 const canAddMember = computed(() =>
   project.value?.currentUserPermissions.includes(PROJECT_MEMBER_ADD_PERMISSION) === true &&
@@ -62,8 +62,11 @@ async function loadPage(): Promise<void> {
       :title="project.name"
       :subtitle="t('projects.members.title')"
     >
-      <UiButton v-if="canAddMember" @click="addingMember = !addingMember">
-        <Plus :size="16" />{{ t(addingMember ? 'common.members.cancelAdd' : 'common.members.add') }}
+      <UiButton
+        v-if="canAddMember"
+        @click="router.push({ name: 'project-member-new', params: { projectId } })"
+      >
+        <Plus :size="16" />{{ t('common.members.add') }}
       </UiButton>
     </ResourcePageHeader>
 
@@ -79,11 +82,10 @@ async function loadPage(): Promise<void> {
       resource-type="project"
       :resource-id="projectId"
       :title="t('projects.members.record')"
-      :can-add="canAddMember"
+      :can-add="false"
       :can-edit-role="canAssignRoles"
       :can-remove="canRemoveMember"
       :show-add-action="false"
-      v-model:adding="addingMember"
     />
   </section>
 </template>

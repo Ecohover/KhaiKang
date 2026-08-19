@@ -15,6 +15,8 @@ export const tests = {
     prefixInvalid: 'Use 2-10 letters or numbers and start with a letter.',
     prefixConflict: 'This case prefix is already in use.',
     descriptionLabel: 'Workspace description',
+    createSectionTitle: 'Workspace details',
+    createSectionDescription: 'Set the workspace identity and case prefix.',
     count: '{count} workspace | {count} workspaces',
     loading: 'Loading test workspaces…',
     loadFailed: 'Unable to load test workspaces.',

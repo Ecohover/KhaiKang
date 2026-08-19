@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { UiCreateActions, UiField } from '@khaikang/ui'
-import SharedBreadcrumb from '../components/SharedBreadcrumb.vue'
+import { UiCreateActions } from '@khaikang/ui'
+import ProjectCreateFormFields from '../components/ProjectCreateFormFields.vue'
+import ResourceFormLayout from '../components/ResourceFormLayout.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
@@ -21,7 +22,7 @@ const codeError = computed(() => {
 })
 const disabled = computed(() => !code.value.trim() || !name.value.trim() || Boolean(codeError.value))
 
-async function create(continueCreating: boolean): Promise<void> {
+async function create(): Promise<void> {
   if (disabled.value || creating.value) return
   creating.value = true
   error.value = ''
@@ -36,15 +37,7 @@ async function create(continueCreating: boolean): Promise<void> {
       return
     }
     showCreated(t('projects.record'), result.data.code)
-    if (continueCreating) {
-      code.value = ''
-      name.value = ''
-      description.value = ''
-      await nextTick()
-      document.getElementById('project-code')?.focus()
-    } else {
-      await router.push({ name: 'project-detail', params: { projectId: result.data.id } })
-    }
+    await router.push({ name: 'project-detail', params: { projectId: result.data.id } })
   } catch {
     error.value = t('projects.detail.connectionError')
   } finally {
@@ -54,112 +47,34 @@ async function create(continueCreating: boolean): Promise<void> {
 </script>
 
 <template>
-  <section class="create-page">
-    <SharedBreadcrumb
-      show-back
-      :back-to="{ name: 'projects' }"
-      :back-label="t('projects.create.back')"
-      :items="[
-        { label: t('projects.list.title'), to: { name: 'projects' } },
-        { label: t('projects.create.title'), active: true },
-      ]"
-    />
-
-    <form class="form-card" @submit.prevent="create(false)">
-      <header>
-        <h2>{{ t('projects.create.title') }}</h2>
-        <p>{{ t('projects.create.description') }}</p>
-      </header>
-
-      <p v-if="error" class="error-banner">{{ error }}</p>
-
-      <div class="field-grid">
-        <UiField
-          id="project-code"
-          v-model="code"
-          :label="t('projects.create.code')"
-          required
-          :disabled="creating"
-          :error="codeError"
-        />
-        <UiField
-          id="project-name"
-          v-model="name"
-          :label="t('projects.create.name')"
-          required
-          :disabled="creating"
-        />
-        <UiField
-          id="project-description"
-          v-model="description"
-          :label="t('projects.create.descriptionLabel')"
-          multiline
-          :disabled="creating"
-        />
-      </div>
-
+  <ResourceFormLayout
+    :back-to="{ name: 'projects' }"
+    :back-label="t('projects.create.back')"
+    :meta="t('projects.management')"
+    :title="t('projects.create.title')"
+    :description="t('projects.create.description')"
+    :error="error"
+  >
+    <form @submit.prevent="create">
+      <ProjectCreateFormFields
+        v-model:code="code"
+        v-model:name="name"
+        v-model:description="description"
+        :code-error="codeError"
+        :disabled="creating"
+        :labels="{ sectionTitle: t('projects.create.sectionTitle'), sectionDescription: t('projects.create.sectionDescription'), code: t('projects.create.code'), name: t('projects.create.name'), description: t('projects.create.descriptionLabel') }"
+      />
+    </form>
+    <template #actions>
       <UiCreateActions
         :loading="creating"
         :disabled="disabled"
+        :allow-continue="false"
+        :cancel-label="t('common.actions.cancel')"
         :create-label="t('projects.create.submit')"
-        :continue-label="t('projects.create.submitAndContinue')"
-        @create="create(false)"
-        @create-continue="create(true)"
+        @cancel="router.push({ name: 'projects' })"
+        @create="create"
       />
-    </form>
-  </section>
+    </template>
+  </ResourceFormLayout>
 </template>
-
-<style scoped>
-.create-page {
-  display: grid;
-  max-width: 960px;
-  gap: 20px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.form-card {
-  display: grid;
-  gap: 20px;
-  background: white;
-  border: 1px solid var(--kk-border);
-  border-radius: var(--kk-radius);
-  padding: 24px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.form-card :deep(.ui-create-actions) {
-  position: sticky;
-  bottom: 0;
-  justify-content: flex-end;
-  padding: 14px 0 0;
-  background: var(--kk-surface);
-  border-top: 1px solid var(--kk-border);
-}
-
-.form-card header h2 {
-  margin: 0 0 4px;
-  font-size: 1.4rem;
-}
-.form-card header p {
-  margin: 0;
-  color: var(--kk-text-muted);
-  font-size: 0.88rem;
-}
-
-.error-banner {
-  padding: 10px 14px;
-  background: #fef2f2;
-  color: #dc2626;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-
-.field-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-</style>

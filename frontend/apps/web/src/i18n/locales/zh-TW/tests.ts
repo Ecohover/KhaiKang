@@ -15,6 +15,8 @@ export const tests = {
     prefixInvalid: '請輸入 2–10 個英文字母或數字，且必須以字母開頭。',
     prefixConflict: '這個案例編號前綴已被使用。',
     descriptionLabel: '工作區說明',
+    createSectionTitle: '工作區資料',
+    createSectionDescription: '設定工作區識別資訊與案例前綴。',
     count: '{count} 個工作區',
     loading: '正在載入測試工作區…',
     loadFailed: '無法載入測試工作區。',

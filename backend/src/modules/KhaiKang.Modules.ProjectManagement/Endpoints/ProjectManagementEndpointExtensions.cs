@@ -376,8 +376,12 @@ public static partial class ProjectManagementEndpointExtensions
             AddProjectMemberOutcome.Succeeded =>
                 Results.Json(result.Member, statusCode: StatusCodes.Status201Created),
             AddProjectMemberOutcome.Forbidden => Results.Forbid(),
-            AddProjectMemberOutcome.NotFound or AddProjectMemberOutcome.AccountNotFound =>
-                Results.NotFound(),
+            AddProjectMemberOutcome.NotFound => Results.NotFound(),
+            AddProjectMemberOutcome.AccountNotFound => Problem(
+                StatusCodes.Status404NotFound,
+                "https://khaikang.dev/problems/projects/member-account-not-found",
+                "project_member_account_not_found",
+                "The active account to add was not found."),
             AddProjectMemberOutcome.InvalidRoles => Results.ValidationProblem(
                 new Dictionary<string, string[]>
                 {
