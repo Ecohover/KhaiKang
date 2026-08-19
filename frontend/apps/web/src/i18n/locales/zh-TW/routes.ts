@@ -4,6 +4,7 @@ export const routes = {
   projectCreate: '建立專案',
   projectHome: '專案首頁',
   projectMembers: '成員管理',
+  projectMemberCreate: '新增成員',
   projectIssues: '任務管理',
   issueCreate: '新增任務',
   issueEdit: '編輯任務',

@@ -28,6 +28,7 @@ public sealed class ProjectMemberOutcomeMappingTests
                 username: "missing.account",
                 roleCodes: ["contributor"]));
         Assert.Equal(HttpStatusCode.NotFound, missingAccountResponse.StatusCode);
+        await AssertProblemCodeAsync(missingAccountResponse, "project_member_account_not_found");
 
         var invalidRoleResponse = await api.PostJsonAsync(
             $"/api/v1/projects/{project.Id}/members",

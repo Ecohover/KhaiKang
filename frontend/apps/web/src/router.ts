@@ -13,6 +13,7 @@ import ProjectDetailView from './views/ProjectDetailView.vue'
 import ProjectIssueFormView from './views/ProjectIssueFormView.vue'
 import ProjectIssuesView from './views/ProjectIssuesView.vue'
 import ProjectListView from './views/ProjectListView.vue'
+import ProjectMemberCreateView from './views/ProjectMemberCreateView.vue'
 import ProjectMembersView from './views/ProjectMembersView.vue'
 import ProjectSettingsView from './views/ProjectSettingsView.vue'
 import SetupView from './views/SetupView.vue'
@@ -80,6 +81,12 @@ export const router = createRouter({
           name: 'project-members',
           component: ProjectMembersView,
           meta: { titleKey: 'routes.projectMembers', module: 'projects' },
+        },
+        {
+          path: 'projects/:projectId/members/new',
+          name: 'project-member-new',
+          component: ProjectMemberCreateView,
+          meta: { titleKey: 'routes.projectMemberCreate', module: 'projects' },
         },
         {
           path: 'projects/:projectId/issues',

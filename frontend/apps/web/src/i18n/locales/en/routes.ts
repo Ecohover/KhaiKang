@@ -4,6 +4,7 @@ export const routes = {
   projectCreate: 'Create Project',
   projectHome: 'Project Home',
   projectMembers: 'Members',
+  projectMemberCreate: 'Add member',
   projectIssues: 'Issues',
   issueCreate: 'New Issue',
   issueEdit: 'Edit Issue',
