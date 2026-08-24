@@ -31,6 +31,18 @@ public sealed class IssueDirectory(ProjectManagementDbContext dbContext) : IIssu
             cancellationToken);
     }
 
+    public Task<IssueDirectoryEntry?> FindCommentableAsync(
+        Guid issueId,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        return FindAsync(
+            issueId,
+            accountId,
+            ProjectManagementConstants.IssueCommentCreatePermission,
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, IssueDirectoryEntry>> GetReadableByIdsAsync(
         IReadOnlyCollection<Guid> issueIds,
         Guid accountId,

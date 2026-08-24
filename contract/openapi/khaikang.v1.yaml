@@ -1859,6 +1859,82 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TestRunResponse' }
         '409': { description: Run is terminal, incomplete, or version conflicts. }
+  /api/v1/comments/{resourceType}/{resourceId}:
+    parameters:
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/CommentResourceType'
+      - name: resourceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Comments]
+      operationId: ListComments
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A stable newest-first page of comments visible with the target resource.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentPageResponse' }
+        '401':
+          description: Authentication is required.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: The resource type, resource, or caller access is unavailable without disclosing which condition applied.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+    post:
+      tags: [Comments]
+      operationId: CreateComment
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommentRequest' }
+      responses:
+        '201':
+          description: The created comment, or the original successful response for an identical retry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentResponse' }
+        '400':
+          description: Boundary validation failed, or a terminal validation rejection is replayed.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+        '401':
+          description: Authentication is required.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: The resource, authorization, or active actor is unavailable without metadata disclosure.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: The idempotency key is already reserved for a different canonical request fingerprint.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+              example:
+                type: https://khaikang.dev/problems/idempotency-conflict
+                title: The idempotency key was already used for a different request.
+                status: 409
+                code: idempotency-conflict
 components:
   securitySchemes:
     sessionCookie:
@@ -1894,6 +1970,15 @@ components:
       description: Token returned by `getCsrfToken`; its paired cookie is also required.
       schema:
         type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque caller-generated key scoped to the authenticated actor and operation. Reuse with a different canonical request returns an idempotency conflict.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
   schemas:
     TestWorkspaceRole:
       type: string
@@ -2943,6 +3028,43 @@ components:
           type: boolean
         hasNextPage:
           type: boolean
+    CommentResourceType:
+      type: string
+      enum: [issue, test_case, test_plan, test_run]
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+    CommentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, authorAccountId, authorDisplayName, accountType, content, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        authorAccountId: { type: string, format: uuid }
+        authorDisplayName: { type: string }
+        accountType: { type: string, enum: [human, ai_agent] }
+        fixedRole: { type: [string, 'null'] }
+        ownerAccountId: { type: [string, 'null'], format: uuid }
+        ownerDisplayName: { type: [string, 'null'] }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
+    CommentPageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, hasNextPage]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CommentResponse' }
+        page: { type: integer, format: int32, minimum: 1 }
+        hasNextPage: { type: boolean }
     ProblemDetails:
       type: object
       properties:

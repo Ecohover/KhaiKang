@@ -12,6 +12,11 @@ public interface IIssueDirectory
         Guid accountId,
         CancellationToken cancellationToken);
 
+    Task<IssueDirectoryEntry?> FindCommentableAsync(
+        Guid issueId,
+        Guid accountId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyDictionary<Guid, IssueDirectoryEntry>> GetReadableByIdsAsync(
         IReadOnlyCollection<Guid> issueIds,
         Guid accountId,

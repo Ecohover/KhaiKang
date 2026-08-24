@@ -1,5 +1,7 @@
 using System.Threading.RateLimiting;
+using KhaiKang.Modules.CommentManagement.Contracts;
 using KhaiKang.Modules.Identity.Application;
+using KhaiKang.Modules.Identity.Application.Comments;
 using KhaiKang.Modules.Identity.Configuration;
 using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.Identity.Domain;
@@ -45,6 +47,7 @@ public static class IdentityModuleExtensions
         services.AddScoped<SessionCookieEvents>();
         services.AddScoped<IdentityPrincipalFactory>();
         services.AddScoped<IAccountDirectory, AccountDirectory>();
+        services.AddScoped<ICommentActorDirectory, CommentActorDirectory>();
 
         services.AddDataProtection()
             .SetApplicationName("KhaiKang");

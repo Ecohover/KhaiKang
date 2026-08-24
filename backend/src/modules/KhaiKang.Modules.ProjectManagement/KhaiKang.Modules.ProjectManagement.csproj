@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\KhaiKang.Modules.CommentManagement\KhaiKang.Modules.CommentManagement.csproj" />
     <ProjectReference Include="..\..\common\KhaiKang.CommonUtils\KhaiKang.CommonUtils.csproj" />
     <ProjectReference Include="..\..\common\KhaiKang.CommonUtils.Web\KhaiKang.CommonUtils.Web.csproj" />
     <ProjectReference Include="..\KhaiKang.Modules.Identity\KhaiKang.Modules.Identity.csproj" />

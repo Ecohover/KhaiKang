@@ -1,3 +1,4 @@
+using KhaiKang.Modules.CommentManagement.Infrastructure;
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Infrastructure;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
@@ -68,6 +69,12 @@ public sealed class ApiIntegrationTestFactory : WebApplicationFactory<Program>
             services.AddDbContext<IdentityDbContext>(options => options
                 .UseSqlite(_connection)
                 .UseInternalServiceProvider(_sqliteServices));
+            services.RemoveAll<DbContextOptions<CommentManagementDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<CommentManagementDbContext>>();
+            services.RemoveAll<CommentManagementDbContext>();
+            services.AddDbContext<CommentManagementDbContext>(options => options
+                .UseSqlite(_connection)
+                .UseInternalServiceProvider(_sqliteServices));
             services.RemoveAll<DbContextOptions<ProjectManagementDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<ProjectManagementDbContext>>();
             services.RemoveAll<ProjectManagementDbContext>();
@@ -90,6 +97,8 @@ public sealed class ApiIntegrationTestFactory : WebApplicationFactory<Program>
         using var scope = host.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         dbContext.Database.EnsureCreated();
+        var commentDbContext = scope.ServiceProvider.GetRequiredService<CommentManagementDbContext>();
+        commentDbContext.Database.GetService<IRelationalDatabaseCreator>().CreateTables();
         var projectDbContext = scope.ServiceProvider.GetRequiredService<ProjectManagementDbContext>();
         projectDbContext.Database.GetService<IRelationalDatabaseCreator>().CreateTables();
         var testManagementDbContext = scope.ServiceProvider.GetRequiredService<TestManagementDbContext>();

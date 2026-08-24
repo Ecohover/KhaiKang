@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\common\KhaiKang.CommonUtils\KhaiKang.CommonUtils.csproj" />
     <ProjectReference Include="..\common\KhaiKang.CommonUtils.Web\KhaiKang.CommonUtils.Web.csproj" />
+    <ProjectReference Include="..\modules\KhaiKang.Modules.CommentManagement\KhaiKang.Modules.CommentManagement.csproj" />
     <ProjectReference Include="..\modules\KhaiKang.Modules.Identity\KhaiKang.Modules.Identity.csproj" />
     <ProjectReference Include="..\modules\KhaiKang.Modules.ProjectManagement\KhaiKang.Modules.ProjectManagement.csproj" />
     <ProjectReference Include="..\modules\KhaiKang.Modules.TestManagement\KhaiKang.Modules.TestManagement.csproj" />

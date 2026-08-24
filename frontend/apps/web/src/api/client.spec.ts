@@ -122,3 +122,59 @@ describe('issue management client', () => {
     )
   })
 })
+
+describe('comment client', () => {
+  it('lists a stable comment page through the canonical resource route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ items: [], page: 2, hasNextPage: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiClient.listComments('test_run', 'run-id', 2)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/comments/test_run/run-id?page=2',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+
+  it('creates a comment with CSRF and the caller-owned idempotency key', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'comment-id',
+          authorAccountId: 'account-id',
+          authorDisplayName: 'developer',
+          accountType: 'human',
+          fixedRole: null,
+          ownerAccountId: null,
+          ownerDisplayName: null,
+          content: 'Verification evidence.',
+          createdAt: '2026-08-24T00:00:00Z',
+          version: 1,
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiClient.createComment(
+      {
+        resourceType: 'issue',
+        resourceId: 'issue-id',
+        idempotencyKey: 'comment-key',
+        content: 'Verification evidence.',
+      },
+      { 'X-XSRF-TOKEN': 'csrf-token' },
+    )
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Headers
+    expect(headers.get('X-XSRF-TOKEN')).toBe('csrf-token')
+    expect(headers.get('Idempotency-Key')).toBe('comment-key')
+    expect(init.body).toBe(JSON.stringify({ content: 'Verification evidence.' }))
+  })
+})

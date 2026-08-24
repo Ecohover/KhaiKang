@@ -2,6 +2,8 @@ using System.Reflection;
 
 using KhaiKang.Api.Contracts;
 using KhaiKang.CommonUtils.Web.DependencyInjection;
+using KhaiKang.Modules.CommentManagement.DependencyInjection;
+using KhaiKang.Modules.CommentManagement.Infrastructure;
 using KhaiKang.Modules.Identity.DependencyInjection;
 using KhaiKang.Modules.Identity.Infrastructure;
 using KhaiKang.Modules.ProjectManagement.DependencyInjection;
@@ -21,6 +23,7 @@ if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Te
 }
 
 builder.Services.AddKhaiKangCommonWeb();
+builder.Services.AddCommentManagementModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddProjectManagementModule(builder.Configuration);
 builder.Services.AddTestManagementModule(builder.Configuration);
@@ -44,6 +47,7 @@ if (builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<CommentManagementDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<ProjectManagementDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<TestManagementDbContext>().Database.MigrateAsync();
 }
@@ -56,6 +60,7 @@ app.UseAntiforgery();
 
 app.MapControllers();
 app.MapIdentityModule();
+app.MapCommentManagementModule();
 app.MapProjectManagementModule();
 app.MapTestManagementModule();
 

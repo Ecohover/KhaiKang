@@ -1,5 +1,7 @@
 using KhaiKang.CommonUtils.Storage;
+using KhaiKang.Modules.CommentManagement.Contracts;
 using KhaiKang.Modules.ProjectManagement.Application;
+using KhaiKang.Modules.ProjectManagement.Application.Issues;
 using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.ProjectManagement.Controllers;
 using KhaiKang.Modules.ProjectManagement.Endpoints;
@@ -41,6 +43,7 @@ public static class ProjectManagementModuleExtensions
         services.AddScoped<ProjectManagementService>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IIssueDirectory, IssueDirectory>();
+        services.AddScoped<ICommentResourceDirectory, ProjectCommentResourceDirectory>();
         services.AddScoped<IIssueCommandService, IssueCommandService>();
         services.AddScoped<IssueService>();
         services.AddScoped<IssueRelationService>();

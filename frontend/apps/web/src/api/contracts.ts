@@ -224,6 +224,37 @@ export interface TestWorkspaceResponse {
   version: number
 }
 
+export type CommentResourceType = 'issue' | 'test_case' | 'test_plan' | 'test_run'
+
+export interface CreateCommentRequest {
+  content: string
+}
+
+export interface CreateCommentCommand extends CreateCommentRequest {
+  resourceType: CommentResourceType
+  resourceId: string
+  idempotencyKey: string
+}
+
+export interface CommentResponse {
+  id: string
+  authorAccountId: string
+  authorDisplayName: string
+  accountType: 'human' | 'ai_agent'
+  fixedRole: string | null
+  ownerAccountId: string | null
+  ownerDisplayName: string | null
+  content: string
+  createdAt: string
+  version: number
+}
+
+export interface CommentPageResponse {
+  items: CommentResponse[]
+  page: number
+  hasNextPage: boolean
+}
+
 export type IssueRelationDirectionKind = 'symmetric' | 'directed' | 'hierarchical'
 export type IssueRelationDirection = 'forward' | 'reverse'
 

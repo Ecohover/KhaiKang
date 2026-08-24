@@ -4,6 +4,10 @@ import type {
   AddProjectMemberRequest,
   AuthenticatedUserResponse,
   ChangePasswordRequest,
+  CommentPageResponse,
+  CommentResourceType,
+  CommentResponse,
+  CreateCommentCommand,
   CreateAccountRequest,
   CreateAccountResponse,
   CreateProjectRequest,
@@ -178,6 +182,29 @@ export const apiClient = {
 
   listAccounts(): Promise<ApiResult<AccountResponse[]>> {
     return request('/api/v1/accounts')
+  },
+
+  listComments(
+    resourceType: CommentResourceType,
+    resourceId: string,
+    page = 1,
+  ): Promise<ApiResult<CommentPageResponse>> {
+    return request(
+      `/api/v1/comments/${resourceType}/${resourceId}?page=${encodeURIComponent(page)}`,
+    )
+  },
+
+  createComment(
+    command: CreateCommentCommand,
+    headers: HeadersInit,
+  ): Promise<ApiResult<CommentResponse>> {
+    const requestHeaders = new Headers(headers)
+    requestHeaders.set('Idempotency-Key', command.idempotencyKey)
+    return request(`/api/v1/comments/${command.resourceType}/${command.resourceId}`, {
+      method: 'POST',
+      headers: requestHeaders,
+      body: { content: command.content },
+    })
   },
 
   createAccount(

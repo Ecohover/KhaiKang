@@ -9,6 +9,7 @@
     <Project Path="src/common/KhaiKang.CommonUtils/KhaiKang.CommonUtils.csproj" />
   </Folder>
   <Folder Name="/src/modules/">
+    <Project Path="src/modules/KhaiKang.Modules.CommentManagement/KhaiKang.Modules.CommentManagement.csproj" />
     <Project Path="src/modules/KhaiKang.Modules.Identity/KhaiKang.Modules.Identity.csproj" />
     <Project Path="src/modules/KhaiKang.Modules.ProjectManagement/KhaiKang.Modules.ProjectManagement.csproj" />
     <Project Path="src/modules/KhaiKang.Modules.TestManagement/KhaiKang.Modules.TestManagement.csproj" />

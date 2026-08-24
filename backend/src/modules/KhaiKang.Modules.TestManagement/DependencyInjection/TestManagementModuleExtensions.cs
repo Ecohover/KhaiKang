@@ -1,3 +1,4 @@
+using KhaiKang.Modules.CommentManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Application;
 using KhaiKang.Modules.TestManagement.Controllers;
 using KhaiKang.Modules.TestManagement.Endpoints;
@@ -19,6 +20,7 @@ public static class TestManagementModuleExtensions
             ?? throw new InvalidOperationException("Connection string 'KhaiKang' is required.");
         services.AddDbContext<TestManagementDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<TestManagementService>();
+        services.AddScoped<ICommentResourceDirectory, TestCommentResourceDirectory>();
         services.AddScoped<TestCaseAttachmentService>();
         services.AddScoped<TestRunItemAttachmentService>();
         services.AddScoped<TestCaseRequirementLinkService>();
