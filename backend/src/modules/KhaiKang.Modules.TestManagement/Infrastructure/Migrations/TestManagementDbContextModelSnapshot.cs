@@ -22,6 +22,106 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.BugTestIssueSourceLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BugIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bug_issue_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TestIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_issue_id");
+
+                    b.Property<Guid>("TestWorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bug_test_issue_sources");
+
+                    b.HasIndex("BugIssueId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_bug_test_issue_sources_bug");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("TestIssueId");
+
+                    b.HasIndex("TestWorkspaceId");
+
+                    b.ToTable("bug_test_issue_sources", (string)null);
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.BugTestRunItemSourceLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BugIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bug_issue_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TestRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_run_id");
+
+                    b.Property<Guid>("TestRunItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_run_item_id");
+
+                    b.Property<Guid>("TestWorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bug_test_run_item_sources");
+
+                    b.HasIndex("BugIssueId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_bug_test_run_item_sources_bug");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("TestRunId");
+
+                    b.HasIndex("TestWorkspaceId");
+
+                    b.HasIndex("TestRunItemId", "TestRunId");
+
+                    b.ToTable("bug_test_run_item_sources", (string)null);
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCase", b =>
                 {
                     b.Property<Guid>("Id")
@@ -275,6 +375,53 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("ck_test_case_requirement_links_deleted_metadata", "(is_deleted = false AND deleted_at IS NULL AND deleted_by_account_id IS NULL) OR (is_deleted = true AND deleted_at IS NOT NULL AND deleted_by_account_id IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseSourceLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TestCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_case_id");
+
+                    b.Property<Guid>("TestIssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_issue_id");
+
+                    b.Property<Guid>("TestWorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("test_workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_test_case_test_issue_sources");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("TestCaseId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_test_case_test_issue_sources_case");
+
+                    b.HasIndex("TestIssueId");
+
+                    b.HasIndex("TestWorkspaceId");
+
+                    b.ToTable("test_case_test_issue_sources", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>
@@ -1240,6 +1387,66 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.ToTable("test_workspace_projects", (string)null);
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TraceabilityIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_account_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("RejectionSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("rejection_snapshot");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponseSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_snapshot");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_traceability_idempotency_records");
+
+                    b.HasIndex("ActorAccountId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("uq_traceability_idempotency_actor_key");
+
+                    b.ToTable("traceability_idempotency_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_traceability_idempotency_fingerprint", "length(request_fingerprint) = 64");
+
+                            t.HasCheckConstraint("ck_traceability_idempotency_terminal", "(state = 'incomplete_transient_failure' AND response_snapshot IS NULL AND rejection_snapshot IS NULL AND completed_at IS NULL) OR (state = 'terminal_success' AND response_snapshot IS NOT NULL AND rejection_snapshot IS NULL AND completed_at IS NOT NULL) OR (state = 'terminal_business_rejection' AND response_snapshot IS NULL AND rejection_snapshot IS NOT NULL AND completed_at IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Infrastructure.AccountReference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1283,6 +1490,67 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.BugTestIssueSourceLink", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.IssueReference", null)
+                        .WithMany()
+                        .HasForeignKey("BugIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.ProjectReference", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.IssueReference", null)
+                        .WithMany()
+                        .HasForeignKey("TestIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TestWorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.BugTestRunItemSourceLink", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.IssueReference", null)
+                        .WithMany()
+                        .HasForeignKey("BugIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.ProjectReference", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestRun", null)
+                        .WithMany()
+                        .HasForeignKey("TestRunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TestWorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestRunItem", null)
+                        .WithMany()
+                        .HasForeignKey("TestRunItemId", "TestRunId")
+                        .HasPrincipalKey("Id", "TestRunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCase", b =>
@@ -1355,6 +1623,33 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                     b.Navigation("TestCase");
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseSourceLink", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.ProjectReference", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestCase", null)
+                        .WithMany()
+                        .HasForeignKey("TestCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Infrastructure.IssueReference", null)
+                        .WithMany()
+                        .HasForeignKey("TestIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KhaiKang.Modules.TestManagement.Domain.TestWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TestWorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestCaseTag", b =>

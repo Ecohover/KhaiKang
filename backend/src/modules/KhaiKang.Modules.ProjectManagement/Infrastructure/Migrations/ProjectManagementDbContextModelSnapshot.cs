@@ -442,6 +442,66 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueRelationIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_account_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("RejectionSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("rejection_snapshot");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponseSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_snapshot");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_relation_idempotency_records");
+
+                    b.HasIndex("ActorAccountId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("uq_issue_relation_idempotency_actor_key");
+
+                    b.ToTable("issue_relation_idempotency_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_issue_relation_idempotency_fingerprint", "length(request_fingerprint) = 64");
+
+                            t.HasCheckConstraint("ck_issue_relation_idempotency_terminal", "(state = 'incomplete_transient_failure' AND response_snapshot IS NULL AND rejection_snapshot IS NULL AND completed_at IS NULL) OR (state = 'terminal_success' AND response_snapshot IS NOT NULL AND rejection_snapshot IS NULL AND completed_at IS NOT NULL) OR (state = 'terminal_business_rejection' AND response_snapshot IS NULL AND rejection_snapshot IS NOT NULL AND completed_at IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.ProjectManagement.Domain.IssueRelationType", b =>
                 {
                     b.Property<Guid>("Id")

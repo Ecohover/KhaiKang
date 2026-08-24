@@ -124,6 +124,10 @@ internal sealed class AuthenticatedApiTestContext : IDisposable
             Content = JsonContent.Create(content),
         };
         request.Headers.Add("X-XSRF-TOKEN", await GetCsrfTokenAsync(client));
+        if (method == HttpMethod.Post)
+        {
+            request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        }
         return await client.SendAsync(request);
     }
 

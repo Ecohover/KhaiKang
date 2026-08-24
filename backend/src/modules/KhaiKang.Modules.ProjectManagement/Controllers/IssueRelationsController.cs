@@ -63,7 +63,16 @@ public sealed class IssueRelationsController(IssueRelationService relationServic
         CreateIssueRelationRequest request,
         CancellationToken cancellationToken)
     {
-        var errors = ValidateCreateRequest(request);
+        var errors = new Dictionary<string, string[]>();
+        var idempotencyKey = Request.Headers["Idempotency-Key"];
+        if (idempotencyKey.Count != 1 ||
+            string.IsNullOrWhiteSpace(idempotencyKey[0]) ||
+            idempotencyKey[0]!.Length > 200)
+        {
+            errors["Idempotency-Key"] =
+                ["A single non-empty Idempotency-Key header of at most 200 characters is required."];
+        }
+
         if (errors.Count > 0)
         {
             return ValidationProblem(new ValidationProblemDetails(errors));
@@ -74,12 +83,14 @@ public sealed class IssueRelationsController(IssueRelationService relationServic
             return Unauthorized();
         }
 
-        var result = await relationService.CreateAsync(
-            projectId,
-            issueId,
-            accountId,
-            request,
-            cancellationToken);
+        var result = await relationService.CreateAsync(new CreateIssueRelationCommand
+        {
+            ProjectId = projectId,
+            IssueId = issueId,
+            ActorAccountId = accountId,
+            IdempotencyKey = idempotencyKey[0]!,
+            Request = request,
+        }, cancellationToken);
         if (result.Outcome == IssueRelationMutationOutcome.Succeeded)
         {
             return StatusCode(StatusCodes.Status201Created, result.Relation);
@@ -138,6 +149,10 @@ public sealed class IssueRelationsController(IssueRelationService relationServic
             IssueRelationMutationOutcome.NotFound => NotFound(),
             IssueRelationMutationOutcome.InvalidType => Validation("relationTypeCode", "The relation type is invalid or inactive."),
             IssueRelationMutationOutcome.InvalidDirection => Validation("direction", "Direction must be forward or reverse."),
+            IssueRelationMutationOutcome.InvalidTarget => Validation("relatedIssueId", "A related Issue is required."),
+            IssueRelationMutationOutcome.InvalidParentChildTypes => Validation(
+                "relationTypeCode",
+                "A parent_of relation requires a Story parent and a Task or Test Issue child."),
             IssueRelationMutationOutcome.SelfRelation => Validation("relatedIssueId", "An Issue cannot relate to itself."),
             IssueRelationMutationOutcome.ProjectInactive => Conflict(
                 "project_inactive",
@@ -154,6 +169,9 @@ public sealed class IssueRelationsController(IssueRelationService relationServic
             IssueRelationMutationOutcome.VersionConflict => Conflict(
                 "issue_relation_version_conflict",
                 "The Issue relation was changed by another user. Reload and try again."),
+            IssueRelationMutationOutcome.IdempotencyConflict => Conflict(
+                "idempotency-conflict",
+                "The Idempotency-Key was already used with a different relation request."),
             _ => NotFound(),
         };
     }
@@ -171,28 +189,6 @@ public sealed class IssueRelationsController(IssueRelationService relationServic
             type: $"https://khaikang.dev/problems/issues/{code.Replace('_', '-')}",
             detail: detail,
             extensions: new Dictionary<string, object?> { ["code"] = code });
-    }
-
-    private static Dictionary<string, string[]> ValidateCreateRequest(CreateIssueRelationRequest request)
-    {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(request.RelationTypeCode) || request.RelationTypeCode.Length > 50)
-        {
-            errors["relationTypeCode"] = ["Relation type is required and cannot exceed 50 characters."];
-        }
-
-        if (request.RelatedIssueId == Guid.Empty)
-        {
-            errors["relatedIssueId"] = ["A related Issue is required."];
-        }
-
-        if (!string.Equals(request.Direction, "forward", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(request.Direction, "reverse", StringComparison.OrdinalIgnoreCase))
-        {
-            errors["direction"] = ["Direction must be forward or reverse."];
-        }
-
-        return errors;
     }
 
     private bool TryGetAccountId(out Guid accountId)

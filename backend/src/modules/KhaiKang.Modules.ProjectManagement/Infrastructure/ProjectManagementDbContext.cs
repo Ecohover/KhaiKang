@@ -33,6 +33,9 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
 
     public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
 
+    public DbSet<IssueRelationIdempotencyRecord> IssueRelationIdempotencyRecords =>
+        Set<IssueRelationIdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var enforceAccountForeignKeys = Database.IsNpgsql();
@@ -53,6 +56,7 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         ConfigureIssue(modelBuilder, enforceAccountForeignKeys);
         ConfigureIssueAttachment(modelBuilder, enforceAccountForeignKeys);
         ConfigureIssueRelationType(modelBuilder);
+        ConfigureIssueRelationIdempotency(modelBuilder);
         ConfigureIssueRelation(modelBuilder, enforceAccountForeignKeys);
         ConfigureProjectAuditEvent(modelBuilder, enforceAccountForeignKeys);
     }
@@ -550,6 +554,53 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
             Version = 1,
         }));
     }
+
+    private static void ConfigureIssueRelationIdempotency(ModelBuilder modelBuilder)
+    {
+        var record = modelBuilder.Entity<IssueRelationIdempotencyRecord>();
+        record.ToTable("issue_relation_idempotency_records", table =>
+        {
+            table.HasCheckConstraint("ck_issue_relation_idempotency_fingerprint", "length(request_fingerprint) = 64");
+            table.HasCheckConstraint(
+                "ck_issue_relation_idempotency_terminal",
+                "(state = 'incomplete_transient_failure' AND response_snapshot IS NULL AND rejection_snapshot IS NULL AND completed_at IS NULL) OR " +
+                "(state = 'terminal_success' AND response_snapshot IS NOT NULL AND rejection_snapshot IS NULL AND completed_at IS NOT NULL) OR " +
+                "(state = 'terminal_business_rejection' AND response_snapshot IS NULL AND rejection_snapshot IS NOT NULL AND completed_at IS NOT NULL)");
+        });
+        record.HasKey(item => item.Id).HasName("pk_issue_relation_idempotency_records");
+        record.Property(item => item.Id).HasColumnName("id");
+        record.Property(item => item.ActorAccountId).HasColumnName("actor_account_id");
+        record.Property(item => item.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(200);
+        record.Property(item => item.RequestFingerprint).HasColumnName("request_fingerprint").HasMaxLength(64);
+        record.Property(item => item.State).HasColumnName("state").HasMaxLength(40).HasConversion(
+            state => ToIssueRelationIdempotencyStateCode(state),
+            code => FromIssueRelationIdempotencyStateCode(code));
+        record.Property(item => item.ResponseSnapshot).HasColumnName("response_snapshot").HasColumnType("jsonb");
+        record.Property(item => item.RejectionSnapshot).HasColumnName("rejection_snapshot").HasColumnType("jsonb");
+        record.Property(item => item.CreatedAt).HasColumnName("created_at");
+        record.Property(item => item.CompletedAt).HasColumnName("completed_at");
+        record.HasIndex(item => new { item.ActorAccountId, item.IdempotencyKey })
+            .IsUnique()
+            .HasDatabaseName("uq_issue_relation_idempotency_actor_key");
+    }
+
+    private static string ToIssueRelationIdempotencyStateCode(IssueRelationIdempotencyState state) =>
+        state switch
+        {
+            IssueRelationIdempotencyState.IncompleteTransientFailure => "incomplete_transient_failure",
+            IssueRelationIdempotencyState.TerminalSuccess => "terminal_success",
+            IssueRelationIdempotencyState.TerminalBusinessRejection => "terminal_business_rejection",
+            _ => throw new InvalidOperationException($"Unsupported relation idempotency state '{state}'."),
+        };
+
+    private static IssueRelationIdempotencyState FromIssueRelationIdempotencyStateCode(string code) =>
+        code switch
+        {
+            "incomplete_transient_failure" => IssueRelationIdempotencyState.IncompleteTransientFailure,
+            "terminal_success" => IssueRelationIdempotencyState.TerminalSuccess,
+            "terminal_business_rejection" => IssueRelationIdempotencyState.TerminalBusinessRejection,
+            _ => throw new InvalidOperationException($"Unsupported relation idempotency state '{code}'."),
+        };
 
     private static void ConfigureIssueRelation(
         ModelBuilder modelBuilder,

@@ -7,10 +7,13 @@ public enum IssueRelationMutationOutcome
     Forbidden,
     InvalidType,
     InvalidDirection,
+    InvalidTarget,
+    InvalidParentChildTypes,
     SelfRelation,
     ProjectInactive,
     Duplicate,
     ParentConflict,
     HierarchyCycle,
     VersionConflict,
+    IdempotencyConflict,
 }

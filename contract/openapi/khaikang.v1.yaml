@@ -1074,7 +1074,9 @@ paths:
       tags: [Issues]
       operationId: CreateIssueRelation
       security: [{ sessionCookie: [] }]
-      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -1648,6 +1650,80 @@ paths:
         '403': { description: The caller lacks Workspace management or issue.update. }
         '404': { description: Workspace, Case, or active link is not visible. }
         '409': { description: Link version conflict. }
+  /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/source-test-issue:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: GetTestCaseSource
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: The immutable Test Issue source of this Case.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseSourceResponse' }
+        '404': { description: Workspace, Case, source, or Issue is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: LinkTestCaseSource
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkTestCaseSourceRequest' }
+      responses:
+        '201':
+          description: The single immutable Test Issue source was recorded or replayed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseSourceResponse' }
+        '400': { description: Test Issue type or Workspace-Project scope is invalid. }
+        '403': { description: Workspace or Project Issue permission is insufficient. }
+        '404': { description: Workspace, Case, or Test Issue is not visible. }
+        '409': { description: Source already exists or the idempotency key fingerprint conflicts. }
+  /api/v1/test-workspaces/{workspaceId}/bugs/{bugIssueId}/sources:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: bugIssueId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: GetBugSources
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Immutable Test Issue, Run, and Run Item sources recorded for the Bug.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BugSourcesResponse' }
+        '404': { description: Workspace or Bug is not visible. }
+    post:
+      tags: [Test Management]
+      operationId: LinkBugSources
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkBugSourcesRequest' }
+      responses:
+        '201':
+          description: Requested immutable Bug sources were recorded atomically or replayed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BugSourcesResponse' }
+        '400': { description: Source type, Project, Run, or Run Item scope is invalid. }
+        '403': { description: Workspace or Project Issue permission is insufficient. }
+        '404': { description: Workspace, Bug, Test Issue, or Run is not visible. }
+        '409': { description: A source cardinality or idempotency fingerprint conflicts. }
   /api/v1/test-workspaces/{workspaceId}/cases/{caseId}/attachments/{attachmentId}:
     parameters:
       - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2599,6 +2675,40 @@ components:
         issue: { $ref: '#/components/schemas/TestTraceIssueResponse' }
         createdAt: { type: string, format: date-time }
         version: { type: integer, format: int32, minimum: 1 }
+    LinkTestCaseSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [testIssueId]
+      properties:
+        testIssueId: { type: string, format: uuid }
+    TestCaseSourceResponse:
+      type: object
+      additionalProperties: false
+      required: [id, testCaseId, testIssue, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        testCaseId: { type: string, format: uuid }
+        testIssue: { $ref: '#/components/schemas/TestTraceIssueResponse' }
+        createdAt: { type: string, format: date-time }
+    LinkBugSourcesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        testIssueId: { type: [string, 'null'], format: uuid }
+        testRunId: { type: [string, 'null'], format: uuid }
+        testRunItemId: { type: [string, 'null'], format: uuid }
+    BugSourcesResponse:
+      type: object
+      additionalProperties: false
+      required: [bug, testIssue, testRunId, testRunItemId]
+      properties:
+        bug: { $ref: '#/components/schemas/TestTraceIssueResponse' }
+        testIssue:
+          oneOf:
+            - $ref: '#/components/schemas/TestTraceIssueResponse'
+            - type: 'null'
+        testRunId: { type: [string, 'null'], format: uuid }
+        testRunItemId: { type: [string, 'null'], format: uuid }
     CreateTestRunBugRequest:
       type: object
       additionalProperties: false

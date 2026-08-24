@@ -71,6 +71,10 @@ import type {
   TestCaseRequirementLinkResponse,
   CreateTestRunBugRequest,
   TestRunBugLinkResponse,
+  LinkTestCaseSourceRequest,
+  TestCaseSourceResponse,
+  LinkBugSourcesRequest,
+  BugSourcesResponse,
 } from './contracts'
 import { i18n } from '../i18n/index'
 
@@ -467,9 +471,12 @@ export const apiClient = {
     issueId: string,
     body: CreateIssueRelationRequest,
     headers: HeadersInit,
+    idempotencyKey = crypto.randomUUID(),
   ): Promise<ApiResult<IssueRelationResponse>> {
+    const requestHeaders = new Headers(headers)
+    requestHeaders.set('Idempotency-Key', idempotencyKey)
     return request(`/api/v1/projects/${projectId}/issues/${issueId}/relations`, {
-      method: 'POST', headers, body,
+      method: 'POST', headers: requestHeaders, body,
     })
   },
 
@@ -770,6 +777,48 @@ export const apiClient = {
       `/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/requirement-issues/${linkId}?version=${encodeURIComponent(version)}`,
       { method: 'DELETE', headers },
     )
+  },
+
+  getTestCaseSource(
+    workspaceId: string,
+    caseId: string,
+  ): Promise<ApiResult<TestCaseSourceResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/source-test-issue`)
+  },
+
+  linkTestCaseSource(
+    workspaceId: string,
+    caseId: string,
+    body: LinkTestCaseSourceRequest,
+    headers: HeadersInit,
+    idempotencyKey: string,
+  ): Promise<ApiResult<TestCaseSourceResponse>> {
+    const requestHeaders = new Headers(headers)
+    requestHeaders.set('Idempotency-Key', idempotencyKey)
+    return request(`/api/v1/test-workspaces/${workspaceId}/cases/${caseId}/source-test-issue`, {
+      method: 'POST', headers: requestHeaders, body,
+    })
+  },
+
+  getBugSources(
+    workspaceId: string,
+    bugIssueId: string,
+  ): Promise<ApiResult<BugSourcesResponse>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/bugs/${bugIssueId}/sources`)
+  },
+
+  linkBugSources(
+    workspaceId: string,
+    bugIssueId: string,
+    body: LinkBugSourcesRequest,
+    headers: HeadersInit,
+    idempotencyKey: string,
+  ): Promise<ApiResult<BugSourcesResponse>> {
+    const requestHeaders = new Headers(headers)
+    requestHeaders.set('Idempotency-Key', idempotencyKey)
+    return request(`/api/v1/test-workspaces/${workspaceId}/bugs/${bugIssueId}/sources`, {
+      method: 'POST', headers: requestHeaders, body,
+    })
   },
 
   listTestPlans(workspaceId: string): Promise<ApiResult<TestPlanResponse[]>> {

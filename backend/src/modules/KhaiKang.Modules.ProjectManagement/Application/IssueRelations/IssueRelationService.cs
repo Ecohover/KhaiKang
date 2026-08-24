@@ -1,7 +1,11 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.ProjectManagement.Domain;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace KhaiKang.Modules.ProjectManagement.Application;
 
@@ -9,6 +13,8 @@ public sealed class IssueRelationService(
     ProjectManagementDbContext dbContext,
     TimeProvider timeProvider)
 {
+    private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
+
     public async Task<IReadOnlyList<IssueRelationTypeResponse>?> ListTypesAsync(
         Guid projectId,
         Guid accountId,
@@ -75,12 +81,95 @@ public sealed class IssueRelationService(
     }
 
     public async Task<IssueRelationMutationResult> CreateAsync(
+        CreateIssueRelationCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (!await HasPermissionAsync(
+            command.ProjectId,
+            command.ActorAccountId,
+            ProjectManagementConstants.IssueRelationCreatePermission,
+            cancellationToken))
+        {
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
+        }
+
+        var fingerprint = CreateFingerprint(command);
+        await ReserveAsync(command, fingerprint, cancellationToken);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var record = await FindAndLockRecordAsync(command, cancellationToken);
+        if (!CryptographicOperations.FixedTimeEquals(
+            Convert.FromHexString(record.RequestFingerprint),
+            Convert.FromHexString(fingerprint)))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.IdempotencyConflict);
+        }
+
+        if (record.State == IssueRelationIdempotencyState.TerminalSuccess)
+        {
+            var response = JsonSerializer.Deserialize<IssueRelationResponse>(
+                record.ResponseSnapshot!,
+                SnapshotJsonOptions)!;
+            await transaction.CommitAsync(cancellationToken);
+            return IssueRelationMutationResult.Created(response);
+        }
+
+        if (record.State == IssueRelationIdempotencyState.TerminalBusinessRejection)
+        {
+            var outcome = JsonSerializer.Deserialize<IssueRelationMutationOutcome>(
+                record.RejectionSnapshot!,
+                SnapshotJsonOptions);
+            await transaction.CommitAsync(cancellationToken);
+            return IssueRelationMutationResult.Failure(outcome);
+        }
+
+        var result = await CreateReservedAsync(
+            command.ProjectId,
+            command.IssueId,
+            command.ActorAccountId,
+            command.Request,
+            cancellationToken);
+        if (result.Outcome == IssueRelationMutationOutcome.Succeeded)
+        {
+            record.CompleteSuccess(
+                JsonSerializer.Serialize(result.Relation, SnapshotJsonOptions),
+                timeProvider.GetUtcNow());
+        }
+        else
+        {
+            record.CompleteBusinessRejection(
+                JsonSerializer.Serialize(result.Outcome, SnapshotJsonOptions),
+                timeProvider.GetUtcNow());
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+
+        return result;
+    }
+
+    private async Task<IssueRelationMutationResult> CreateReservedAsync(
         Guid projectId,
         Guid issueId,
         Guid accountId,
         CreateIssueRelationRequest request,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.RelationTypeCode) || request.RelationTypeCode.Length > 50)
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.InvalidType);
+        if (request.RelatedIssueId == Guid.Empty)
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.InvalidTarget);
+        if (!string.Equals(request.Direction, "forward", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(request.Direction, "reverse", StringComparison.OrdinalIgnoreCase))
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.InvalidDirection);
+
         if (!await HasPermissionAsync(
             projectId,
             accountId,
@@ -155,6 +244,14 @@ public sealed class IssueRelationService(
 
         if (relationType.Id == IssueRelationCatalog.ParentOfId)
         {
+            var parentIssue = issues.Single(item => item.Id == sourceIssueId);
+            var childIssue = issues.Single(item => item.Id == targetIssueId);
+            if (parentIssue.IssueType.Code != "story" || childIssue.IssueType.Code != "task")
+            {
+                return IssueRelationMutationResult.Failure(
+                    IssueRelationMutationOutcome.InvalidParentChildTypes);
+            }
+
             if (await dbContext.IssueRelations.AnyAsync(
                 item => item.RelationTypeId == IssueRelationCatalog.ParentOfId &&
                     item.TargetIssueId == targetIssueId &&
@@ -205,6 +302,81 @@ public sealed class IssueRelationService(
         return IssueRelationMutationResult.Created(
             ToResponse(relation, relationType, source, target));
     }
+
+    private async Task ReserveAsync(
+        CreateIssueRelationCommand command,
+        string fingerprint,
+        CancellationToken cancellationToken)
+    {
+        if (await FindRecordQuery(command).AsNoTracking().AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var record = IssueRelationIdempotencyRecord.Reserve(new IssueRelationIdempotencyReservation
+        {
+            Id = Guid.NewGuid(),
+            ActorAccountId = command.ActorAccountId,
+            IdempotencyKey = command.IdempotencyKey,
+            RequestFingerprint = fingerprint,
+            CreatedAt = timeProvider.GetUtcNow(),
+        });
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        dbContext.IssueRelationIdempotencyRecords.Add(record);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        finally
+        {
+            dbContext.ChangeTracker.Clear();
+        }
+    }
+
+    private async Task<IssueRelationIdempotencyRecord> FindAndLockRecordAsync(
+        CreateIssueRelationCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsNpgsql())
+        {
+            return await dbContext.IssueRelationIdempotencyRecords.FromSqlInterpolated($"""
+                SELECT * FROM issue_relation_idempotency_records
+                WHERE actor_account_id = {command.ActorAccountId}
+                  AND idempotency_key = {command.IdempotencyKey}
+                FOR UPDATE
+                """).SingleAsync(cancellationToken);
+        }
+
+        return await FindRecordQuery(command).SingleAsync(cancellationToken);
+    }
+
+    private IQueryable<IssueRelationIdempotencyRecord> FindRecordQuery(
+        CreateIssueRelationCommand command) =>
+        dbContext.IssueRelationIdempotencyRecords.Where(record =>
+            record.ActorAccountId == command.ActorAccountId &&
+            record.IdempotencyKey == command.IdempotencyKey);
+
+    private static string CreateFingerprint(CreateIssueRelationCommand command)
+    {
+        var request = command.Request;
+        var canonical = JsonSerializer.Serialize(new
+        {
+            projectId = command.ProjectId.ToString("D"),
+            issueId = command.IssueId.ToString("D"),
+            relationTypeCode = request.RelationTypeCode?.Trim().ToLowerInvariant(),
+            relatedIssueId = request.RelatedIssueId.ToString("D"),
+            direction = request.Direction?.Trim().ToLowerInvariant(),
+        });
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     public async Task<IssueRelationMutationResult> DeleteAsync(
         Guid projectId,

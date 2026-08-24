@@ -114,10 +114,10 @@ public sealed class IssueRelationEndpointsTests(ApiIntegrationTestFactory factor
             "parent_of",
             testTask.Id,
             "forward",
-            HttpStatusCode.Conflict);
+            HttpStatusCode.BadRequest);
         await CreateRelationAsync(
             project.Id,
-            testTask.Id,
+            requirement.Id,
             "parent_of",
             childTask.Id,
             "forward",
@@ -128,7 +128,7 @@ public sealed class IssueRelationEndpointsTests(ApiIntegrationTestFactory factor
             "parent_of",
             requirement.Id,
             "forward",
-            HttpStatusCode.Conflict);
+            HttpStatusCode.BadRequest);
 
         var staleDelete = await DeleteAsync(
             $"/api/v1/projects/{project.Id}/issues/{requirement.Id}/relations/{testsRelation.Id}?version={testsRelation.Version + 1}",
@@ -186,6 +186,7 @@ public sealed class IssueRelationEndpointsTests(ApiIntegrationTestFactory factor
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
         request.Headers.Add("X-XSRF-TOKEN", csrfToken);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
         return await _client.SendAsync(request);
     }
 

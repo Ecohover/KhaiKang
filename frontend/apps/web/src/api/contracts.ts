@@ -672,6 +672,30 @@ export interface TestCaseRequirementLinkResponse {
   version: number
 }
 
+export interface LinkTestCaseSourceRequest {
+  testIssueId: string
+}
+
+export interface TestCaseSourceResponse {
+  id: string
+  testCaseId: string
+  testIssue: TestTraceIssueResponse
+  createdAt: string
+}
+
+export interface LinkBugSourcesRequest {
+  testIssueId?: string | null
+  testRunId?: string | null
+  testRunItemId?: string | null
+}
+
+export interface BugSourcesResponse {
+  bug: TestTraceIssueResponse
+  testIssue: TestTraceIssueResponse | null
+  testRunId: string | null
+  testRunItemId: string | null
+}
+
 export interface CreateTestRunBugRequest {
   projectId: string
   title: string

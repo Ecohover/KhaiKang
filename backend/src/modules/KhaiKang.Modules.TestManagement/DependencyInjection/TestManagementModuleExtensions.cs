@@ -25,6 +25,7 @@ public static class TestManagementModuleExtensions
         services.AddScoped<TestRunItemAttachmentService>();
         services.AddScoped<TestCaseRequirementLinkService>();
         services.AddScoped<TestRunBugService>();
+        services.AddScoped<TraceabilitySourceService>();
         services.AddControllers()
             .AddApplicationPart(typeof(TestCaseAttachmentsController).Assembly);
         return services;

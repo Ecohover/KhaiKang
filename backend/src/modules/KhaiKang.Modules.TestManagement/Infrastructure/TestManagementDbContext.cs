@@ -23,6 +23,10 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<TestRunItemAttachment> RunItemAttachments => Set<TestRunItemAttachment>();
     public DbSet<TestCaseRequirementLink> CaseRequirementLinks => Set<TestCaseRequirementLink>();
     public DbSet<TestRunBugLink> RunBugLinks => Set<TestRunBugLink>();
+    public DbSet<TestCaseSourceLink> CaseSourceLinks => Set<TestCaseSourceLink>();
+    public DbSet<BugTestIssueSourceLink> BugTestIssueSourceLinks => Set<BugTestIssueSourceLink>();
+    public DbSet<BugTestRunItemSourceLink> BugTestRunItemSourceLinks => Set<BugTestRunItemSourceLink>();
+    public DbSet<TraceabilityIdempotencyRecord> TraceabilityIdempotencyRecords => Set<TraceabilityIdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -472,6 +476,79 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         runBugLink.HasOne<IssueReference>().WithMany()
             .HasForeignKey(x => x.BugIssueId).OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_test_run_bug_links_issue");
+
+        var caseSource = modelBuilder.Entity<TestCaseSourceLink>();
+        caseSource.ToTable("test_case_test_issue_sources");
+        caseSource.HasKey(x => x.Id).HasName("pk_test_case_test_issue_sources");
+        caseSource.Property(x => x.Id).HasColumnName("id");
+        caseSource.Property(x => x.TestWorkspaceId).HasColumnName("test_workspace_id");
+        caseSource.Property(x => x.TestCaseId).HasColumnName("test_case_id");
+        caseSource.Property(x => x.ProjectId).HasColumnName("project_id");
+        caseSource.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
+        caseSource.Property(x => x.CreatedAt).HasColumnName("created_at");
+        caseSource.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
+        caseSource.HasIndex(x => x.TestCaseId).IsUnique().HasDatabaseName("uq_test_case_test_issue_sources_case");
+        caseSource.HasOne<TestWorkspace>().WithMany().HasForeignKey(x => x.TestWorkspaceId).OnDelete(DeleteBehavior.Restrict);
+        caseSource.HasOne<TestCase>().WithMany().HasForeignKey(x => x.TestCaseId).OnDelete(DeleteBehavior.Restrict);
+        caseSource.HasOne<ProjectReference>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        caseSource.HasOne<IssueReference>().WithMany().HasForeignKey(x => x.TestIssueId).OnDelete(DeleteBehavior.Restrict);
+
+        var bugIssueSource = modelBuilder.Entity<BugTestIssueSourceLink>();
+        ConfigureBugSource(bugIssueSource, "bug_test_issue_sources");
+        bugIssueSource.Property(x => x.TestIssueId).HasColumnName("test_issue_id");
+        bugIssueSource.HasOne<IssueReference>().WithMany().HasForeignKey(x => x.TestIssueId).OnDelete(DeleteBehavior.Restrict);
+
+        var bugRunItemSource = modelBuilder.Entity<BugTestRunItemSourceLink>();
+        ConfigureBugSource(bugRunItemSource, "bug_test_run_item_sources");
+        bugRunItemSource.Property(x => x.TestRunId).HasColumnName("test_run_id");
+        bugRunItemSource.Property(x => x.TestRunItemId).HasColumnName("test_run_item_id");
+        bugRunItemSource.HasOne<TestRun>().WithMany().HasForeignKey(x => x.TestRunId).OnDelete(DeleteBehavior.Restrict);
+        bugRunItemSource.HasOne<TestRunItem>().WithMany()
+            .HasForeignKey(x => new { x.TestRunItemId, x.TestRunId })
+            .HasPrincipalKey(x => new { x.Id, x.TestRunId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var idempotency = modelBuilder.Entity<TraceabilityIdempotencyRecord>();
+        idempotency.ToTable("traceability_idempotency_records", table =>
+        {
+            table.HasCheckConstraint("ck_traceability_idempotency_fingerprint", "length(request_fingerprint) = 64");
+            table.HasCheckConstraint(
+                "ck_traceability_idempotency_terminal",
+                "(state = 'incomplete_transient_failure' AND response_snapshot IS NULL AND rejection_snapshot IS NULL AND completed_at IS NULL) OR " +
+                "(state = 'terminal_success' AND response_snapshot IS NOT NULL AND rejection_snapshot IS NULL AND completed_at IS NOT NULL) OR " +
+                "(state = 'terminal_business_rejection' AND response_snapshot IS NULL AND rejection_snapshot IS NOT NULL AND completed_at IS NOT NULL)");
+        });
+        idempotency.HasKey(x => x.Id).HasName("pk_traceability_idempotency_records");
+        idempotency.Property(x => x.Id).HasColumnName("id");
+        idempotency.Property(x => x.ActorAccountId).HasColumnName("actor_account_id");
+        idempotency.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(200);
+        idempotency.Property(x => x.RequestFingerprint).HasColumnName("request_fingerprint").HasMaxLength(64);
+        idempotency.Property(x => x.State).HasColumnName("state").HasMaxLength(40);
+        idempotency.Property(x => x.ResponseSnapshot).HasColumnName("response_snapshot").HasColumnType("jsonb");
+        idempotency.Property(x => x.RejectionSnapshot).HasColumnName("rejection_snapshot").HasColumnType("jsonb");
+        idempotency.Property(x => x.CreatedAt).HasColumnName("created_at");
+        idempotency.Property(x => x.CompletedAt).HasColumnName("completed_at");
+        idempotency.HasIndex(x => new { x.ActorAccountId, x.IdempotencyKey }).IsUnique()
+            .HasDatabaseName("uq_traceability_idempotency_actor_key");
+    }
+
+    private static void ConfigureBugSource<TEntity>(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> entity,
+        string tableName)
+        where TEntity : class
+    {
+        entity.ToTable(tableName);
+        entity.HasKey("Id").HasName($"pk_{tableName}");
+        entity.Property<Guid>("Id").HasColumnName("id");
+        entity.Property<Guid>("TestWorkspaceId").HasColumnName("test_workspace_id");
+        entity.Property<Guid>("ProjectId").HasColumnName("project_id");
+        entity.Property<Guid>("BugIssueId").HasColumnName("bug_issue_id");
+        entity.Property<DateTimeOffset>("CreatedAt").HasColumnName("created_at");
+        entity.Property<Guid>("CreatedByAccountId").HasColumnName("created_by_account_id");
+        entity.HasIndex("BugIssueId").IsUnique().HasDatabaseName($"uq_{tableName}_bug");
+        entity.HasOne<TestWorkspace>().WithMany().HasForeignKey("TestWorkspaceId").OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne<ProjectReference>().WithMany().HasForeignKey("ProjectId").OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne<IssueReference>().WithMany().HasForeignKey("BugIssueId").OnDelete(DeleteBehavior.Restrict);
     }
 
     private static void Audit<TEntity>(
