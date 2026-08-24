@@ -123,6 +123,70 @@ describe('issue management client', () => {
   })
 })
 
+describe('AI account client', () => {
+  it('creates an AI account through the human cookie and CSRF boundary', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ account: {}, initialPassword: 'one-time' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiClient.createAiAccount(
+      { username: 'ai-development', fixedRole: 'development_ai' },
+      { 'X-XSRF-TOKEN': 'csrf-token' },
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/ai-accounts',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ username: 'ai-development', fixedRole: 'development_ai' }),
+      }),
+    )
+  })
+
+  it('keeps token plaintext on the explicit owner command response only', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ token: 'kkai-secret', createdAt: '2026-08-24T00:00:00Z', version: 1 }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await apiClient.createOrRecreateAiAccountToken(
+      'ai-account-id',
+      { 'X-XSRF-TOKEN': 'csrf-token' },
+    )
+
+    expect(response.data?.token).toBe('kkai-secret')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/ai-accounts/ai-account-id/token',
+      expect.objectContaining({ method: 'POST', credentials: 'include' }),
+    )
+  })
+
+  it('uses an in-memory bearer argument without cookie token persistence', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: 'ai-id' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiClient.getCurrentAiBearerIdentity('kkai-secret')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Headers
+    expect(headers.get('Authorization')).toBe('Bearer kkai-secret')
+    expect(init.credentials).toBe('omit')
+  })
+})
+
 describe('comment client', () => {
   it('lists a stable comment page through the canonical resource route', async () => {
     const fetchMock = vi.fn().mockResolvedValue(

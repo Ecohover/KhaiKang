@@ -144,6 +144,7 @@ public sealed class IdentityApplicationResultTests
         {
             Id = Guid.NewGuid(),
             Username = "reviewer",
+            AccountType = "human",
             SystemRoles = ["User"],
             SystemPermissions = ["project.read"],
             MustChangePassword = false,

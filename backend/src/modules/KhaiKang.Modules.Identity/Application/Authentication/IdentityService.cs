@@ -80,6 +80,7 @@ public sealed class IdentityService(
     {
         var now = timeProvider.GetUtcNow();
         var account = await dbContext.Accounts
+            .Include(x => x.OwnerAccount)
             .Include(x => x.SystemRoles)
             .ThenInclude(x => x.SystemRole)
             .ThenInclude(x => x.Permissions)
@@ -88,7 +89,7 @@ public sealed class IdentityService(
                 x => x.NormalizedUsername == NormalizeUsername(request.Username),
                 cancellationToken);
 
-        if (account is null || account.Status != AccountStatus.Active)
+        if (account is null || !CanUseWebSession(account))
         {
             await RecordLoginFailureAsync(account?.Id, now, cancellationToken);
             return LoginResult.InvalidCredentials();
@@ -129,6 +130,8 @@ public sealed class IdentityService(
         var now = timeProvider.GetUtcNow();
         var session = await dbContext.LoginSessions
             .Include(x => x.Account)
+            .ThenInclude(x => x.OwnerAccount)
+            .Include(x => x.Account)
             .ThenInclude(x => x.SystemRoles)
             .ThenInclude(x => x.SystemRole)
             .ThenInclude(x => x.Permissions)
@@ -137,7 +140,7 @@ public sealed class IdentityService(
 
         if (session is null ||
             !session.IsValidAt(now) ||
-            session.Account.Status != AccountStatus.Active)
+            !CanUseWebSession(session.Account))
         {
             return null;
         }
@@ -216,6 +219,11 @@ public sealed class IdentityService(
         {
             Id = account.Id,
             Username = account.Username,
+            AccountType = account.AccountType == AccountType.Human ? "human" : "ai_agent",
+            FixedRole = account.FixedRole is null
+                ? null
+                : AiAccounts.AiFixedRoleCodes.ToCode(account.FixedRole.Value),
+            OwnerAccountId = account.OwnerAccountId,
             SystemRoles = account.SystemRoles
                 .Select(x => x.SystemRole.Name)
                 .Order()
@@ -233,5 +241,20 @@ public sealed class IdentityService(
     private static string NormalizeUsername(string username)
     {
         return username.Trim().ToUpperInvariant();
+    }
+
+    private static bool CanUseWebSession(Account? account)
+    {
+        if (account is null || account.Status != AccountStatus.Active)
+        {
+            return false;
+        }
+
+        return account.AccountType == AccountType.Human ||
+            account.OwnerAccount is
+            {
+                AccountType: AccountType.Human,
+                Status: AccountStatus.Active,
+            };
     }
 }

@@ -1,6 +1,9 @@
 import type {
   ApiProblem,
   AccountResponse,
+  AiAccountResponse,
+  AiBearerIdentityResponse,
+  AiTokenPlaintextResponse,
   AddProjectMemberRequest,
   AuthenticatedUserResponse,
   ChangePasswordRequest,
@@ -10,6 +13,8 @@ import type {
   CreateCommentCommand,
   CreateAccountRequest,
   CreateAccountResponse,
+  CreateAiAccountRequest,
+  CreateAiAccountResponse,
   CreateProjectRequest,
   CreateIssueRequest,
   CreateTestCaseRequest,
@@ -47,6 +52,8 @@ import type {
   UpdateProjectMemberRolesRequest,
   UpdateAccountStatusRequest,
   UpdateAccountRequest,
+  SetAiApiEnabledRequest,
+  TransferAiAccountOwnerRequest,
   UpdateIssueStatusRequest,
   UpdateIssueAssigneeRequest,
   UpdateIssueRequest,
@@ -82,7 +89,7 @@ async function request<TResponse, TBody = never>(
   const headers = new Headers(fetchInit.headers)
   const requestInit: RequestInit = {
     ...fetchInit,
-    credentials: 'include',
+    credentials: fetchInit.credentials ?? 'include',
     headers,
   }
   if (body !== undefined) {
@@ -321,6 +328,72 @@ export const apiClient = {
     if (filters.sortBy) query.set('sortBy', filters.sortBy)
     if (filters.sortDirection) query.set('sortDirection', filters.sortDirection)
     return request(`/api/v1/projects/${projectId}/issues?${query}`)
+  },
+
+  listAiAccounts(): Promise<ApiResult<AiAccountResponse[]>> {
+    return request('/api/v1/ai-accounts')
+  },
+
+  createAiAccount(
+    body: CreateAiAccountRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<CreateAiAccountResponse>> {
+    return request('/api/v1/ai-accounts', { method: 'POST', headers, body })
+  },
+
+  setAiAccountApiEnabled(
+    aiAccountId: string,
+    body: SetAiApiEnabledRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<AiAccountResponse>> {
+    return request(`/api/v1/ai-accounts/${aiAccountId}/api-enabled`, {
+      method: 'PUT',
+      headers,
+      body,
+    })
+  },
+
+  createOrRecreateAiAccountToken(
+    aiAccountId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<AiTokenPlaintextResponse>> {
+    return request(`/api/v1/ai-accounts/${aiAccountId}/token`, {
+      method: 'POST',
+      headers,
+    })
+  },
+
+  viewAiAccountToken(aiAccountId: string): Promise<ApiResult<AiTokenPlaintextResponse>> {
+    return request(`/api/v1/ai-accounts/${aiAccountId}/token`)
+  },
+
+  revokeAiAccountToken(
+    aiAccountId: string,
+    headers: HeadersInit,
+  ): Promise<ApiResult<void>> {
+    return request(`/api/v1/ai-accounts/${aiAccountId}/token`, {
+      method: 'DELETE',
+      headers,
+    })
+  },
+
+  transferAiAccountOwner(
+    aiAccountId: string,
+    body: TransferAiAccountOwnerRequest,
+    headers: HeadersInit,
+  ): Promise<ApiResult<AiAccountResponse>> {
+    return request(`/api/v1/ai-accounts/${aiAccountId}/owner`, {
+      method: 'PUT',
+      headers,
+      body,
+    })
+  },
+
+  getCurrentAiBearerIdentity(token: string): Promise<ApiResult<AiBearerIdentityResponse>> {
+    return request('/api/v1/ai-auth/me', {
+      credentials: 'omit',
+      headers: { Authorization: `Bearer ${token}` },
+    })
   },
 
   getIssueMetadata(projectId: string): Promise<ApiResult<IssueMetadataResponse>> {

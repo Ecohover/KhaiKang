@@ -97,8 +97,11 @@ public sealed class IdentityContractTests
         using var authenticatedUserDocument = await ReadJsonDocumentAsync(loginResponse);
         AssertPropertyNames(
             authenticatedUserDocument.RootElement,
+            "accountType",
+            "fixedRole",
             "id",
             "mustChangePassword",
+            "ownerAccountId",
             "systemPermissions",
             "systemRoles",
             "username");

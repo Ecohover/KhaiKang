@@ -21,6 +21,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    public DbSet<AiAccountToken> AiAccountTokens => Set<AiAccountToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureAccount(modelBuilder);
@@ -30,6 +32,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         ConfigureSystemRolePermission(modelBuilder);
         ConfigureLoginSession(modelBuilder);
         ConfigureAuditEvent(modelBuilder);
+        ConfigureAiAccountToken(modelBuilder);
     }
 
     private static void ConfigurePermission(ModelBuilder modelBuilder)
@@ -101,7 +104,16 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     private static void ConfigureAccount(ModelBuilder modelBuilder)
     {
         var account = modelBuilder.Entity<Account>();
-        account.ToTable("accounts");
+        account.ToTable("accounts", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_accounts_ai_identity",
+                "(account_type = 'human' AND owner_account_id IS NULL AND fixed_role IS NULL AND ai_api_enabled = FALSE) OR " +
+                "(account_type = 'ai_agent' AND owner_account_id IS NOT NULL AND fixed_role IS NOT NULL)");
+            table.HasCheckConstraint(
+                "ck_accounts_fixed_role",
+                "fixed_role IS NULL OR fixed_role IN ('pm_ai', 'development_ai', 'qa_ai', 'reviewer_ai', 'devops_ai')");
+        });
         account.HasKey(x => x.Id).HasName("pk_accounts");
         account.Property(x => x.Id).HasColumnName("id");
         account.Property(x => x.Username).HasColumnName("username").HasMaxLength(100);
@@ -112,8 +124,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             .HasColumnName("account_type")
             .HasMaxLength(50)
             .HasConversion(
-                value => value == AccountType.Human ? "human" : "ai_agent",
-                value => value == "human" ? AccountType.Human : AccountType.AiAgent);
+                value => ToAccountTypeCode(value),
+                value => FromAccountTypeCode(value));
         account.Property(x => x.Status)
             .HasColumnName("status")
             .HasMaxLength(50)
@@ -121,12 +133,26 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
                 value => value.ToString().ToLowerInvariant(),
                 value => Enum.Parse<AccountStatus>(value, true));
         account.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
+        account.Property(x => x.OwnerAccountId).HasColumnName("owner_account_id");
+        account.Property(x => x.FixedRole)
+            .HasColumnName("fixed_role")
+            .HasMaxLength(30)
+            .HasConversion(
+                role => ToNullableFixedRoleCode(role),
+                role => FromNullableFixedRoleCode(role));
+        account.Property(x => x.AiApiEnabled).HasColumnName("ai_api_enabled");
         account.Property(x => x.LastLoginAt).HasColumnName("last_login_at");
         account.Property(x => x.CreatedAt).HasColumnName("created_at");
         account.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
         account.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         account.Property(x => x.UpdatedByAccountId).HasColumnName("updated_by_account_id");
         account.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        account.HasIndex(x => x.OwnerAccountId).HasDatabaseName("idx_accounts_owner_account_id");
+        account.HasOne(x => x.OwnerAccount)
+            .WithMany(x => x.OwnedAiAccounts)
+            .HasForeignKey(x => x.OwnerAccountId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_accounts_ai_owner");
     }
 
     private static void ConfigureSystemRole(ModelBuilder modelBuilder)
@@ -198,6 +224,98 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         auditEvent.Property(x => x.OccurredAt).HasColumnName("occurred_at");
         auditEvent.Property(x => x.TargetId).HasColumnName("target_id");
         auditEvent.Property(x => x.Outcome).HasColumnName("outcome").HasMaxLength(50);
+        auditEvent.Property(x => x.TargetNameSnapshot)
+            .HasColumnName("target_name_snapshot")
+            .HasMaxLength(100);
+        auditEvent.Property(x => x.TargetFixedRoleSnapshot)
+            .HasColumnName("target_fixed_role_snapshot")
+            .HasMaxLength(30)
+            .HasConversion(
+                role => ToNullableFixedRoleCode(role),
+                role => FromNullableFixedRoleCode(role));
+        auditEvent.Property(x => x.OwnerAccountIdSnapshot)
+            .HasColumnName("owner_account_id_snapshot");
+        auditEvent.Property(x => x.OwnerDisplayNameSnapshot)
+            .HasColumnName("owner_display_name_snapshot")
+            .HasMaxLength(100);
         auditEvent.HasIndex(x => x.OccurredAt).HasDatabaseName("ix_audit_events_occurred_at");
     }
+
+    private static void ConfigureAiAccountToken(ModelBuilder modelBuilder)
+    {
+        var token = modelBuilder.Entity<AiAccountToken>();
+        token.ToTable("ai_account_tokens", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_ai_account_tokens_verifier",
+                "length(lookup_verifier) = 64");
+            table.HasCheckConstraint(
+                "ck_ai_account_tokens_revocation",
+                "(revoked_at IS NULL AND revoked_by_account_id IS NULL) OR " +
+                "(revoked_at IS NOT NULL AND revoked_by_account_id IS NOT NULL)");
+            table.HasCheckConstraint("ck_ai_account_tokens_version", "version >= 1");
+        });
+        token.HasKey(x => x.Id).HasName("pk_ai_account_tokens");
+        token.Property(x => x.Id).HasColumnName("id");
+        token.Property(x => x.AiAccountId).HasColumnName("ai_account_id");
+        token.HasIndex(x => x.AiAccountId)
+            .IsUnique()
+            .HasDatabaseName("uq_ai_account_tokens_account_id");
+        token.Property(x => x.ProtectedSecret).HasColumnName("protected_secret");
+        token.Property(x => x.LookupVerifier).HasColumnName("lookup_verifier").HasMaxLength(64);
+        token.HasIndex(x => x.LookupVerifier)
+            .IsUnique()
+            .HasDatabaseName("uq_ai_account_tokens_lookup_verifier");
+        token.Property(x => x.ProtectionVersion)
+            .HasColumnName("protection_version")
+            .HasMaxLength(30);
+        token.Property(x => x.CreatedAt).HasColumnName("created_at");
+        token.Property(x => x.CreatedByAccountId).HasColumnName("created_by_account_id");
+        token.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        token.Property(x => x.UpdatedByAccountId).HasColumnName("updated_by_account_id");
+        token.Property(x => x.RevokedAt).HasColumnName("revoked_at");
+        token.Property(x => x.RevokedByAccountId).HasColumnName("revoked_by_account_id");
+        token.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        token.HasOne(x => x.AiAccount)
+            .WithOne(x => x.AiToken)
+            .HasForeignKey<AiAccountToken>(x => x.AiAccountId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_ai_account_tokens_account");
+    }
+
+    private static string ToAccountTypeCode(AccountType accountType) => accountType switch
+    {
+        AccountType.Human => "human",
+        AccountType.AiAgent => "ai_agent",
+        _ => throw new InvalidOperationException($"Unsupported account type '{accountType}'."),
+    };
+
+    private static AccountType FromAccountTypeCode(string accountType) => accountType switch
+    {
+        "human" => AccountType.Human,
+        "ai_agent" => AccountType.AiAgent,
+        _ => throw new InvalidOperationException($"Unsupported persisted account type '{accountType}'."),
+    };
+
+    private static string? ToNullableFixedRoleCode(AiFixedRole? role) => role switch
+    {
+        AiFixedRole.PmAi => "pm_ai",
+        AiFixedRole.DevelopmentAi => "development_ai",
+        AiFixedRole.QaAi => "qa_ai",
+        AiFixedRole.ReviewerAi => "reviewer_ai",
+        AiFixedRole.DevOpsAi => "devops_ai",
+        null => null,
+        _ => throw new InvalidOperationException($"Unsupported AI fixed role '{role}'."),
+    };
+
+    private static AiFixedRole? FromNullableFixedRoleCode(string? role) => role switch
+    {
+        "pm_ai" => AiFixedRole.PmAi,
+        "development_ai" => AiFixedRole.DevelopmentAi,
+        "qa_ai" => AiFixedRole.QaAi,
+        "reviewer_ai" => AiFixedRole.ReviewerAi,
+        "devops_ai" => AiFixedRole.DevOpsAi,
+        null => null,
+        _ => throw new InvalidOperationException($"Unsupported persisted AI fixed role '{role}'."),
+    };
 }

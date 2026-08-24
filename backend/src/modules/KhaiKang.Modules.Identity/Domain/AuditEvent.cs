@@ -16,6 +16,14 @@ public sealed class AuditEvent
     private const string LoginFailedEventType = "login_failed";
     private const string PasswordChangedEventType = "password_changed";
     private const string LogoutEventType = "logout";
+    private const string AiAccountCreatedEventType = "ai_account_created";
+    private const string AiApiEnabledEventType = "ai_api_enabled";
+    private const string AiApiDisabledEventType = "ai_api_disabled";
+    private const string AiTokenCreatedEventType = "ai_token_created";
+    private const string AiTokenRecreatedEventType = "ai_token_recreated";
+    private const string AiTokenViewedEventType = "ai_token_viewed";
+    private const string AiTokenRevokedEventType = "ai_token_revoked";
+    private const string AiAccountOwnerTransferredEventType = "ai_account_owner_transferred";
 
     private AuditEvent()
     {
@@ -114,6 +122,30 @@ public sealed class AuditEvent
             targetId: accountId,
             occurredAt: occurredAt);
 
+    public static AuditEvent AiAccountCreated(AiAuditEventContext context) =>
+        AiSucceeded(AiAccountCreatedEventType, context);
+
+    public static AuditEvent AiApiEnabled(AiAuditEventContext context) =>
+        AiSucceeded(AiApiEnabledEventType, context);
+
+    public static AuditEvent AiApiDisabled(AiAuditEventContext context) =>
+        AiSucceeded(AiApiDisabledEventType, context);
+
+    public static AuditEvent AiTokenCreated(AiAuditEventContext context) =>
+        AiSucceeded(AiTokenCreatedEventType, context);
+
+    public static AuditEvent AiTokenRecreated(AiAuditEventContext context) =>
+        AiSucceeded(AiTokenRecreatedEventType, context);
+
+    public static AuditEvent AiTokenViewed(AiAuditEventContext context) =>
+        AiSucceeded(AiTokenViewedEventType, context);
+
+    public static AuditEvent AiTokenRevoked(AiAuditEventContext context) =>
+        AiSucceeded(AiTokenRevokedEventType, context);
+
+    public static AuditEvent AiAccountOwnerTransferred(AiAuditEventContext context) =>
+        AiSucceeded(AiAccountOwnerTransferredEventType, context);
+
     public Guid Id { get; private set; }
 
     public Guid? ActorId { get; private set; }
@@ -127,6 +159,14 @@ public sealed class AuditEvent
     public Guid? TargetId { get; private set; }
 
     public string Outcome { get; private set; } = null!;
+
+    public string? TargetNameSnapshot { get; private set; }
+
+    public AiFixedRole? TargetFixedRoleSnapshot { get; private set; }
+
+    public Guid? OwnerAccountIdSnapshot { get; private set; }
+
+    public string? OwnerDisplayNameSnapshot { get; private set; }
 
     private static AuditEvent Succeeded(
         string eventType,
@@ -143,6 +183,24 @@ public sealed class AuditEvent
             OccurredAt = occurredAt,
             TargetId = targetId,
             Outcome = SucceededOutcome,
+        };
+    }
+
+    private static AuditEvent AiSucceeded(string eventType, AiAuditEventContext context)
+    {
+        return new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            ActorId = context.ActorAccountId,
+            ActorType = HumanActorType,
+            EventType = eventType,
+            OccurredAt = context.OccurredAt,
+            TargetId = context.AiAccountId,
+            Outcome = SucceededOutcome,
+            TargetNameSnapshot = context.AiAccountName,
+            TargetFixedRoleSnapshot = context.FixedRole,
+            OwnerAccountIdSnapshot = context.OwnerAccountId,
+            OwnerDisplayNameSnapshot = context.OwnerDisplayName,
         };
     }
 }

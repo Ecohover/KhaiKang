@@ -18,5 +18,8 @@ public sealed class IdentityOptions
     [Range(12, 128)]
     public int MinimumPasswordLength { get; init; } = 12;
 
+    [Required]
+    public string AiTokenProtectionPurpose { get; init; } = "KhaiKang.Identity.AiToken";
+
     public bool? RequireSecureCookies { get; init; }
 }

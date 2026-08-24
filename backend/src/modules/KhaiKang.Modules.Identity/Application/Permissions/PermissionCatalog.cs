@@ -19,6 +19,12 @@ public static class PermissionCatalog
             description: "建立本機使用者帳號。",
             scopeType: "system"),
         Define(
+            id: "af88a1cf-866f-457e-8502-72fe9ea222d1",
+            code: IdentityConstants.AiAccountCreatePermission,
+            name: "AI Account Create",
+            description: "建立固定角色的 AI 帳號。",
+            scopeType: "system"),
+        Define(
             id: "3cda75d2-995b-4e94-bdab-9307429352c5",
             code: "account.update",
             name: "Account Update",

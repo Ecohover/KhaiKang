@@ -1,13 +1,16 @@
 using System.Threading.RateLimiting;
 using KhaiKang.Modules.CommentManagement.Contracts;
+using KhaiKang.Modules.Identity.Application.AiAccounts;
 using KhaiKang.Modules.Identity.Application;
 using KhaiKang.Modules.Identity.Application.Comments;
 using KhaiKang.Modules.Identity.Configuration;
 using KhaiKang.Modules.Identity.Contracts;
+using KhaiKang.Modules.Identity.Controllers;
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Endpoints;
 using KhaiKang.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -43,6 +46,8 @@ public static class IdentityModuleExtensions
             Microsoft.AspNetCore.Identity.PasswordHasher<Account>>();
         services.AddScoped<IdentityService>();
         services.AddScoped<AccountManagementService>();
+        services.AddScoped<AiAccountService>();
+        services.AddScoped<IAiTokenProtector, AiTokenProtector>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionCookieEvents>();
         services.AddScoped<IdentityPrincipalFactory>();
@@ -69,7 +74,22 @@ public static class IdentityModuleExtensions
             $"{IdentityOptions.SectionName}:AuthenticationTicketMinutes",
             30);
 
-        services.AddAuthentication(IdentityConstants.AuthenticationScheme)
+        services.AddAuthentication(options =>
+        {
+            options.DefaultScheme = IdentityConstants.AuthenticationSelectorScheme;
+            options.DefaultAuthenticateScheme = IdentityConstants.AuthenticationSelectorScheme;
+            options.DefaultChallengeScheme = IdentityConstants.AuthenticationSelectorScheme;
+            options.DefaultSignInScheme = IdentityConstants.AuthenticationScheme;
+            options.DefaultSignOutScheme = IdentityConstants.AuthenticationScheme;
+        })
+            .AddPolicyScheme(
+                IdentityConstants.AuthenticationSelectorScheme,
+                displayName: null,
+                options => options.ForwardDefaultSelector = context =>
+                    context.Request.Headers.Authorization.ToString()
+                        .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                        ? IdentityConstants.AiTokenAuthenticationScheme
+                        : IdentityConstants.AuthenticationScheme)
             .AddCookie(IdentityConstants.AuthenticationScheme, options =>
             {
                 options.Cookie.Name = "KhaiKang.Session";
@@ -81,16 +101,35 @@ public static class IdentityModuleExtensions
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(ticketMinutes);
                 options.SlidingExpiration = true;
                 options.EventsType = typeof(SessionCookieEvents);
-            });
+            })
+            .AddScheme<AuthenticationSchemeOptions, AiTokenAuthenticationHandler>(
+                IdentityConstants.AiTokenAuthenticationScheme,
+                _ => { });
 
         services.AddAuthorization(options =>
         {
-            foreach (var permissionCode in PermissionCatalog.SystemPermissionCodes)
+            foreach (var permissionCode in PermissionCatalog.SystemPermissionCodes
+                .Where(code => code != IdentityConstants.AiAccountCreatePermission))
             {
                 options.AddPolicy(permissionCode, policy =>
                     policy.RequireClaim(PermissionCatalog.ClaimType, permissionCode));
             }
+
+
+            options.AddPolicy(IdentityConstants.HumanSessionPolicy, policy =>
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim(IdentityConstants.AccountTypeClaim, "human"));
+            options.AddPolicy(IdentityConstants.AiAccountCreatePermission, policy =>
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim(IdentityConstants.AccountTypeClaim, "human")
+                    .RequireAssertion(context =>
+                        context.User.IsInRole(IdentityConstants.SystemAdminRole) ||
+                        context.User.HasClaim(
+                            PermissionCatalog.ClaimType,
+                            IdentityConstants.AiAccountCreatePermission)));
         });
+        services.AddControllers()
+            .AddApplicationPart(typeof(AiAccountsController).Assembly);
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

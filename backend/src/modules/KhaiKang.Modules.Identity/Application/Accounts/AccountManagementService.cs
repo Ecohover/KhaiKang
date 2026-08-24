@@ -92,6 +92,10 @@ public sealed class AccountManagementService(
         }
 
         var account = await dbContext.Accounts
+            .Include(item => item.OwnerAccount)
+            .Include(item => item.AiToken)
+            .Include(item => item.OwnedAiAccounts)
+            .ThenInclude(aiAccount => aiAccount.AiToken)
             .Include(item => item.SystemRoles)
             .ThenInclude(mapping => mapping.SystemRole)
             .SingleOrDefaultAsync(item => item.Id == accountId, cancellationToken);
@@ -176,6 +180,16 @@ public sealed class AccountManagementService(
             {
                 session.Revoke(now);
             }
+
+            if (account.AccountType == AccountType.AiAgent)
+            {
+                RevokeAiToken(account, account.OwnerAccount!, actorAccountId, now);
+            }
+
+            foreach (var ownedAiAccount in account.OwnedAiAccounts)
+            {
+                RevokeAiToken(ownedAiAccount, account, actorAccountId, now);
+            }
         }
 
         if (previousStatus != status)
@@ -228,5 +242,31 @@ public sealed class AccountManagementService(
     private static string NormalizeUsername(string username)
     {
         return username.ToUpperInvariant();
+    }
+
+    private void RevokeAiToken(
+        Account aiAccount,
+        Account owner,
+        Guid actorAccountId,
+        DateTimeOffset occurredAt)
+    {
+        if (aiAccount.AccountType != AccountType.AiAgent ||
+            aiAccount.AiToken is null ||
+            !aiAccount.AiToken.IsActive)
+        {
+            return;
+        }
+
+        aiAccount.AiToken.Revoke(actorAccountId, occurredAt);
+        dbContext.AuditEvents.Add(AuditEvent.AiTokenRevoked(new AiAuditEventContext
+        {
+            ActorAccountId = actorAccountId,
+            AiAccountId = aiAccount.Id,
+            AiAccountName = aiAccount.Username,
+            FixedRole = aiAccount.FixedRole!.Value,
+            OwnerAccountId = owner.Id,
+            OwnerDisplayName = owner.Username,
+            OccurredAt = occurredAt,
+        }));
     }
 }

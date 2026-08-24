@@ -328,6 +328,170 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/ai-accounts:
+    get:
+      tags: [AI Accounts]
+      operationId: ListAiAccounts
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: AI accounts owned by the current human, or all AI accounts for an administrator. Token plaintext is never included.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AiAccountResponse' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: AI bearer identities cannot use the human management surface. }
+    post:
+      tags: [AI Accounts]
+      operationId: CreateAiAccount
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAiAccountRequest' }
+      responses:
+        '201':
+          description: The AI account was created. Its strong initial Web password appears only in this response.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreateAiAccountResponse' }
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: The human account lacks ai_account.create. }
+        '409':
+          description: The globally unique AI username is already in use.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /api/v1/ai-accounts/{aiAccountId}/api-enabled:
+    put:
+      tags: [AI Accounts]
+      operationId: SetAiAccountApiEnabled
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - { name: aiAccountId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetAiApiEnabledRequest' }
+      responses:
+        '200':
+          description: The owner or administrator changed AI API enablement without receiving token plaintext.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiAccountResponse' }
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: The human is neither owner nor administrator. }
+        '404': { description: The AI account does not exist. }
+        '409':
+          description: The account version is stale.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /api/v1/ai-accounts/{aiAccountId}/token:
+    parameters:
+      - { name: aiAccountId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [AI Accounts]
+      operationId: ViewAiAccountToken
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: The current active human owner explicitly viewed the recoverable token plaintext. The action is audited without plaintext.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiTokenPlaintextResponse' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: Only the current human owner may view token plaintext; administrators are denied. }
+        '404': { description: The AI account or an active token does not exist. }
+    post:
+      tags: [AI Accounts]
+      operationId: CreateOrRecreateAiAccountToken
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '201':
+          description: The owner created or re-created the single permanent token. Any prior token immediately became invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiTokenPlaintextResponse' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: Only the current human owner may create or re-create token plaintext; administrators are denied. }
+        '404': { description: The AI account does not exist. }
+        '409':
+          description: AI API usage is disabled.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+    delete:
+      tags: [AI Accounts]
+      operationId: RevokeAiAccountToken
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
+      responses:
+        '204': { description: The owner or administrator revoked the active token without returning plaintext. }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: The human is neither owner nor administrator. }
+        '404': { description: The AI account or an active token does not exist. }
+  /api/v1/ai-accounts/{aiAccountId}/owner:
+    put:
+      tags: [AI Accounts]
+      operationId: TransferAiAccountOwner
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - { name: aiAccountId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransferAiAccountOwnerRequest' }
+      responses:
+        '200':
+          description: An administrator transferred the unique owner and atomically revoked the prior token without returning plaintext.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiAccountResponse' }
+        '400':
+          description: Request validation failed.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+        '401': { description: No valid authenticated human session exists. }
+        '403': { description: Only an administrator may transfer ownership. }
+        '404': { description: The AI account does not exist. }
+        '409':
+          description: The new owner is not an active human account, or the account version is stale.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /api/v1/ai-auth/me:
+    get:
+      tags: [AI Authentication]
+      operationId: GetCurrentAiBearerIdentity
+      security: [{ aiBearer: [] }]
+      responses:
+        '200':
+          description: The active AI identity derived from the bearer token and current owner state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiBearerIdentityResponse' }
+        '401': { description: The bearer token is missing, invalid, revoked, disabled, replaced, or orphaned. }
   /api/v1/projects:
     get:
       tags: [Projects]
@@ -1941,6 +2105,10 @@ components:
       type: apiKey
       in: cookie
       name: KhaiKang.Session
+    aiBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: KhaiKang AI token
   parameters:
     Page:
       name: page
@@ -2527,13 +2695,23 @@ components:
     AuthenticatedUserResponse:
       type: object
       additionalProperties: false
-      required: [id, username, systemRoles, systemPermissions, mustChangePassword]
+      required: [id, username, accountType, systemRoles, systemPermissions, mustChangePassword]
       properties:
         id:
           type: string
           format: uuid
         username:
           type: string
+        accountType:
+          type: string
+          enum: [human, ai_agent]
+        fixedRole:
+          oneOf:
+            - $ref: '#/components/schemas/AiFixedRole'
+            - type: 'null'
+        ownerAccountId:
+          type: [string, 'null']
+          format: uuid
         systemRoles:
           type: array
           items:
@@ -2625,6 +2803,83 @@ components:
           type: string
           format: password
           writeOnly: true
+    AiFixedRole:
+      type: string
+      enum: [pm_ai, development_ai, qa_ai, reviewer_ai, devops_ai]
+    CreateAiAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [username, fixedRole]
+      properties:
+        username:
+          type: string
+          minLength: 4
+          maxLength: 100
+          pattern: '^ai-[A-Za-z0-9][A-Za-z0-9._-]{0,96}$'
+        fixedRole:
+          $ref: '#/components/schemas/AiFixedRole'
+    SetAiApiEnabledRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled, version]
+      properties:
+        enabled: { type: boolean }
+        version: { type: integer, format: int32, minimum: 1 }
+    TransferAiAccountOwnerRequest:
+      type: object
+      additionalProperties: false
+      required: [ownerAccountId, version]
+      properties:
+        ownerAccountId: { type: string, format: uuid }
+        version: { type: integer, format: int32, minimum: 1 }
+    AiAccountResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, accountType, status, ownerAccountId, ownerDisplayName, fixedRole, aiApiEnabled, hasActiveToken, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        accountType: { type: string, enum: [ai_agent] }
+        status: { type: string, enum: [active, suspended, disabled] }
+        ownerAccountId: { type: string, format: uuid }
+        ownerDisplayName: { type: string }
+        fixedRole: { $ref: '#/components/schemas/AiFixedRole' }
+        aiApiEnabled: { type: boolean }
+        hasActiveToken: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
+    CreateAiAccountResponse:
+      type: object
+      additionalProperties: false
+      required: [account, initialPassword]
+      properties:
+        account: { $ref: '#/components/schemas/AiAccountResponse' }
+        initialPassword:
+          type: string
+          format: password
+          writeOnly: true
+    AiTokenPlaintextResponse:
+      type: object
+      additionalProperties: false
+      required: [token, createdAt, version]
+      properties:
+        token:
+          type: string
+          writeOnly: true
+        createdAt: { type: string, format: date-time }
+        version: { type: integer, format: int32, minimum: 1 }
+    AiBearerIdentityResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, accountType, fixedRole, ownerAccountId, ownerDisplayName]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        accountType: { type: string, enum: [ai_agent] }
+        fixedRole: { $ref: '#/components/schemas/AiFixedRole' }
+        ownerAccountId: { type: string, format: uuid }
+        ownerDisplayName: { type: string }
     CreateProjectRequest:
       type: object
       additionalProperties: false

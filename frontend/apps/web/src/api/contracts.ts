@@ -29,6 +29,9 @@ export interface ChangePasswordRequest {
 export interface AuthenticatedUserResponse {
   id: string
   username: string
+  accountType: 'human' | 'ai_agent'
+  fixedRole: AiFixedRole | null
+  ownerAccountId: string | null
   systemRoles: string[]
   systemPermissions: string[]
   mustChangePassword: boolean
@@ -222,6 +225,58 @@ export interface TestWorkspaceResponse {
   createdAt: string
   updatedAt: string
   version: number
+}
+
+export type AiFixedRole = 'pm_ai' | 'development_ai' | 'qa_ai' | 'reviewer_ai' | 'devops_ai'
+
+export interface CreateAiAccountRequest {
+  username: string
+  fixedRole: AiFixedRole
+}
+
+export interface SetAiApiEnabledRequest {
+  enabled: boolean
+  version: number
+}
+
+export interface TransferAiAccountOwnerRequest {
+  ownerAccountId: string
+  version: number
+}
+
+export interface AiAccountResponse {
+  id: string
+  username: string
+  accountType: 'ai_agent'
+  status: AccountStatus
+  ownerAccountId: string
+  ownerDisplayName: string
+  fixedRole: AiFixedRole
+  aiApiEnabled: boolean
+  hasActiveToken: boolean
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+export interface CreateAiAccountResponse {
+  account: AiAccountResponse
+  initialPassword: string
+}
+
+export interface AiTokenPlaintextResponse {
+  token: string
+  createdAt: string
+  version: number
+}
+
+export interface AiBearerIdentityResponse {
+  id: string
+  username: string
+  accountType: 'ai_agent'
+  fixedRole: AiFixedRole
+  ownerAccountId: string
+  ownerDisplayName: string
 }
 
 export type CommentResourceType = 'issue' | 'test_case' | 'test_plan' | 'test_run'

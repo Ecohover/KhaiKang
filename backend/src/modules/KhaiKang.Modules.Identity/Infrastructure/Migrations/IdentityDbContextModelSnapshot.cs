@@ -35,6 +35,10 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("account_type");
 
+                    b.Property<bool>("AiApiEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ai_api_enabled");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -42,6 +46,11 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedByAccountId")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_account_id");
+
+                    b.Property<string>("FixedRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("fixed_role");
 
                     b.Property<DateTimeOffset?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
@@ -56,6 +65,10 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("normalized_username");
+
+                    b.Property<Guid?>("OwnerAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_account_id");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -95,7 +108,15 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_accounts_normalized_username");
 
-                    b.ToTable("accounts", (string)null);
+                    b.HasIndex("OwnerAccountId")
+                        .HasDatabaseName("idx_accounts_owner_account_id");
+
+                    b.ToTable("accounts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_accounts_ai_identity", "(account_type = 'human' AND owner_account_id IS NULL AND fixed_role IS NULL AND ai_api_enabled = FALSE) OR (account_type = 'ai_agent' AND owner_account_id IS NOT NULL AND fixed_role IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_accounts_fixed_role", "fixed_role IS NULL OR fixed_role IN ('pm_ai', 'development_ai', 'qa_ai', 'reviewer_ai', 'devops_ai')");
+                        });
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AccountSystemRole", b =>
@@ -114,6 +135,84 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.HasIndex("SystemRoleId");
 
                     b.ToTable("account_system_role_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AiAccountToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AiAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ai_account_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<string>("LookupVerifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("lookup_verifier");
+
+                    b.Property<string>("ProtectedSecret")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_secret");
+
+                    b.Property<string>("ProtectionVersion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("protection_version");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_account_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_account_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_account_tokens");
+
+                    b.HasIndex("AiAccountId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_ai_account_tokens_account_id");
+
+                    b.HasIndex("LookupVerifier")
+                        .IsUnique()
+                        .HasDatabaseName("uq_ai_account_tokens_lookup_verifier");
+
+                    b.ToTable("ai_account_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ai_account_tokens_revocation", "(revoked_at IS NULL AND revoked_by_account_id IS NULL) OR (revoked_at IS NOT NULL AND revoked_by_account_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_ai_account_tokens_verifier", "length(lookup_verifier) = 64");
+
+                            t.HasCheckConstraint("ck_ai_account_tokens_version", "version >= 1");
+                        });
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AuditEvent", b =>
@@ -149,9 +248,28 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("outcome");
 
+                    b.Property<Guid?>("OwnerAccountIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_account_id_snapshot");
+
+                    b.Property<string>("OwnerDisplayNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("owner_display_name_snapshot");
+
+                    b.Property<string>("TargetFixedRoleSnapshot")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("target_fixed_role_snapshot");
+
                     b.Property<Guid?>("TargetId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_id");
+
+                    b.Property<string>("TargetNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("target_name_snapshot");
 
                     b.HasKey("Id")
                         .HasName("pk_audit_events");
@@ -280,6 +398,17 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                             CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "建立本機使用者帳號。",
                             Name = "Account Create",
+                            ScopeType = "system",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("af88a1cf-866f-457e-8502-72fe9ea222d1"),
+                            Code = "ai_account.create",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "建立固定角色的 AI 帳號。",
+                            Name = "AI Account Create",
                             ScopeType = "system",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 7, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Version = 1
@@ -573,6 +702,17 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.ToTable("system_role_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.Account", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.Identity.Domain.Account", "OwnerAccount")
+                        .WithMany("OwnedAiAccounts")
+                        .HasForeignKey("OwnerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_accounts_ai_owner");
+
+                    b.Navigation("OwnerAccount");
+                });
+
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AccountSystemRole", b =>
                 {
                     b.HasOne("KhaiKang.Modules.Identity.Domain.Account", "Account")
@@ -592,6 +732,18 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
                     b.Navigation("Account");
 
                     b.Navigation("SystemRole");
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.AiAccountToken", b =>
+                {
+                    b.HasOne("KhaiKang.Modules.Identity.Domain.Account", "AiAccount")
+                        .WithOne("AiToken")
+                        .HasForeignKey("KhaiKang.Modules.Identity.Domain.AiAccountToken", "AiAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_account_tokens_account");
+
+                    b.Navigation("AiAccount");
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.LoginSession", b =>
@@ -629,6 +781,10 @@ namespace KhaiKang.Modules.Identity.Infrastructure.Migrations
 
             modelBuilder.Entity("KhaiKang.Modules.Identity.Domain.Account", b =>
                 {
+                    b.Navigation("AiToken");
+
+                    b.Navigation("OwnedAiAccounts");
+
                     b.Navigation("Sessions");
 
                     b.Navigation("SystemRoles");

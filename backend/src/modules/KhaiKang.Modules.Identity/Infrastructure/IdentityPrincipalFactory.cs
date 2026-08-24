@@ -14,7 +14,19 @@ public sealed class IdentityPrincipalFactory
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Username),
             new(IdentityConstants.SessionIdClaim, session.Id.ToString()),
+            new(IdentityConstants.AccountTypeClaim, user.AccountType),
         };
+        if (user.FixedRole is not null)
+        {
+            claims.Add(new Claim(IdentityConstants.FixedRoleClaim, user.FixedRole));
+        }
+
+        if (user.OwnerAccountId is not null)
+        {
+            claims.Add(new Claim(
+                IdentityConstants.OwnerAccountIdClaim,
+                user.OwnerAccountId.Value.ToString()));
+        }
         claims.AddRange(user.SystemRoles.Select(role => new Claim(ClaimTypes.Role, role)));
         claims.AddRange(user.SystemPermissions.Select(permission =>
             new Claim(PermissionCatalog.ClaimType, permission)));
