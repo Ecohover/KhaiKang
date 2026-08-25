@@ -36,6 +36,7 @@ import type {
   ProjectResponse,
   ProjectMemberResponse,
   ProjectRoleResponse,
+  ResourceOperationResponse,
   SetupStatusResponse,
   TestSuiteResponse,
   TestCaseResponse,
@@ -455,6 +456,13 @@ export const apiClient = {
     })
   },
 
+  listIssueOperations(
+    projectId: string,
+    issueId: string,
+  ): Promise<ApiResult<ResourceOperationResponse[]>> {
+    return request(`/api/v1/projects/${projectId}/issues/${issueId}/operations`)
+  },
+
   listIssueRelationTypes(projectId: string): Promise<ApiResult<IssueRelationTypeResponse[]>> {
     return request(`/api/v1/projects/${projectId}/issue-relation-types`)
   },
@@ -662,6 +670,14 @@ export const apiClient = {
     if (filters.tagId) params.set('tagId', filters.tagId)
     const query = params.size ? `?${params.toString()}` : ''
     return request(`/api/v1/test-workspaces/${workspaceId}/cases${query}`)
+  },
+
+  listTestResourceOperations(
+    workspaceId: string,
+    resourceType: 'test_suite' | 'test_case' | 'test_plan' | 'test_run' | 'test_run_item' | 'test_run_step',
+    resourceId: string,
+  ): Promise<ApiResult<ResourceOperationResponse[]>> {
+    return request(`/api/v1/test-workspaces/${workspaceId}/operations/${resourceType}/${resourceId}`)
   },
 
   listTestTags(): Promise<ApiResult<TestTagResponse[]>> {

@@ -332,7 +332,7 @@ paths:
     get:
       tags: [AI Accounts]
       operationId: ListAiAccounts
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: AI accounts owned by the current human, or all AI accounts for an administrator. Token plaintext is never included.
@@ -346,7 +346,7 @@ paths:
     post:
       tags: [AI Accounts]
       operationId: CreateAiAccount
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -375,7 +375,7 @@ paths:
     put:
       tags: [AI Accounts]
       operationId: SetAiAccountApiEnabled
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - { name: aiAccountId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -409,7 +409,7 @@ paths:
     get:
       tags: [AI Accounts]
       operationId: ViewAiAccountToken
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: The current active human owner explicitly viewed the recoverable token plaintext. The action is audited without plaintext.
@@ -422,7 +422,7 @@ paths:
     post:
       tags: [AI Accounts]
       operationId: CreateOrRecreateAiAccountToken
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       responses:
         '201':
@@ -441,7 +441,7 @@ paths:
     delete:
       tags: [AI Accounts]
       operationId: RevokeAiAccountToken
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       responses:
         '204': { description: The owner or administrator revoked the active token without returning plaintext. }
@@ -452,7 +452,7 @@ paths:
     put:
       tags: [AI Accounts]
       operationId: TransferAiAccountOwner
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - { name: aiAccountId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1041,7 +1041,7 @@ paths:
     get:
       tags: [Issues]
       operationId: ListIssueRelationTypes
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active fixed Issue relation types.
@@ -1059,7 +1059,7 @@ paths:
     get:
       tags: [Issues]
       operationId: ListIssueRelations
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active incoming, outgoing, and symmetric relations visible from the Issue.
@@ -1073,7 +1073,7 @@ paths:
     post:
       tags: [Issues]
       operationId: CreateIssueRelation
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1093,6 +1093,25 @@ paths:
         '403': { description: The current member lacks issue.relation.create. }
         '404': { description: The project or either Issue does not exist or is not visible. }
         '409': { description: The project is inactive, the relation exists, or a hierarchy parent/cycle rule failed. }
+  /api/v1/projects/{projectId}/issues/{issueId}/operations:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Issues]
+      operationId: ListIssueOperations
+      description: Returns immutable human/AI operation provenance snapshots. AI snapshots are not rewritten after rename or owner transfer.
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
+      responses:
+        '200':
+          description: The Issue operation history, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ResourceOperationResponse' }
+        '401': { description: No valid authenticated session or AI bearer token exists. }
+        '404': { description: The project or Issue does not exist in the effective owner scope. }
   /api/v1/projects/{projectId}/issues/{issueId}/relations/{relationId}:
     parameters:
       - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1101,7 +1120,7 @@ paths:
     delete:
       tags: [Issues]
       operationId: DeleteIssueRelation
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - { $ref: '#/components/parameters/CsrfToken' }
         - name: version
@@ -1122,7 +1141,7 @@ paths:
     get:
       tags: [Issues]
       operationId: ListIssueAttachments
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active attachments linked to the issue.
@@ -1135,7 +1154,7 @@ paths:
     post:
       tags: [Issues]
       operationId: UploadIssueAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1166,7 +1185,7 @@ paths:
     delete:
       tags: [Issues]
       operationId: DeleteIssueAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       responses:
         '204': { description: The attachment link was soft deleted. }
@@ -1182,7 +1201,7 @@ paths:
     get:
       tags: [Issues]
       operationId: GetIssueAttachmentContent
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Attachment bytes. Images may be rendered inline when requested.
@@ -1196,7 +1215,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestWorkspaces
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Test workspaces visible to the current member.
@@ -1209,7 +1228,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestWorkspace
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1233,7 +1252,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestWorkspace
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Workspace details.
@@ -1244,7 +1263,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestWorkspace
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1268,7 +1287,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestWorkspaceProjects
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Projects linked to the workspace and visible to all active workspace members.
@@ -1281,7 +1300,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: LinkTestWorkspaceProject
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1310,7 +1329,7 @@ paths:
     delete:
       tags: [Test Management]
       operationId: UnlinkTestWorkspaceProject
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - name: version
@@ -1331,7 +1350,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestWorkspaceMembers
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active workspace members.
@@ -1343,7 +1362,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: AddTestWorkspaceMember
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1371,7 +1390,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestWorkspaceMember
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1388,7 +1407,7 @@ paths:
     delete:
       tags: [Test Management]
       operationId: RemoveTestWorkspaceMember
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - name: version
@@ -1407,7 +1426,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestSuites
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Suite tree as a flat parent-linked collection.
@@ -1419,7 +1438,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestSuite
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1446,7 +1465,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestSuite
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1470,7 +1489,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestCases
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - name: suiteId
           in: query
@@ -1500,7 +1519,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestCase
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1529,7 +1548,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestCase
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Test case details visible to the current workspace member.
@@ -1540,7 +1559,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestCase
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1564,7 +1583,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestCaseAttachments
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active attachments linked to the test case.
@@ -1575,7 +1594,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: UploadTestCaseAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1602,7 +1621,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestCaseRequirementIssues
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Requirement Issues directly validated by the Case and readable by the caller.
@@ -1613,7 +1632,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: LinkTestCaseRequirementIssue
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1638,7 +1657,7 @@ paths:
     delete:
       tags: [Test Management]
       operationId: UnlinkTestCaseRequirementIssue
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - { $ref: '#/components/parameters/CsrfToken' }
         - name: version
@@ -1657,7 +1676,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestCaseSource
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: The immutable Test Issue source of this Case.
@@ -1668,7 +1687,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: LinkTestCaseSource
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1694,7 +1713,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetBugSources
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Immutable Test Issue, Run, and Run Item sources recorded for the Bug.
@@ -1705,7 +1724,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: LinkBugSources
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1732,7 +1751,7 @@ paths:
     delete:
       tags: [Test Management]
       operationId: DeleteTestCaseAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       responses:
         '204': { description: Attachment soft-deleted. }
@@ -1747,7 +1766,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestCaseAttachmentContent
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Attachment bytes; images may be rendered inline.
@@ -1760,7 +1779,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestTags
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Globally available test tags.
@@ -1772,7 +1791,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestTag
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1796,7 +1815,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestTag
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1819,7 +1838,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestPlans
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Plans visible to the current workspace member.
@@ -1830,7 +1849,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestPlan
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1852,7 +1871,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestPlan
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Plan details and ordered case scope.
@@ -1863,7 +1882,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestPlan
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1884,7 +1903,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestRuns
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Runs visible to the current workspace member.
@@ -1894,7 +1913,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestRun
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1915,7 +1934,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestRun
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Run snapshot, results, and progress.
@@ -1930,7 +1949,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestRunBugs
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Bug Issues created from this Run and visible to the current member.
@@ -1941,7 +1960,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: CreateTestRunBug
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1966,7 +1985,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: RecordTestRunItem
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -1988,7 +2007,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: ListTestRunItemAttachments
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Active evidence attachments linked to the test run item.
@@ -1999,7 +2018,7 @@ paths:
     post:
       tags: [Test Management]
       operationId: UploadTestRunItemAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -2029,7 +2048,7 @@ paths:
     delete:
       tags: [Test Management]
       operationId: DeleteTestRunItemAttachment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       responses:
         '204': { description: Evidence attachment soft-deleted. }
@@ -2046,7 +2065,7 @@ paths:
     get:
       tags: [Test Management]
       operationId: GetTestRunItemAttachmentContent
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       responses:
         '200':
           description: Evidence attachment bytes; images may be rendered inline.
@@ -2064,7 +2083,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: RecordTestRunStep
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -2085,7 +2104,7 @@ paths:
     put:
       tags: [Test Management]
       operationId: UpdateTestRunStatus
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters: [{ $ref: '#/components/parameters/CsrfToken' }]
       requestBody:
         required: true
@@ -2113,7 +2132,7 @@ paths:
     get:
       tags: [Comments]
       operationId: ListComments
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/Page'
       responses:
@@ -2135,7 +2154,7 @@ paths:
     post:
       tags: [Comments]
       operationId: CreateComment
-      security: [{ sessionCookie: [] }]
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -2175,6 +2194,31 @@ paths:
                 title: The idempotency key was already used for a different request.
                 status: 409
                 code: idempotency-conflict
+  /api/v1/test-workspaces/{workspaceId}/operations/{resourceType}/{resourceId}:
+    parameters:
+      - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [test_suite, test_case, test_plan, test_run, test_run_item, test_run_step]
+      - { name: resourceId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Test Management]
+      operationId: ListTestResourceOperations
+      description: Returns immutable human/AI operation provenance snapshots within the effective owner Workspace scope.
+      security: [{ sessionCookie: [] }, { aiBearer: [] }]
+      responses:
+        '200':
+          description: The resource operation history, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ResourceOperationResponse' }
+        '401': { description: No valid authenticated session or AI bearer token exists. }
+        '404': { description: The Workspace or resource does not exist in the effective owner scope. }
 components:
   securitySchemes:
     sessionCookie:
@@ -2210,8 +2254,8 @@ components:
     CsrfToken:
       name: X-XSRF-TOKEN
       in: header
-      required: true
-      description: Token returned by `getCsrfToken`; its paired cookie is also required.
+      required: false
+      description: Required with sessionCookie mutations; omitted for aiBearer requests, which do not use cookies or CSRF.
       schema:
         type: string
     IdempotencyKey:
@@ -3420,6 +3464,23 @@ components:
         content: { type: string }
         createdAt: { type: string, format: date-time }
         version: { type: integer, format: int32, minimum: 1 }
+    ResourceOperationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, eventType, actorAccountId, actorType, aiAccountName, fixedRole, ownerAccountId, ownerDisplayName, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string }
+        actorAccountId: { type: string, format: uuid }
+        actorType: { type: string, enum: [human, ai_agent] }
+        aiAccountName: { type: [string, 'null'] }
+        fixedRole:
+          oneOf:
+            - { $ref: '#/components/schemas/AiFixedRole' }
+            - { type: 'null' }
+        ownerAccountId: { type: [string, 'null'], format: uuid }
+        ownerDisplayName: { type: [string, 'null'] }
+        occurredAt: { type: string, format: date-time }
     CommentPageResponse:
       type: object
       additionalProperties: false

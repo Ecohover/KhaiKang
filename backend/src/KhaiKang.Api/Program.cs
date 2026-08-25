@@ -10,6 +10,7 @@ using KhaiKang.Modules.ProjectManagement.DependencyInjection;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
 using KhaiKang.Modules.TestManagement.DependencyInjection;
 using KhaiKang.Modules.TestManagement.Infrastructure;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -56,6 +57,23 @@ app.UseKhaiKangProblemDetails();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.Authorization.ToString()
+        .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        var endpoint = context.GetEndpoint();
+        if (endpoint is not null)
+        {
+            var metadata = endpoint.Metadata
+                .Where(item => item is not IAntiforgeryMetadata)
+                .ToArray();
+            context.SetEndpoint(new Endpoint(endpoint.RequestDelegate, new EndpointMetadataCollection(metadata), endpoint.DisplayName));
+        }
+    }
+
+    await next(context);
+});
 app.UseAntiforgery();
 
 app.MapControllers();

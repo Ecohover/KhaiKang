@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using KhaiKang.CommonUtils.Models;
 using KhaiKang.CommonUtils.Web.Contracts;
+using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.ProjectManagement.Application;
 using KhaiKang.Modules.ProjectManagement.Contracts;
 using Microsoft.AspNetCore.Antiforgery;
@@ -75,6 +76,24 @@ public sealed class ProjectIssuesController(IssueService issueService) : Control
             accountId,
             cancellationToken);
         return issue is null ? NotFound() : Ok(issue);
+    }
+
+    [HttpGet("{issueId:guid}/operations", Name = "ListIssueOperations")]
+    [ProducesResponseType<IReadOnlyList<ResourceOperationResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<ResourceOperationResponse>>> ListOperationsAsync(
+        Guid projectId,
+        Guid issueId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAccountId(out var accountId)) return Unauthorized();
+        var operations = await issueService.ListOperationsAsync(
+            projectId,
+            issueId,
+            accountId,
+            cancellationToken);
+        return operations is null ? NotFound() : Ok(operations);
     }
 
     /// <summary>

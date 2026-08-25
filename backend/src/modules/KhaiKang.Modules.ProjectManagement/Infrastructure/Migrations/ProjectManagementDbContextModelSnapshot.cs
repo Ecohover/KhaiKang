@@ -968,9 +968,19 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ActorFixedRoleSnapshot")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_fixed_role_snapshot");
+
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("actor_name_snapshot");
 
                     b.Property<string>("ActorType")
                         .IsRequired()
@@ -993,6 +1003,15 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("outcome");
+
+                    b.Property<Guid?>("OwnerAccountIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_account_id_snapshot");
+
+                    b.Property<string>("OwnerDisplayNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("owner_display_name_snapshot");
 
                     b.Property<Guid>("TargetId")
                         .HasColumnType("uuid")

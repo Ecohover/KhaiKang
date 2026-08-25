@@ -1,16 +1,17 @@
 using System.Threading.RateLimiting;
 using KhaiKang.Modules.CommentManagement.Contracts;
-using KhaiKang.Modules.Identity.Application.AiAccounts;
 using KhaiKang.Modules.Identity.Application;
+using KhaiKang.Modules.Identity.Application.AiAccounts;
 using KhaiKang.Modules.Identity.Application.Comments;
+using KhaiKang.Modules.Identity.Application.ResourceActors;
 using KhaiKang.Modules.Identity.Configuration;
 using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.Identity.Controllers;
 using KhaiKang.Modules.Identity.Domain;
 using KhaiKang.Modules.Identity.Endpoints;
 using KhaiKang.Modules.Identity.Infrastructure;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -53,6 +54,7 @@ public static class IdentityModuleExtensions
         services.AddScoped<IdentityPrincipalFactory>();
         services.AddScoped<IAccountDirectory, AccountDirectory>();
         services.AddScoped<ICommentActorDirectory, CommentActorDirectory>();
+        services.AddScoped<IResourceActorDirectory, ResourceActorDirectory>();
 
         services.AddDataProtection()
             .SetApplicationName("KhaiKang");

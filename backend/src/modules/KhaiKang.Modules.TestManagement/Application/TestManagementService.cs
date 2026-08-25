@@ -13,6 +13,7 @@ namespace KhaiKang.Modules.TestManagement.Application;
 public sealed class TestManagementService(
     TestManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
+    IResourceActorDirectory resourceActorDirectory,
     IProjectDirectory projectDirectory,
     IIssueDirectory issueDirectory,
     TimeProvider timeProvider)
@@ -32,6 +33,8 @@ public sealed class TestManagementService(
     public async Task<TestManagementResult<TestTagResponse>> CreateTagAsync(
         Guid accountId, CreateTestTagRequest request, CancellationToken cancellationToken)
     {
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestTagResponse>.Failure(TestManagementOutcome.Forbidden);
         var name = request.Name.Trim();
         if (await dbContext.Tags.AnyAsync(x => x.Name.ToUpper() == name.ToUpper(), cancellationToken))
             return TestManagementResult<TestTagResponse>.Failure(
@@ -46,6 +49,8 @@ public sealed class TestManagementService(
     public async Task<TestManagementResult<TestTagResponse>> UpdateTagAsync(
         Guid tagId, Guid accountId, UpdateTestTagRequest request, CancellationToken cancellationToken)
     {
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestTagResponse>.Failure(TestManagementOutcome.Forbidden);
         var tag = await dbContext.Tags.SingleOrDefaultAsync(x => x.Id == tagId, cancellationToken);
         if (tag is null) return TestManagementResult<TestTagResponse>.Failure(TestManagementOutcome.NotFound);
         if (tag.Version != request.Version)
@@ -75,8 +80,10 @@ public sealed class TestManagementService(
         Guid accountId,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return [];
         return await dbContext.Members.AsNoTracking()
-            .Where(x => x.AccountId == accountId &&
+            .Where(x => x.AccountId == actor.ScopeAccountId &&
                 x.Status == TestWorkspaceMemberStatus.Active)
             .OrderBy(x => x.Workspace.Name)
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
@@ -88,9 +95,11 @@ public sealed class TestManagementService(
         Guid accountId,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return null;
         return await dbContext.Members.AsNoTracking()
             .Where(x => x.TestWorkspaceId == workspaceId &&
-                x.AccountId == accountId &&
+                x.AccountId == actor.ScopeAccountId &&
                 x.Status == TestWorkspaceMemberStatus.Active)
             .Select(x => ToWorkspaceResponse(x.Workspace, x.Role))
             .SingleOrDefaultAsync(cancellationToken);
@@ -133,6 +142,9 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestWorkspaceProjectResponse>.Failure(TestManagementOutcome.NotFound);
         }
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestWorkspaceProjectResponse>.Failure(TestManagementOutcome.Forbidden);
 
         if (!CanManage(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
@@ -196,6 +208,10 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<object>.Failure(TestManagementOutcome.NotFound);
         }
+
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<object>.Failure(TestManagementOutcome.Forbidden);
 
         if (!CanManage(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
@@ -261,6 +277,8 @@ public sealed class TestManagementService(
         CreateTestWorkspaceRequest request,
         CancellationToken cancellationToken)
     {
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestWorkspaceResponse>.Failure(TestManagementOutcome.Forbidden);
         var name = request.Name.Trim();
         if (await dbContext.Workspaces.AnyAsync(x => x.Name == name, cancellationToken))
         {
@@ -320,6 +338,10 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestWorkspaceResponse>.Failure(TestManagementOutcome.NotFound);
         }
+
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestWorkspaceResponse>.Failure(TestManagementOutcome.Forbidden);
 
         if (access.Role != TestWorkspaceRole.Owner)
         {
@@ -398,6 +420,10 @@ public sealed class TestManagementService(
             return TestManagementResult<TestWorkspaceMemberResponse>.Failure(TestManagementOutcome.NotFound);
         }
 
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestWorkspaceMemberResponse>.Failure(TestManagementOutcome.Forbidden);
+
         var hasValidRole = TestManagementCodes.TryParseWorkspaceRole(request.Role, out var role);
         if (!CanManage(access.Role) || !hasValidRole)
         {
@@ -464,6 +490,10 @@ public sealed class TestManagementService(
             return TestManagementResult<TestWorkspaceMemberResponse>.Failure(TestManagementOutcome.NotFound);
         }
 
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<TestWorkspaceMemberResponse>.Failure(TestManagementOutcome.Forbidden);
+
         if (!CanManage(access.Role))
         {
             return TestManagementResult<TestWorkspaceMemberResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -525,6 +555,10 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<object>.Failure(TestManagementOutcome.NotFound);
         }
+
+
+        if (!await IsAiMutationAllowedAsync(accountId, null, cancellationToken))
+            return TestManagementResult<object>.Failure(TestManagementOutcome.Forbidden);
 
         if (!CanManage(access.Role))
         {
@@ -589,6 +623,10 @@ public sealed class TestManagementService(
             return TestManagementResult<TestSuiteResponse>.Failure(TestManagementOutcome.NotFound);
         }
 
+
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestSuiteResponse>.Failure(TestManagementOutcome.Forbidden);
+
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestSuiteResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -613,6 +651,7 @@ public sealed class TestManagementService(
             Guid.NewGuid(), workspaceId, request.ParentId, request.Name.Trim(),
             Clean(request.Description), request.SortOrder, accountId, timeProvider.GetUtcNow());
         dbContext.Suites.Add(suite);
+        await AddOperationAsync(suite.Id, "test_suite", "test_suite_created", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return TestManagementResult<TestSuiteResponse>.Success(
             ToSuiteResponse(suite, depth.Value + 1));
@@ -630,6 +669,10 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestSuiteResponse>.Failure(TestManagementOutcome.NotFound);
         }
+
+
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestSuiteResponse>.Failure(TestManagementOutcome.Forbidden);
 
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
@@ -693,6 +736,7 @@ public sealed class TestManagementService(
         suite.Update(
             request.ParentId, request.Name.Trim(), Clean(request.Description),
             request.SortOrder, status, accountId, timeProvider.GetUtcNow());
+        await AddOperationAsync(suite.Id, "test_suite", "test_suite_updated", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return TestManagementResult<TestSuiteResponse>.Success(
             ToSuiteResponse(suite, parentDepth.Value + 1));
@@ -755,6 +799,10 @@ public sealed class TestManagementService(
             return TestManagementResult<TestCaseResponse>.Failure(TestManagementOutcome.NotFound);
         }
 
+
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestCaseResponse>.Failure(TestManagementOutcome.Forbidden);
+
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestCaseResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -807,6 +855,7 @@ public sealed class TestManagementService(
         dbContext.Cases.Add(testCase);
         foreach (var tag in tags)
             dbContext.CaseTags.Add(new TestCaseTag(Guid.NewGuid(), testCase.Id, tag.Id, accountId, now));
+        await AddOperationAsync(testCase.Id, "test_case", "test_case_created", accountId, cancellationToken);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -854,6 +903,10 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestCaseResponse>.Failure(TestManagementOutcome.NotFound);
         }
+
+
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestCaseResponse>.Failure(TestManagementOutcome.Forbidden);
 
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
@@ -941,6 +994,7 @@ public sealed class TestManagementService(
             dbContext.CaseSteps.Add(step);
         }
 
+        await AddOperationAsync(testCase.Id, "test_case", "test_case_updated", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         if (tags is not null)
             await dbContext.Entry(testCase).Collection(x => x.Tags).Query().Include(x => x.Tag).LoadAsync(cancellationToken);
@@ -996,6 +1050,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1030,6 +1086,7 @@ public sealed class TestManagementService(
             dbContext.PlanItems.Add(new TestPlanItem(
                 Guid.NewGuid(), plan.Id, cases[index].Id, index + 1, accountId, now));
         }
+        await AddOperationAsync(plan.Id, "test_plan", "test_plan_created", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
@@ -1044,6 +1101,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanManageAssets(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestPlanResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1098,6 +1157,7 @@ public sealed class TestManagementService(
         plan.Update(
             PlanName(request.Name, now), Clean(request.Description), status, accountId, now,
             testIssue.Issue?.ProjectId, testIssue.Issue?.Id);
+        await AddOperationAsync(plan.Id, "test_plan", "test_plan_updated", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetPlanAsync(workspaceId, plan.Id, accountId, cancellationToken);
     }
@@ -1154,6 +1214,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanExecute(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1195,6 +1257,7 @@ public sealed class TestManagementService(
                 .Select(step => new TestRunItemStepResult(
                     Guid.NewGuid(), runItem.Id, step, accountId, now)));
         }
+        await AddOperationAsync(run.Id, "test_run", "test_run_created", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return await GetRunAsync(workspaceId, run.Id, accountId, cancellationToken);
@@ -1208,6 +1271,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanExecute(access.Role) || access.Workspace.Status != TestAssetStatus.Active)
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1237,6 +1302,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanExecute(access.Role))
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1274,6 +1341,7 @@ public sealed class TestManagementService(
 
         item.Record(resultStatus, Clean(request.ActualResult), accountId, now);
         run.MarkInProgress(accountId, now);
+        await AddOperationAsync(item.Id, "test_run_item", "test_run_item_result_recorded", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
     }
@@ -1287,6 +1355,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanExecute(access.Role))
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1324,6 +1394,7 @@ public sealed class TestManagementService(
 
         step.Record(resultStatus, Clean(request.ActualResult), accountId, now);
         run.MarkInProgress(accountId, now);
+        await AddOperationAsync(step.Id, "test_run_step", "test_run_step_result_recorded", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
     }
@@ -1337,6 +1408,8 @@ public sealed class TestManagementService(
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.NotFound);
         }
+        if (!await IsAiMutationAllowedAsync(accountId, "qa_ai", cancellationToken))
+            return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
         if (!CanExecute(access.Role))
         {
             return TestManagementResult<TestRunResponse>.Failure(TestManagementOutcome.Forbidden);
@@ -1373,6 +1446,7 @@ public sealed class TestManagementService(
         if (status == TestRunStatus.InProgress)
         {
             run.MarkInProgress(accountId, timeProvider.GetUtcNow());
+            await AddOperationAsync(run.Id, "test_run", "test_run_status_changed", accountId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
         }
@@ -1387,15 +1461,97 @@ public sealed class TestManagementService(
         }
 
         run.Finish(status, Clean(request.Summary), accountId, timeProvider.GetUtcNow());
+        await AddOperationAsync(run.Id, "test_run", "test_run_status_changed", accountId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRunAsync(workspaceId, runId, accountId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ResourceOperationResponse>?> ListOperationsAsync(
+        Guid workspaceId,
+        string resourceType,
+        Guid resourceId,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        if (await AccessAsync(workspaceId, accountId, cancellationToken) is null)
+            return null;
+
+        var exists = resourceType switch
+        {
+            "test_suite" => await dbContext.Suites.AnyAsync(x => x.Id == resourceId && x.TestWorkspaceId == workspaceId, cancellationToken),
+            "test_case" => await dbContext.Cases.AnyAsync(x => x.Id == resourceId && x.TestWorkspaceId == workspaceId, cancellationToken),
+            "test_plan" => await dbContext.Plans.AnyAsync(x => x.Id == resourceId && x.TestWorkspaceId == workspaceId, cancellationToken),
+            "test_run" => await dbContext.Runs.AnyAsync(x => x.Id == resourceId && x.Plan.TestWorkspaceId == workspaceId, cancellationToken),
+            "test_run_item" => await dbContext.RunItems.AnyAsync(x => x.Id == resourceId &&
+                dbContext.Runs.Any(run => run.Id == x.TestRunId && run.Plan.TestWorkspaceId == workspaceId), cancellationToken),
+            "test_run_step" => await dbContext.RunItemStepResults.AnyAsync(x => x.Id == resourceId &&
+                dbContext.RunItems.Any(item => item.Id == x.TestRunItemId &&
+                    dbContext.Runs.Any(run => run.Id == item.TestRunId && run.Plan.TestWorkspaceId == workspaceId)), cancellationToken),
+            _ => false,
+        };
+        if (!exists)
+            return null;
+
+        var operations = await dbContext.OperationEvents.AsNoTracking()
+            .Where(x => x.ResourceType == resourceType && x.ResourceId == resourceId)
+            .Select(x => new ResourceOperationResponse
+            {
+                Id = x.Id,
+                EventType = x.EventType,
+                ActorAccountId = x.ActorId,
+                ActorType = x.ActorType,
+                AiAccountName = x.ActorNameSnapshot,
+                FixedRole = x.ActorFixedRoleSnapshot,
+                OwnerAccountId = x.OwnerAccountIdSnapshot,
+                OwnerDisplayName = x.OwnerDisplayNameSnapshot,
+                OccurredAt = x.OccurredAt,
+            })
+            .ToArrayAsync(cancellationToken);
+        return operations.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id).ToArray();
+    }
+
     private async Task<TestWorkspaceMember?> AccessAsync(
-        Guid workspaceId, Guid accountId, CancellationToken cancellationToken) =>
-        await dbContext.Members.Include(x => x.Workspace).SingleOrDefaultAsync(
-            x => x.TestWorkspaceId == workspaceId && x.AccountId == accountId &&
+        Guid workspaceId, Guid accountId, CancellationToken cancellationToken)
+    {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return null;
+        return await dbContext.Members.Include(x => x.Workspace).SingleOrDefaultAsync(
+            x => x.TestWorkspaceId == workspaceId && x.AccountId == actor.ScopeAccountId &&
                 x.Status == TestWorkspaceMemberStatus.Active, cancellationToken);
+    }
+
+    private async Task<bool> IsAiMutationAllowedAsync(
+        Guid accountId,
+        string? allowedRole,
+        CancellationToken cancellationToken)
+    {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        return actor is not null && (!actor.IsAi || actor.FixedRole == allowedRole);
+    }
+
+    private async Task AddOperationAsync(
+        Guid resourceId,
+        string resourceType,
+        string eventType,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken)
+            ?? throw new InvalidOperationException("The active resource actor is required.");
+        dbContext.OperationEvents.Add(new TestOperationEvent(new TestOperationCreation
+        {
+            ResourceId = resourceId,
+            ResourceType = resourceType,
+            EventType = eventType,
+            ActorId = actor.AccountId,
+            ActorType = actor.IsAi ? "ai_agent" : "human",
+            OccurredAt = timeProvider.GetUtcNow(),
+            ActorNameSnapshot = actor.IsAi ? actor.AccountName : null,
+            ActorFixedRoleSnapshot = actor.FixedRole,
+            OwnerAccountIdSnapshot = actor.OwnerAccountId,
+            OwnerDisplayNameSnapshot = actor.OwnerDisplayName,
+        }));
+    }
 
     private async Task<int> ActiveOwnerCountAsync(Guid workspaceId, CancellationToken cancellationToken) =>
         await dbContext.Members.CountAsync(

@@ -27,6 +27,7 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
     public DbSet<BugTestIssueSourceLink> BugTestIssueSourceLinks => Set<BugTestIssueSourceLink>();
     public DbSet<BugTestRunItemSourceLink> BugTestRunItemSourceLinks => Set<BugTestRunItemSourceLink>();
     public DbSet<TraceabilityIdempotencyRecord> TraceabilityIdempotencyRecords => Set<TraceabilityIdempotencyRecord>();
+    public DbSet<TestOperationEvent> OperationEvents => Set<TestOperationEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -530,6 +531,23 @@ public sealed class TestManagementDbContext(DbContextOptions<TestManagementDbCon
         idempotency.Property(x => x.CompletedAt).HasColumnName("completed_at");
         idempotency.HasIndex(x => new { x.ActorAccountId, x.IdempotencyKey }).IsUnique()
             .HasDatabaseName("uq_traceability_idempotency_actor_key");
+
+        var operation = modelBuilder.Entity<TestOperationEvent>();
+        operation.ToTable("test_operation_events");
+        operation.HasKey(x => x.Id).HasName("pk_test_operation_events");
+        operation.Property(x => x.Id).HasColumnName("id");
+        operation.Property(x => x.ResourceId).HasColumnName("resource_id");
+        operation.Property(x => x.ResourceType).HasColumnName("resource_type").HasMaxLength(50);
+        operation.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(100);
+        operation.Property(x => x.ActorId).HasColumnName("actor_id");
+        operation.Property(x => x.ActorType).HasColumnName("actor_type").HasMaxLength(50);
+        operation.Property(x => x.OccurredAt).HasColumnName("occurred_at");
+        operation.Property(x => x.ActorNameSnapshot).HasColumnName("actor_name_snapshot").HasMaxLength(100);
+        operation.Property(x => x.ActorFixedRoleSnapshot).HasColumnName("actor_fixed_role_snapshot").HasMaxLength(50);
+        operation.Property(x => x.OwnerAccountIdSnapshot).HasColumnName("owner_account_id_snapshot");
+        operation.Property(x => x.OwnerDisplayNameSnapshot).HasColumnName("owner_display_name_snapshot").HasMaxLength(100);
+        operation.HasIndex(x => new { x.ResourceType, x.ResourceId, x.OccurredAt })
+            .HasDatabaseName("idx_test_operation_events_resource");
     }
 
     private static void ConfigureBugSource<TEntity>(

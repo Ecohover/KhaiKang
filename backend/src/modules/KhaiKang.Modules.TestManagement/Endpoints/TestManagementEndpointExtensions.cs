@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.TestManagement.Application;
 using KhaiKang.Modules.TestManagement.Contracts;
 using KhaiKang.Modules.TestManagement.Domain;
@@ -424,6 +425,17 @@ public static class TestManagementEndpointExtensions
                 workspaceId, runId, accountId, request, token));
         }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
           .WithName("UpdateTestRunStatus").Produces<TestRunResponse>();
+
+        workspaces.MapGet("/{workspaceId:guid}/operations/{resourceType}/{resourceId:guid}", async (
+            Guid workspaceId, string resourceType, Guid resourceId, ClaimsPrincipal principal,
+            TestManagementService service, CancellationToken token) =>
+        {
+            if (AccountId(principal) is not { } accountId) return Results.Unauthorized();
+            var operations = await service.ListOperationsAsync(
+                workspaceId, resourceType, resourceId, accountId, token);
+            return operations is null ? Results.NotFound() : Results.Ok(operations);
+        }).WithName("ListTestResourceOperations")
+          .Produces<IReadOnlyList<ResourceOperationResponse>>();
 
         var tags = endpoints.MapGroup("/api/v1/test-tags")
             .WithTags("Test Management")

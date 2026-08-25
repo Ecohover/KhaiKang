@@ -24,6 +24,11 @@ public sealed class ProjectAuditEvent
     {
         Id = Guid.NewGuid();
         ActorId = context.ActorAccountId;
+        ActorType = context.ActorType;
+        ActorNameSnapshot = context.ActorNameSnapshot;
+        ActorFixedRoleSnapshot = context.ActorFixedRoleSnapshot;
+        OwnerAccountIdSnapshot = context.OwnerAccountIdSnapshot;
+        OwnerDisplayNameSnapshot = context.OwnerDisplayNameSnapshot;
         EventType = eventType;
         OccurredAt = context.OccurredAt;
         TargetId = targetId;
@@ -67,6 +72,14 @@ public sealed class ProjectAuditEvent
     public Guid ActorId { get; private set; }
 
     public string ActorType { get; private set; } = HumanActorType;
+
+    public string? ActorNameSnapshot { get; private set; }
+
+    public string? ActorFixedRoleSnapshot { get; private set; }
+
+    public Guid? OwnerAccountIdSnapshot { get; private set; }
+
+    public string? OwnerDisplayNameSnapshot { get; private set; }
 
     public string EventType { get; private set; } = null!;
 

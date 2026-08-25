@@ -58,18 +58,26 @@ public sealed class CommentService(
         CreateCommentCommand command,
         CancellationToken cancellationToken)
     {
-        var access = await GetAccessAsync(
-            command.ResourceType,
-            command.ResourceId,
-            command.ActorAccountId,
-            cancellationToken);
-        if (!access.CanCreate)
+        var actor = await actorDirectory.FindActiveAsync(command.ActorAccountId, cancellationToken);
+        if (actor is null)
         {
             return CreateCommentResult.NotFound();
         }
 
-        var actor = await actorDirectory.FindActiveAsync(command.ActorAccountId, cancellationToken);
-        if (actor is null)
+        var scopeAccountId = actor.AccountType == "ai_agent"
+            ? actor.OwnerAccountId
+            : actor.AccountId;
+        if (scopeAccountId is null)
+        {
+            return CreateCommentResult.NotFound();
+        }
+
+        var access = await GetAccessAsync(
+            command.ResourceType,
+            command.ResourceId,
+            scopeAccountId.Value,
+            cancellationToken);
+        if (!access.CanCreate)
         {
             return CreateCommentResult.NotFound();
         }

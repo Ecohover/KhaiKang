@@ -9,12 +9,15 @@ namespace KhaiKang.Modules.ProjectManagement.Application;
 public sealed class ProjectManagementService(
     ProjectManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
+    IResourceActorDirectory resourceActorDirectory,
     TimeProvider timeProvider)
 {
     public async Task<IReadOnlyList<ProjectResponse>> ListAsync(
         Guid accountId,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return [];
         var memberships = await dbContext.ProjectMembers
             .AsNoTracking()
             .AsSplitQuery()
@@ -24,7 +27,7 @@ public sealed class ProjectManagementService(
             .ThenInclude(role => role.Permissions)
             .ThenInclude(permission => permission.Permission)
             .Where(member =>
-                member.AccountId == accountId &&
+                member.AccountId == actor.ScopeAccountId &&
                 member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(role => role.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == ProjectManagementConstants.ProjectReadPermission)))
@@ -39,6 +42,8 @@ public sealed class ProjectManagementService(
         Guid accountId,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return null;
         var membership = await dbContext.ProjectMembers
             .AsNoTracking()
             .AsSplitQuery()
@@ -49,7 +54,7 @@ public sealed class ProjectManagementService(
             .ThenInclude(permission => permission.Permission)
             .Where(member =>
                 member.ProjectId == projectId &&
-                member.AccountId == accountId &&
+                member.AccountId == actor.ScopeAccountId &&
                 member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(role => role.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == ProjectManagementConstants.ProjectReadPermission)))
@@ -501,9 +506,11 @@ public sealed class ProjectManagementService(
         string permissionCode,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null) return false;
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
-                member.AccountId == accountId &&
+                member.AccountId == actor.ScopeAccountId &&
                 member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode)),

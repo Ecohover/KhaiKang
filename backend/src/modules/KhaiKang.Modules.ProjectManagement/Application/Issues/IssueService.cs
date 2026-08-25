@@ -10,6 +10,7 @@ namespace KhaiKang.Modules.ProjectManagement.Application;
 public sealed class IssueService(
     ProjectManagementDbContext dbContext,
     IAccountDirectory accountDirectory,
+    IResourceActorDirectory resourceActorDirectory,
     TimeProvider timeProvider)
 {
     public async Task<PagedResult<IssueResponse>?> ListAsync(
@@ -250,6 +251,45 @@ public sealed class IssueService(
             accounts);
     }
 
+    public async Task<IReadOnlyList<ResourceOperationResponse>?> ListOperationsAsync(
+        Guid projectId,
+        Guid issueId,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        if (!await HasPermissionAsync(
+                projectId,
+                accountId,
+                ProjectManagementConstants.IssueReadPermission,
+                cancellationToken) ||
+            !await dbContext.Issues.AnyAsync(
+                item => item.Id == issueId && item.ProjectId == projectId,
+                cancellationToken))
+        {
+            return null;
+        }
+
+        var operations = await dbContext.ProjectAuditEvents.AsNoTracking()
+            .Where(item => item.TargetId == issueId)
+            .Select(item => new ResourceOperationResponse
+            {
+                Id = item.Id,
+                EventType = item.EventType,
+                ActorAccountId = item.ActorId,
+                ActorType = item.ActorType,
+                AiAccountName = item.ActorNameSnapshot,
+                FixedRole = item.ActorFixedRoleSnapshot,
+                OwnerAccountId = item.OwnerAccountIdSnapshot,
+                OwnerDisplayName = item.OwnerDisplayNameSnapshot,
+                OccurredAt = item.OccurredAt,
+            })
+            .ToArrayAsync(cancellationToken);
+        return operations
+            .OrderByDescending(item => item.OccurredAt)
+            .ThenByDescending(item => item.Id)
+            .ToArray();
+    }
+
     public async Task<IssueMutationResult> CreateAsync(
         Guid projectId,
         Guid accountId,
@@ -264,6 +304,26 @@ public sealed class IssueService(
         {
             return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
         }
+
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        var requestedType = request.TypeCode.Trim().ToLowerInvariant();
+        if (actor is null ||
+            actor.IsAi &&
+            !((actor.FixedRole == "pm_ai" && requestedType is "story" or "task") ||
+              (actor.FixedRole == "qa_ai" && requestedType == "bug")))
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
+        if (actor.IsAi && actor.FixedRole == "qa_ai" &&
+            request.AssigneeAccountId is { } requestedAssignee && requestedAssignee != actor.AccountId)
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
+        var effectiveAssigneeAccountId = actor.IsAi && actor.FixedRole == "qa_ai"
+            ? actor.AccountId
+            : request.AssigneeAccountId;
 
         var project = await dbContext.Projects.SingleOrDefaultAsync(
             item => item.Id == projectId,
@@ -288,7 +348,7 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
         }
 
-        var normalizedType = request.TypeCode.Trim().ToLowerInvariant();
+        var normalizedType = requestedType;
         var normalizedPriority = string.IsNullOrWhiteSpace(request.PriorityCode)
             ? "medium"
             : request.PriorityCode.Trim().ToLowerInvariant();
@@ -306,10 +366,10 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.InvalidOption);
         }
 
-        if (request.AssigneeAccountId.HasValue &&
-            !await IsActiveMemberAsync(
+        if (effectiveAssigneeAccountId.HasValue &&
+            !await IsAssignableMemberAsync(
                 projectId,
-                request.AssigneeAccountId.Value,
+                effectiveAssigneeAccountId.Value,
                 cancellationToken))
         {
             return IssueMutationResult.Failure(IssueMutationOutcome.InvalidAssignee);
@@ -318,7 +378,7 @@ public sealed class IssueService(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var issueNo = await NextIssueNoAsync(projectId, cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor!, now);
         var creation = new IssueCreation
         {
             Id = Guid.NewGuid(),
@@ -331,7 +391,7 @@ public sealed class IssueService(
             IssueTypeId = issueType.Id,
             IssueStatusId = initialStatus.Id,
             IssuePriorityId = priority.Id,
-            AssigneeAccountId = request.AssigneeAccountId,
+            AssigneeAccountId = effectiveAssigneeAccountId,
         };
         var issue = Issue.Create(creation, context);
         dbContext.Issues.Add(issue);
@@ -347,8 +407,8 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.NumberConflict);
         }
 
-        var accountIds = request.AssigneeAccountId.HasValue
-            ? new[] { accountId, request.AssigneeAccountId.Value }
+        var accountIds = effectiveAssigneeAccountId.HasValue
+            ? new[] { accountId, effectiveAssigneeAccountId.Value }
             : [accountId];
         var accounts = await accountDirectory.GetByIdsAsync(accountIds, cancellationToken);
         return IssueMutationResult.Success(
@@ -409,6 +469,12 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.NotFound);
         }
 
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (!CanUpdateIssue(actor, issue))
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
         if (issue.Project.Status == ProjectStatus.Inactive)
         {
             return IssueMutationResult.Failure(IssueMutationOutcome.ProjectInactive);
@@ -429,7 +495,7 @@ public sealed class IssueService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor!, now);
         issue.ChangeStatus(
             status.Id,
             status.Category,
@@ -488,6 +554,12 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.NotFound);
         }
 
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (!CanUpdateIssue(actor, issue))
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
         if (issue.Project.Status == ProjectStatus.Inactive)
         {
             return IssueMutationResult.Failure(IssueMutationOutcome.ProjectInactive);
@@ -500,6 +572,11 @@ public sealed class IssueService(
 
         var normalizedType = request.TypeCode.Trim().ToLowerInvariant();
         var normalizedPriority = request.PriorityCode.Trim().ToLowerInvariant();
+        if (!CanUpdateDetails(actor!, issue, request, normalizedType, normalizedPriority))
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
         var issueType = await dbContext.IssueTypes.SingleOrDefaultAsync(
             item => item.Code == normalizedType && item.IsActive,
             cancellationToken);
@@ -522,7 +599,7 @@ public sealed class IssueService(
             IssueTypeId = issueType.Id,
             IssuePriorityId = priority.Id,
         };
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor!, now);
         issue.UpdateDetails(change, context);
         dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueUpdated(issue.Id, context));
 
@@ -565,6 +642,12 @@ public sealed class IssueService(
             return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
         }
 
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null || actor.IsAi && actor.FixedRole != "pm_ai")
+        {
+            return IssueMutationResult.Failure(IssueMutationOutcome.Forbidden);
+        }
+
         var issue = await dbContext.Issues
             .Include(item => item.Project)
             .Include(item => item.IssueType)
@@ -589,13 +672,13 @@ public sealed class IssueService(
         }
 
         if (request.AssigneeAccountId.HasValue &&
-            !await IsActiveMemberAsync(projectId, request.AssigneeAccountId.Value, cancellationToken))
+            !await IsAssignableMemberAsync(projectId, request.AssigneeAccountId.Value, cancellationToken))
         {
             return IssueMutationResult.Failure(IssueMutationOutcome.InvalidAssignee);
         }
 
         var now = timeProvider.GetUtcNow();
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor, now);
         issue.ChangeAssignee(
             request.AssigneeAccountId,
             context);
@@ -630,25 +713,100 @@ public sealed class IssueService(
         string permissionCode,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null)
+        {
+            return false;
+        }
+
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
-                member.AccountId == accountId &&
+                member.AccountId == actor.ScopeAccountId &&
                 member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode)),
             cancellationToken);
     }
 
-    private async Task<bool> IsActiveMemberAsync(
+    private static ChangeContext ToChangeContext(ResourceActorSnapshot actor, DateTimeOffset occurredAt) =>
+        new(
+            actor.AccountId,
+            occurredAt,
+            new OperationActorSnapshot
+            {
+                ActorType = actor.IsAi ? "ai_agent" : "human",
+                ActorName = actor.IsAi ? actor.AccountName : null,
+                ActorFixedRole = actor.FixedRole,
+                OwnerAccountId = actor.OwnerAccountId,
+                OwnerDisplayName = actor.OwnerDisplayName,
+            });
+
+    private async Task<bool> IsAssignableMemberAsync(
         Guid projectId,
         Guid accountId,
         CancellationToken cancellationToken)
     {
+        var assignee = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (assignee?.IsAi == true)
+        {
+            if (assignee.FixedRole is not ("development_ai" or "qa_ai"))
+            {
+                return false;
+            }
+
+            accountId = assignee.ScopeAccountId;
+        }
+
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
                 member.AccountId == accountId &&
                 member.Status == ProjectMemberStatus.Active,
             cancellationToken);
+    }
+
+    private static bool CanUpdateIssue(ResourceActorSnapshot? actor, Issue issue)
+    {
+        if (actor is null)
+        {
+            return false;
+        }
+
+        if (!actor.IsAi)
+        {
+            return true;
+        }
+
+        return actor.FixedRole switch
+        {
+            "pm_ai" => issue.IssueType.Code is "story" or "task",
+            "development_ai" =>
+                issue.IssueType.Code == "task" && issue.AssigneeAccountId == actor.AccountId,
+            "qa_ai" =>
+                issue.IssueType.Code is "task" or "bug" &&
+                issue.AssigneeAccountId == actor.AccountId,
+            _ => false,
+        };
+    }
+
+    private static bool CanUpdateDetails(
+        ResourceActorSnapshot actor,
+        Issue issue,
+        UpdateIssueRequest request,
+        string normalizedType,
+        string normalizedPriority)
+    {
+        if (!actor.IsAi || actor.FixedRole == "pm_ai" ||
+            actor.FixedRole == "qa_ai" && issue.IssueType.Code == "bug")
+        {
+            return true;
+        }
+
+        return request.Title.Trim() == issue.Title &&
+            Normalize(request.Description) == issue.Description &&
+            Normalize(request.UserStory) == issue.UserStory &&
+            Normalize(request.DefinitionOfDone) == issue.DefinitionOfDone &&
+            normalizedType == issue.IssueType.Code &&
+            normalizedPriority == issue.IssuePriority.Code;
     }
 
     private static IssueResponse ToResponse(

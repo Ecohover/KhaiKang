@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using KhaiKang.Modules.Identity.Contracts;
 using KhaiKang.Modules.ProjectManagement.Contracts;
 using KhaiKang.Modules.ProjectManagement.Domain;
 using KhaiKang.Modules.ProjectManagement.Infrastructure;
@@ -11,6 +12,7 @@ namespace KhaiKang.Modules.ProjectManagement.Application;
 
 public sealed class IssueRelationService(
     ProjectManagementDbContext dbContext,
+    IResourceActorDirectory resourceActorDirectory,
     TimeProvider timeProvider)
 {
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
@@ -89,6 +91,14 @@ public sealed class IssueRelationService(
             command.ActorAccountId,
             ProjectManagementConstants.IssueRelationCreatePermission,
             cancellationToken))
+        {
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
+        }
+
+        var actor = await resourceActorDirectory.FindActiveAsync(
+            command.ActorAccountId,
+            cancellationToken);
+        if (actor is null || actor.IsAi && actor.FixedRole != "pm_ai")
         {
             return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
         }
@@ -175,6 +185,12 @@ public sealed class IssueRelationService(
             accountId,
             ProjectManagementConstants.IssueRelationCreatePermission,
             cancellationToken))
+        {
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
+        }
+
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null || actor.IsAi && actor.FixedRole != "pm_ai")
         {
             return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
         }
@@ -272,7 +288,7 @@ public sealed class IssueRelationService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor, now);
         var relation = IssueRelation.Create(
             new IssueRelationCreation
             {
@@ -395,6 +411,12 @@ public sealed class IssueRelationService(
             return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
         }
 
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null || actor.IsAi && actor.FixedRole != "pm_ai")
+        {
+            return IssueRelationMutationResult.Failure(IssueRelationMutationOutcome.Forbidden);
+        }
+
         var relation = await dbContext.IssueRelations
             .Include(item => item.Project)
             .SingleOrDefaultAsync(
@@ -419,7 +441,7 @@ public sealed class IssueRelationService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var context = new ChangeContext(accountId, now);
+        var context = ToChangeContext(actor, now);
         relation.Delete(context);
         dbContext.ProjectAuditEvents.Add(ProjectAuditEvent.IssueRelationDeleted(relation.Id, context));
 
@@ -479,6 +501,19 @@ public sealed class IssueRelationService(
         return false;
     }
 
+    private static ChangeContext ToChangeContext(ResourceActorSnapshot actor, DateTimeOffset occurredAt) =>
+        new(
+            actor.AccountId,
+            occurredAt,
+            new OperationActorSnapshot
+            {
+                ActorType = actor.IsAi ? "ai_agent" : "human",
+                ActorName = actor.IsAi ? actor.AccountName : null,
+                ActorFixedRole = actor.FixedRole,
+                OwnerAccountId = actor.OwnerAccountId,
+                OwnerDisplayName = actor.OwnerDisplayName,
+            });
+
     private IQueryable<IssueRelation> RelationQuery()
     {
         return dbContext.IssueRelations
@@ -497,9 +532,15 @@ public sealed class IssueRelationService(
         string permissionCode,
         CancellationToken cancellationToken)
     {
+        var actor = await resourceActorDirectory.FindActiveAsync(accountId, cancellationToken);
+        if (actor is null)
+        {
+            return false;
+        }
+
         return await dbContext.ProjectMembers.AnyAsync(
             member => member.ProjectId == projectId &&
-                member.AccountId == accountId &&
+                member.AccountId == actor.ScopeAccountId &&
                 member.Status == ProjectMemberStatus.Active &&
                 member.Roles.Any(mapping => mapping.ProjectRole.Permissions.Any(permission =>
                     permission.Permission.Code == permissionCode)),

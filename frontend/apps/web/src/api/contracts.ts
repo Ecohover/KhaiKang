@@ -310,6 +310,18 @@ export interface CommentPageResponse {
   hasNextPage: boolean
 }
 
+export interface ResourceOperationResponse {
+  id: string
+  eventType: string
+  actorAccountId: string
+  actorType: 'human' | 'ai_agent'
+  aiAccountName: string | null
+  fixedRole: AiFixedRole | null
+  ownerAccountId: string | null
+  ownerDisplayName: string | null
+  occurredAt: string
+}
+
 export type IssueRelationDirectionKind = 'symmetric' | 'directed' | 'hierarchical'
 export type IssueRelationDirection = 'forward' | 'reverse'
 

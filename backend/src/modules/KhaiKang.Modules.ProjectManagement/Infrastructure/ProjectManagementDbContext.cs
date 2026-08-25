@@ -720,6 +720,10 @@ public sealed class ProjectManagementDbContext(DbContextOptions<ProjectManagemen
         auditEvent.Property(x => x.Id).HasColumnName("id");
         auditEvent.Property(x => x.ActorId).HasColumnName("actor_id");
         auditEvent.Property(x => x.ActorType).HasColumnName("actor_type").HasMaxLength(50);
+        auditEvent.Property(x => x.ActorNameSnapshot).HasColumnName("actor_name_snapshot").HasMaxLength(100);
+        auditEvent.Property(x => x.ActorFixedRoleSnapshot).HasColumnName("actor_fixed_role_snapshot").HasMaxLength(50);
+        auditEvent.Property(x => x.OwnerAccountIdSnapshot).HasColumnName("owner_account_id_snapshot");
+        auditEvent.Property(x => x.OwnerDisplayNameSnapshot).HasColumnName("owner_display_name_snapshot").HasMaxLength(100);
         auditEvent.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(100);
         auditEvent.Property(x => x.OccurredAt).HasColumnName("occurred_at");
         auditEvent.Property(x => x.TargetId).HasColumnName("target_id");
