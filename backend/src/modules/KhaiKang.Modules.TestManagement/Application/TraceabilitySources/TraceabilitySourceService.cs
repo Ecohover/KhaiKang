@@ -169,8 +169,10 @@ public sealed class TraceabilitySourceService(
 
         return TraceabilitySourceResult<BugSourcesResponse>.Success(new BugSourcesResponse
         {
-            Bug = ToIssue(bug), TestIssue = testIssue is null ? null : ToIssue(testIssue),
-            TestRunId = run?.Id, TestRunItemId = request.TestRunItemId,
+            Bug = ToIssue(bug),
+            TestIssue = testIssue is null ? null : ToIssue(testIssue),
+            TestRunId = run?.Id,
+            TestRunItemId = request.TestRunItemId,
         });
     }
 
