@@ -91,6 +91,17 @@ export const system = {
     copied: 'Copied',
     credentialText: 'Username: {username}\nInitial password: {password}',
   },
+  aiAccounts: {
+    eyebrow: 'AI identity', title: 'AI accounts', description: 'Manage fixed-role AI identities and their API access.', record: 'AI account',
+    create: 'Create AI account', createDescription: 'The fixed role cannot be changed after creation.', username: 'AI account name', fixedRole: 'Fixed role',
+    roles: { pm_ai: 'PM AI', development_ai: 'Development AI', qa_ai: 'QA AI', reviewer_ai: 'Reviewer AI', devops_ai: 'DevOps AI' },
+    loading: 'Loading AI accounts…', empty: 'No AI accounts are available.', owner: 'Owner: {owner}', enabled: 'API enabled', disabled: 'API disabled', enable: 'Enable API', disable: 'Disable API',
+    token: 'Token status', tokenActive: 'Active token', tokenAbsent: 'No active token', updatedAt: 'Updated', createToken: 'Create token', viewToken: 'View token', recreateToken: 'Re-create token', revokeToken: 'Revoke token',
+    transferOwner: 'Transfer owner', selectOwner: 'Select an active human owner', transfer: 'Transfer', confirmRecreate: 'Re-create this token? The previous token stops working immediately.', confirmRevoke: 'Revoke this token now?', confirmTransfer: 'Transfer this account? Its current token stops working immediately.',
+    tokenTitle: 'Token plaintext', tokenDescription: 'AI account: {account}', tokenSecurity: 'This secret stays only in this dialog. Close it after copying.', copyToken: 'Copy token', copied: 'Copied',
+    credentialsTitle: 'Initial credentials', credentialsDescription: 'AI account: {account}', credentialsSecurity: 'The initial password is shown only once.', copyCredentials: 'Copy credentials',
+    errors: { connection: 'Unable to connect to the server.', create: 'Unable to create the AI account.', update: 'Unable to update AI API access.', token: 'Unable to complete the token operation.', transfer: 'Unable to transfer the owner.', copy: 'Unable to copy. Select and copy the value manually.' },
+  },
   errors: {
     initializationStatus: 'Unable to get system initialization status.',
     initializationFailed: 'System initialization failed.',

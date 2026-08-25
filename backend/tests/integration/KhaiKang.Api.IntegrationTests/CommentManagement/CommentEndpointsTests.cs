@@ -101,6 +101,34 @@ public sealed class CommentEndpointsTests
     }
 
     [Fact]
+    public async Task ListTestComments_ReturnsServerDerivedCreateAccessForWritableAndReadOnlyMembers()
+    {
+        using var api = await AuthenticatedApiTestContext.CreateAsync();
+        var workspace = await ApiTestData.CreateWorkspaceAsync(api, "CMTACCESS");
+        var testCase = await ApiTestData.CreateCaseAsync(api, workspace.Id);
+        var ownerPage = await api.Client.GetFromJsonAsync<CommentPageResponse>(
+            $"/api/v1/comments/test_case/{testCase.Id}");
+        Assert.NotNull(ownerPage);
+        Assert.True(ownerPage.CanCreate);
+        await api.Factory.AddActiveAccountAsync("comment-tester");
+        using var addMemberResponse = await api.PostJsonAsync(
+            $"/api/v1/test-workspaces/{workspace.Id}/members",
+            new { username = "comment-tester", role = "tester" });
+        Assert.Equal(HttpStatusCode.Created, addMemberResponse.StatusCode);
+        using var tester = api.CreateClient();
+        await AuthenticatedApiTestContext.LoginAsync(
+            tester,
+            "comment-tester",
+            AuthenticatedApiTestContext.TemporaryPassword);
+
+        var page = await tester.GetFromJsonAsync<CommentPageResponse>(
+            $"/api/v1/comments/test_case/{testCase.Id}");
+
+        Assert.NotNull(page);
+        Assert.False(page.CanCreate);
+    }
+
+    [Fact]
     public async Task CreateComment_WithCallerSuppliedActorMetadata_UsesTheAuthenticatedActor()
     {
         using var api = await AuthenticatedApiTestContext.CreateAsync();
@@ -300,7 +328,8 @@ public sealed class CommentEndpointsTests
     private sealed record CommentPageResponse(
         IReadOnlyList<CommentResponse> Items,
         int Page,
-        bool HasNextPage);
+        bool HasNextPage,
+        bool CanCreate);
 
     private sealed record CommentResponse(
         Guid Id,

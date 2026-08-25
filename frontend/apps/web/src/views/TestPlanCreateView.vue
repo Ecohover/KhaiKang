@@ -8,6 +8,7 @@ import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import { listWorkspaceIssues } from '../api/issueOptions'
 import type { IssueResponse, TestCaseResponse, TestPlanResponse, TestPlanStatus, TestRunResponse, TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import TestPlanCaseTree from '../components/TestPlanCaseTree.vue'
+import CommentPanel from '../features/comments/CommentPanel.vue'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
@@ -254,6 +255,7 @@ onMounted(load)
         />
       </UiFormActionBar>
     </form>
+    <CommentPanel v-if="isEditing && plan" resource-type="test_plan" :resource-id="plan.id" />
     <div v-else class="state-panel state-panel--error" role="alert">{{ error }}</div>
   </section>
 </template>

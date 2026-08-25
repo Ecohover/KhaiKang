@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { UiAttachmentLink, UiButton, UiCreateActions, UiFormGrid, UiFormSection, UiInput } from '@khaikang/ui'
 import AppMarkdown from '../components/AppMarkdown.vue'
 import IssueRelationsPanel from '../components/IssueRelationsPanel.vue'
+import CommentPanel from '../features/comments/CommentPanel.vue'
 import ResourceFormLayout from '../components/ResourceFormLayout.vue'
 import { apiClient, problemMessage, secureHeaders } from '../api/client'
 import type {
@@ -508,6 +509,7 @@ function attachmentSize(fileSize: number): string {
       </UiFormSection>
 
     </form>
+    <CommentPanel v-if="issue && issueId" resource-type="issue" :resource-id="issueId" />
     <template #actions>
       <template v-if="isEditing">
         <UiButton variant="secondary" type="button" @click="router.push({ name: 'project-issues', params: { projectId } })">{{ t('common.actions.cancel') }}</UiButton>

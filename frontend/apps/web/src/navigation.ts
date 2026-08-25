@@ -9,16 +9,23 @@ export const PROJECT_MEMBER_ADD_PERMISSION = 'project.member.add'
 export const PROJECT_MEMBER_REMOVE_PERMISSION = 'project.member.remove'
 export const PROJECT_ROLE_ASSIGN_PERMISSION = 'project.role.assign'
 
-export type ApplicationModuleId = 'system' | 'projects' | 'tests'
+export type ApplicationModuleId = 'system' | 'aiAccounts' | 'projects' | 'tests'
 
 export interface ApplicationModule {
   id: ApplicationModuleId
   routeName: string
-  icon: 'system' | 'projects' | 'tests'
+  icon: 'system' | 'aiAccounts' | 'projects' | 'tests'
   requiredSystemPermissions?: readonly string[]
+  requiredAccountType?: 'human'
 }
 
 export const applicationModules: readonly ApplicationModule[] = [
+  {
+    id: 'aiAccounts',
+    routeName: 'ai-accounts',
+    icon: 'aiAccounts',
+    requiredAccountType: 'human',
+  },
   {
     id: 'system',
     routeName: 'home',
@@ -48,8 +55,10 @@ export function hasRequiredSystemPermission(
 
 export function visibleApplicationModules(
   systemPermissions: readonly string[],
+  accountType: 'human' | 'ai_agent' = 'human',
 ): readonly ApplicationModule[] {
   return applicationModules.filter((item) =>
+    (!item.requiredAccountType || item.requiredAccountType === accountType) &&
     hasRequiredSystemPermission(systemPermissions, item.requiredSystemPermissions),
   )
 }

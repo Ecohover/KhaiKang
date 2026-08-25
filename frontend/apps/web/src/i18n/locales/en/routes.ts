@@ -25,5 +25,6 @@ export const routes = {
   testMembers: 'Members',
   testSettings: 'Test Settings',
   users: 'User Management',
+  aiAccounts: 'AI Account Management',
   forbidden: 'Forbidden',
 } as const

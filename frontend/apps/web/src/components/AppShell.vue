@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, ClipboardCheck, ClipboardList, FolderKanban, FolderTree, LayoutDashboard, ListTodo, Play, Settings2, UserRoundCog, Users } from '@lucide/vue'
+import { ArrowLeft, Bot, ClipboardCheck, ClipboardList, FolderKanban, FolderTree, LayoutDashboard, ListTodo, Play, Settings2, UserRoundCog, Users } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import ModuleShell from './ModuleShell.vue'
 import { type ApplicationModuleId, visibleApplicationModules } from '../navigation'
@@ -16,17 +16,20 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const loggingOut = ref(false)
-const moduleIcons = { system: Settings2, projects: FolderKanban, tests: ClipboardCheck }
+const moduleIcons = { system: Settings2, aiAccounts: Bot, projects: FolderKanban, tests: ClipboardCheck }
 const activeModule = computed<ApplicationModuleId>(() => route.meta.module ?? 'projects')
 const projectId = computed(() => String(route.params.projectId ?? ''))
 const workspaceId = computed(() => String(route.params.workspaceId ?? ''))
-const allowedModules = computed(() => visibleApplicationModules(auth.user?.systemPermissions ?? []).map((item) => ({
+const allowedModules = computed(() => visibleApplicationModules(auth.user?.systemPermissions ?? [], auth.user?.accountType ?? 'human').map((item) => ({
   id: item.id, label: t(`shell.modules.${item.id}`), to: { name: item.routeName }, icon: moduleIcons[item.icon],
 })))
 const activeModuleLabel = computed(() => t(`shell.modules.${activeModule.value}`))
 const pageTitle = computed(() => route.meta.titleKey ? t(route.meta.titleKey) : 'KhaiKang')
 
 const navigation = computed<NavigationItem[]>(() => {
+  if (activeModule.value === 'aiAccounts') return [
+    { label: t('shell.navigation.aiAccounts'), to: { name: 'ai-accounts' }, icon: Bot },
+  ]
   if (activeModule.value === 'system') return [
     { label: t('shell.navigation.systemOverview'), to: { name: 'home' }, icon: LayoutDashboard },
     { label: t('shell.navigation.users'), to: { name: 'admin-users' }, icon: Users },

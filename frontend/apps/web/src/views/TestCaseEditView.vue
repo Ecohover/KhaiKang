@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import TestCaseEditForm from '../components/TestCaseEditForm.vue'
+import CommentPanel from '../features/comments/CommentPanel.vue'
 import { apiClient, problemMessage } from '../api/client'
 import type { TestCaseResponse, TestSuiteResponse, TestWorkspaceResponse } from '../api/contracts'
 import { useSaveNotice } from '../composables/useSaveNotice'
@@ -80,6 +81,7 @@ onBeforeRouteLeave(() => {
       @saved="handleSaved"
       @cancel="handleCancel"
     />
+    <CommentPanel v-if="originalCase" resource-type="test_case" :resource-id="originalCase.id" />
   </section>
 </template>
 

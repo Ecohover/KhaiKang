@@ -91,6 +91,17 @@ export const system = {
     copied: '已複製',
     credentialText: '帳號：{username}\n初始密碼：{password}',
   },
+  aiAccounts: {
+    eyebrow: 'AI 身分', title: 'AI 帳號', description: '管理固定角色 AI 身分與 API 存取。', record: 'AI 帳號',
+    create: '建立 AI 帳號', createDescription: '固定角色在建立後不可變更。', username: 'AI 帳號名稱', fixedRole: '固定角色',
+    roles: { pm_ai: 'PM AI', development_ai: 'Development AI', qa_ai: 'QA AI', reviewer_ai: 'Reviewer AI', devops_ai: 'DevOps AI' },
+    loading: '正在載入 AI 帳號…', empty: '目前沒有可管理的 AI 帳號。', owner: '擁有者：{owner}', enabled: 'API 已啟用', disabled: 'API 已停用', enable: '啟用 API', disable: '停用 API',
+    token: 'Token 狀態', tokenActive: '已有有效 Token', tokenAbsent: '沒有有效 Token', updatedAt: '更新時間', createToken: '建立 Token', viewToken: '查看 Token', recreateToken: '重新建立 Token', revokeToken: '撤銷 Token',
+    transferOwner: '轉移擁有者', selectOwner: '選擇有效真人擁有者', transfer: '轉移', confirmRecreate: '確定重新建立 Token？舊 Token 會立即失效。', confirmRevoke: '確定立即撤銷此 Token？', confirmTransfer: '確定轉移此帳號？目前 Token 會立即失效。',
+    tokenTitle: 'Token 明文', tokenDescription: 'AI 帳號：{account}', tokenSecurity: '此機密只暫存在這個對話框；複製後請立即關閉。', copyToken: '複製 Token', copied: '已複製',
+    credentialsTitle: '初始帳密', credentialsDescription: 'AI 帳號：{account}', credentialsSecurity: '初始密碼只會顯示一次。', copyCredentials: '複製帳密',
+    errors: { connection: '無法連線到伺服器。', create: '無法建立 AI 帳號。', update: '無法更新 AI API 存取。', token: '無法完成 Token 操作。', transfer: '無法轉移擁有者。', copy: '無法複製，請手動選取並複製。' },
+  },
   errors: {
     initializationStatus: '無法取得系統初始化狀態。',
     initializationFailed: '系統初始化失敗。',

@@ -85,6 +85,14 @@ export const common = {
     next: 'Next',
     page: 'Page {page} / {total}',
   },
+  comments: {
+    title: 'Comments', description: 'Record discussion and evidence as safe Markdown.', record: 'Comment', content: 'Comment content',
+    edit: 'Write', preview: 'Preview', mode: 'Comment editing mode', placeholder: 'Write a Markdown comment…',
+    create: 'Add comment', retryCreate: 'Retry add', createFailed: 'Unable to add this comment. Retry sends the same request safely.',
+    loading: 'Loading comments…', busy: 'Comments are currently busy. Please try again later.', reload: 'Reload', empty: 'No comments yet.',
+    human: 'Human', ai: 'AI', owner: 'Owner: {owner}', pagination: 'Comment pages', page: 'Page {page}',
+    validation: { required: 'Enter a comment.', tooLong: 'Comments cannot exceed 10,000 characters.', unsafe: 'Remove raw HTML, unsafe links, or external images.' },
+  },
   time: {
     hoursAgo: '{count} hours ago',
   },

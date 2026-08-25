@@ -308,6 +308,7 @@ export interface CommentPageResponse {
   items: CommentResponse[]
   page: number
   hasNextPage: boolean
+  canCreate: boolean
 }
 
 export interface ResourceOperationResponse {

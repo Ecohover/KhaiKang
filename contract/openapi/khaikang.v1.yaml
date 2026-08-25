@@ -3484,13 +3484,16 @@ components:
     CommentPageResponse:
       type: object
       additionalProperties: false
-      required: [items, page, hasNextPage]
+      required: [items, page, hasNextPage, canCreate]
       properties:
         items:
           type: array
           items: { $ref: '#/components/schemas/CommentResponse' }
         page: { type: integer, format: int32, minimum: 1 }
         hasNextPage: { type: boolean }
+        canCreate:
+          type: boolean
+          description: Server-derived verdict for creating a comment on this resource. No resource scope metadata is disclosed.
     ProblemDetails:
       type: object
       properties:

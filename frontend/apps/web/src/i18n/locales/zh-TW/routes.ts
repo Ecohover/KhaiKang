@@ -25,5 +25,6 @@ export const routes = {
   testMembers: '成員管理',
   testSettings: '設定',
   users: '使用者管理',
+  aiAccounts: 'AI 帳號管理',
   forbidden: '沒有權限',
 } as const

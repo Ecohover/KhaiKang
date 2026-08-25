@@ -24,12 +24,14 @@ import TestWorkspaceListView from './views/TestWorkspaceListView.vue'
 import TestWorkspaceView from './views/TestWorkspaceView.vue'
 import UnavailableView from './views/UnavailableView.vue'
 import UserManagementView from './views/UserManagementView.vue'
+import AiAccountManagementView from './views/AiAccountManagementView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
     titleKey?: string
     module?: ApplicationModuleId
     requiredSystemPermissions?: readonly string[]
+    requiredAccountType?: 'human'
   }
 }
 
@@ -53,6 +55,12 @@ export const router = createRouter({
             module: 'system',
             requiredSystemPermissions: [ACCOUNT_READ_PERMISSION],
           },
+        },
+        {
+          path: 'ai-accounts',
+          name: 'ai-accounts',
+          component: AiAccountManagementView,
+          meta: { titleKey: 'routes.aiAccounts', module: 'aiAccounts', requiredAccountType: 'human' },
         },
         {
           path: 'projects',
@@ -268,6 +276,12 @@ router.beforeEach(async (to) => {
     )
       ? { name: 'home' }
       : { name: 'projects' }
+  }
+
+  if (
+    to.meta.requiredAccountType && auth.user?.accountType !== to.meta.requiredAccountType
+  ) {
+    return { name: 'forbidden' }
   }
 
   if (

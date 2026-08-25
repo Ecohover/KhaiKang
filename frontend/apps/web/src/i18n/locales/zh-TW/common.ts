@@ -85,6 +85,14 @@ export const common = {
     next: '下一頁',
     page: '第 {page} / {total} 頁',
   },
+  comments: {
+    title: '留言', description: '以安全 Markdown 留下討論與證據。', record: '留言', content: '留言內容',
+    edit: '編輯', preview: '預覽', mode: '留言編輯模式', placeholder: '輸入 Markdown 留言…',
+    create: '新增留言', retryCreate: '重試新增', createFailed: '留言新增失敗；重試會安全地送出同一請求。',
+    loading: '正在讀取留言…', busy: '目前留言功能忙碌中，請稍後再試', reload: '重新讀取', empty: '目前沒有留言。',
+    human: '人員', ai: 'AI', owner: '擁有者：{owner}', pagination: '留言分頁', page: '第 {page} 頁',
+    validation: { required: '請輸入留言。', tooLong: '留言不可超過 10,000 個字元。', unsafe: '請移除原始 HTML、不安全連結或外部圖片。' },
+  },
   time: {
     hoursAgo: '{count} 小時前',
   },

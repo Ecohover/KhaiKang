@@ -190,19 +190,20 @@ describe('AI account client', () => {
 describe('comment client', () => {
   it('lists a stable comment page through the canonical resource route', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ items: [], page: 2, hasNextPage: false }), {
+      new Response(JSON.stringify({ items: [], page: 2, hasNextPage: false, canCreate: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    await apiClient.listComments('test_run', 'run-id', 2)
+    const response = await apiClient.listComments('test_run', 'run-id', 2)
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/comments/test_run/run-id?page=2',
       expect.objectContaining({ credentials: 'include' }),
     )
+    expect(response.data?.canCreate).toBe(true)
   })
 
   it('creates a comment with CSRF and the caller-owned idempotency key', async () => {

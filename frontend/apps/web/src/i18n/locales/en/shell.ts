@@ -1,8 +1,9 @@
 export const shell = {
-  modules: { system: 'System', projects: 'Projects', tests: 'Tests' },
+  modules: { system: 'System', aiAccounts: 'AI accounts', projects: 'Projects', tests: 'Tests' },
   navigation: {
     systemOverview: 'Overview',
     users: 'Users',
+    aiAccounts: 'AI accounts',
     projectList: 'Projects',
     backToProjects: 'Back to projects',
     home: 'Home',

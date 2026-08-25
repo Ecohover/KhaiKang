@@ -51,6 +51,7 @@ public sealed class CommentService(
             Items = rows.Take(pageSize).Select(ToResponse).ToArray(),
             Page = query.Page,
             HasNextPage = rows.Length > pageSize,
+            CanCreate = access.CanCreate,
         };
     }
 

@@ -11,6 +11,7 @@ import ResourcePageHeader from '../components/ResourcePageHeader.vue'
 import SharedStateBanner from '../components/SharedStateBanner.vue'
 import TestWorkspaceSectionFrame from '../components/TestWorkspaceSectionFrame.vue'
 import TestRunTracePanel from '../components/TestRunTracePanel.vue'
+import CommentPanel from '../features/comments/CommentPanel.vue'
 import { useSaveNotice } from '../composables/useSaveNotice'
 
 const route = useRoute()
@@ -478,6 +479,7 @@ onMounted(load)
         </ul>
       </section>
     </article>
+    <CommentPanel resource-type="test_run" :resource-id="run.id" />
     <UiFormActionBar mode="floating">
       <template #status>
         <UiStatusBadge

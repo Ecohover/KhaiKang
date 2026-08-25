@@ -1,8 +1,9 @@
 export const shell = {
-  modules: { system: '系統管理', projects: '專案管理', tests: '測試管理' },
+  modules: { system: '系統管理', aiAccounts: 'AI 帳號', projects: '專案管理', tests: '測試管理' },
   navigation: {
     systemOverview: '系統總覽',
     users: '使用者管理',
+    aiAccounts: 'AI 帳號',
     projectList: '專案列表',
     backToProjects: '返回專案列表',
     home: '首頁',
