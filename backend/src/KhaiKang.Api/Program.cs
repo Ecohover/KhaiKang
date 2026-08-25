@@ -1,5 +1,6 @@
 using System.Reflection;
 
+using KhaiKang.Api.Configuration;
 using KhaiKang.Api.Contracts;
 using KhaiKang.CommonUtils.Web.DependencyInjection;
 using KhaiKang.Modules.CommentManagement.DependencyInjection;
@@ -28,8 +29,18 @@ builder.Services.AddCommentManagementModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddProjectManagementModule(builder.Configuration);
 builder.Services.AddTestManagementModule(builder.Configuration);
-var dataProtectionKeysDirectory = builder.Configuration["DataProtection:KeysDirectory"];
-if (!string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
+builder.Services.AddOptions<DataProtectionKeyOptions>()
+    .BindConfiguration(DataProtectionKeyOptions.SectionName)
+    .Validate(
+        options => builder.Environment.IsEnvironment("Testing") ||
+            !string.IsNullOrWhiteSpace(options.KeysDirectory),
+        "DataProtection:KeysDirectory is required outside Testing.")
+    .ValidateOnStart();
+
+var dataProtectionKeysDirectory = builder.Configuration[
+    $"{DataProtectionKeyOptions.SectionName}:KeysDirectory"];
+if (!builder.Environment.IsEnvironment("Testing") &&
+    !string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
 {
     Directory.CreateDirectory(dataProtectionKeysDirectory);
     builder.Services.AddDataProtection()

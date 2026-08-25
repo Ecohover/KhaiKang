@@ -28,9 +28,11 @@ The same example is available in a Docker Hub-ready format at
 
 - `compose/.env` is intentionally ignored by Git. Keep it only on the deployment host.
 - `postgres-data` stores all application data. Back it up before an upgrade.
-- `data-protection-keys` encrypts and validates authentication cookies. Keep it with
-  the database backup; deleting it signs out every user and invalidates existing
-  protected data.
+- Non-testing API instances require `DataProtection__KeysDirectory` to point to
+  durable storage shared by every API replica. Compose maps it to the
+  `data-protection-keys` volume, which protects authentication cookies and
+  recoverable AI tokens. Keep that volume with the database backup; replacing it
+  signs out users and makes existing protected values unrecoverable.
 - `attachments` stores Issue, Test Case, and Test Run files. Keep it with the
   database backup so attachment metadata and file content stay consistent.
 - `KHAIKANG_REQUIRE_HTTPS` must remain `false` only for localhost or other trusted
