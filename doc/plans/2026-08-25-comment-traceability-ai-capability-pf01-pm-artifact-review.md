@@ -39,10 +39,11 @@ Replace PF01-QA-01 with a role-aware, parameterized target matrix that:
 
 ## PM Checkpoint Status
 
+- PF-01 QA artifact recheck: **accepted**. QA completed the one permitted correction in `PF01-QA-01`: its role-aware target matrix now uses an allowed target and necessary assignment/review-context precondition for each fixed role, and separately verifies Reviewer AI cannot create on an otherwise readable non-corresponding User Story. The correction retains the owner-derived scope objective and introduces no product semantic change.
 - PF-01 Development Specification can proceed to Reviewer Development Specification review after the PM issues its handoff.
-- PF-01 QA artifact must return with the above correction before Parallel Design may close.
+- PF-01 Parallel Design remains open until Reviewer completes the Development Specification review; QA design work is complete.
 - PF-02／PF-03／PF-04 remain in their separate Implementation Review recheck; this artifact review does not advance either track or Formal QA.
 
 ## Next Role and Required Action
 
-QA AI performs only the stated artifact correction and returns the revised QA cases with a Handoff Package to PM AI. If this same Problem Family remains after that correction, QA AI must stop and escalate to PM; it must not perform a second direct correction.
+Reviewer AI reviews the accepted PF-01 Development Specification for omissions, conflicts, technical feasibility, architecture and standards alignment. The review must not implement code, run Formal QA, or change product semantics. If a Development Specification finding requires correction, apply the one-direct-correction rule for its new Problem Family.
