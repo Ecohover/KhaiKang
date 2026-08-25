@@ -8,6 +8,7 @@ import type { AccountResponse, AiAccountResponse, AiFixedRole } from '../api/con
 import { useSaveNotice } from '../composables/useSaveNotice'
 import { useAuthStore } from '../stores/auth'
 import { aiAccountActions } from '../features/aiAccounts/aiAccountAccess'
+import { showTokenCreatedNotice, showTokenRecreatedNotice } from '../features/aiAccounts/tokenMutationNotice'
 
 const auth = useAuthStore()
 const { t, d } = useI18n()
@@ -107,7 +108,12 @@ async function discloseToken(account: AiAccountResponse, recreate: boolean): Pro
       : await apiClient.viewAiAccountToken(account.id)
     if (result.data) {
       tokenDisclosure.value = { accountName: account.username, token: result.data.token }
-      if (!account.hasActiveToken) replaceAccount({ ...account, hasActiveToken: true })
+      if (recreate) {
+        showTokenRecreatedNotice(account.username, t)
+      } else if (!account.hasActiveToken) {
+        replaceAccount({ ...account, hasActiveToken: true })
+        showTokenCreatedNotice(account.username, t)
+      }
     } else error.value = problemMessage(result.error, t('system.aiAccounts.errors.token'))
   } catch {
     error.value = t('system.aiAccounts.errors.connection')
