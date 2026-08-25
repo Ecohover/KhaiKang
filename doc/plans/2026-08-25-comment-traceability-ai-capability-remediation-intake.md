@@ -31,3 +31,12 @@
 ## Next Action
 
 PM AI 發出限縮的 Development Remediation Handoff（PF-02、PF-03、PF-04）。PF-01 等待 human PO 的 remediation disposition。
+
+## 2026-08-25 PF-01 Implementation Review Intake
+
+| Problem family | Classification | PM disposition |
+| --- | --- | --- |
+| PF-05 QA persistent handoff evidence chain | 技術維護／workflow evidence correction；不變更產品行為。 | 授權 QA AI 一次恢復或以 successor 取代 persistent QA handoff，並使所有 authoritative references 一致。 |
+| PF-06 QA public test class/file layout | 技術維護／test-quality correction；不變更產品行為。 | 授權 QA AI 一次修正 public top-level class 與檔案名稱對應，同時保留既有 HTTP/CSRF/Bearer assertion。 |
+
+PF-05、PF-06 均為新 Problem Family，各自只允許一次 QA direct correction；若同 family recheck 仍未關閉，QA 與 Reviewer 都必須升 PM AI。這兩項未關閉前，不得發出 Formal QA Run Handoff。
