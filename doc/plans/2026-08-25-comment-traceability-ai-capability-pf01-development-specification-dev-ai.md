@@ -3,10 +3,10 @@
 ## 文件狀態
 
 - Workflow Role：Development AI
-- Current Phase：新標準 remediation track 的 `Parallel Design`
+- Current Phase：新標準 remediation track 的 `Artifact Review`，執行 `PF01-DS-ROLE-ADMISSION` 唯一一次 Development artifact correction
 - Work Classification：Planned Change under PM／human PO confirmed remediation disposition
 - Applicable Technology Profiles：`csharp-dotnet-aspnet-core`、`http-contract-quality`
-- 本文件只定義 PF-01 技術設計；沒有產品 code、OpenAPI、migration、test automation、commit、push、deploy 或 phase advancement 授權。
+- 本文件只定義 PF-01 技術設計並收斂 Reviewer 指定的 Comment create admission；沒有產品 code、OpenAPI、migration、test automation、commit、push、deploy 或 phase advancement 授權。
 
 ## 問題與設計目標
 
@@ -95,24 +95,68 @@ resource directory 必須從 `query.Actor.ScopeAccountId` 取得 membership subj
 - `Actor.ScopeAccountId` 只用於 resource admission。
 - PF-01 不改 `terminal_success`、`terminal_business_rejection`、`incomplete_transient_failure`、fingerprint 或 transaction boundary。
 
+### Comment create admission contract and decision order
+
+`CommentResourceAccessQuery` 是 CommentManagement 對 resource owner 的唯一 admission request。它攜帶完整且 fresh 的 `ResourceActorSnapshot`，但不攜帶 caller 可指定的 owner、role、assignment、review context 或 testing context。`CommentResourceAccess { CanRead, CanCreate }` 仍是唯一回傳；resource owner 不把判斷原因或 context metadata送回 CommentManagement。
+
+每個 resource owner 必須依下列順序判定，禁止先做 role target allow 後略過 read scope：
+
+1. CommentManagement 先以 current authenticated account ID 取得 fresh actor；actor不存在或不可用時直接拒絕。
+2. resource owner 以 `Actor.ScopeAccountId` 重新判定目標 resource 的既有 read scope。read denied時固定回 `{ CanRead=false, CanCreate=false }`。
+3. human actor在 `CanRead=true` 後只套用既有 resource-owner `comment.create` permission／Workspace writable-role規則；PF-01 不增加或移除任何 human admission條件。
+4. AI actor在 `CanRead=true` 後先要求 `FixedRole` 是五個known stable codes之一；未知、null或無法解析的role固定為 `CanCreate=false`，但不撤銷已成立的 `CanRead=true`。
+5. resource owner 同時要求 fixed-role Comment target allowlist與該角色的 authoritative target／context verdict；owner的人類權限、System Administrator身分或較高Workspace role都不得替代任一條件。
+6. assignment與role comparison一律使用 `Actor.AccountId`（AI account），membership intersection一律使用 `Actor.ScopeAccountId`（human owner）。兩者不得互換。
+7. required assignment／review／testing context不存在、inactive、不一致或無法從owner-owned seam取得時，結果固定為 `{ CanRead=true, CanCreate=false }`。POST因此沿用non-disclosing `404`且不建立idempotency reservation；GET仍可為`200`並回`canCreate=false`。
+
+固定allowlist只接受產品規格已確認的Comment context；accepted `PF01-QA-01`選擇其中一個representative allowed target驗證每個角色，不得由test row反向擴張其他role／target組合：
+
+| Fixed role | Resource owner | Allowed Comment target／authoritative context |
+| --- | --- | --- |
+| `pm_ai` | ProjectManagement | owner scope內供交接使用的active User Story、Task或Test Issue；Issue type／Test Issue context由ProjectManagement authoritative Issue／`tests` relation判定，不要求assignment。`PF01-QA-01`以User Story作representative row。 |
+| `development_ai` | ProjectManagement | owner scope內、`task`且`AssigneeAccountId == Actor.AccountId`的Development Task。 |
+| `qa_ai` | ProjectManagement | owner scope內、`task`、`AssigneeAccountId == Actor.AccountId`且具有active outbound `tests` relation的Test Issue；Test Issue沿用既有`task + tests`語意，不依標題或client label推論。 |
+| `reviewer_ai` | ProjectManagement | owner scope內、`task`且其assignee由Identity fresh actor seam確認為active `development_ai`的Development Task。這是現行review target context；不新增Reviewer assignment或relation。 |
+| `devops_ai` | ProjectManagement | owner scope內的active Task；不要求assignment，且只授與Comment create，不授與Task mutation。 |
+| `qa_ai` | TestManagement | owner同時具active Workspace與linked Project scope，且Test owner能從Case immutable Test Issue source、Plan current Test Issue或Run immutable Test Issue snapshot解析出同一testing context；Project authoritative seam再確認該Test Issue目前是指派給`Actor.AccountId`的active Test Issue。 |
+
+Test Case／Plan／Run對`pm_ai`、`development_ai`、`reviewer_ai`與`devops_ai`固定`CanCreate=false`；這不影響它們在owner-derived scope成立時的`CanRead`。Case缺少immutable Test Issue source、Plan缺少current Test Issue、Run缺少Test Issue snapshot，或任一Workspace–Project／Project assignment context無法驗證時，同樣維持readable-but-not-creatable。
+
 ## Resource-owner access verdict
 
 ### ProjectManagement
 
-`ProjectCommentResourceDirectory` 以 `Actor.ScopeAccountId` 呼叫既有 Issue read／comment access policy：
+`ProjectCommentResourceDirectory` 以 `Actor.ScopeAccountId` 呼叫既有 Issue read／comment access policy，並把AI create交給Project-owned `ProjectCommentTargetAdmission` application seam。此seam只在ProjectManagement內讀取Issue、Issue type、assignee、active `tests` relations與Project membership；需要確認assignee account type／fixed role時只呼叫Identity public `IResourceActorDirectory`，不讀Identity DbContext。
 
 - active Project membership 與 Issue read permission 決定 `CanRead`。
-- 現有 `comment.create`／fixed-role policy 決定 `CanCreate`；PF-01 不重新定義 fixed-role matrix。
+- human `CanCreate`維持既有`comment.create` permission。
+- AI `CanCreate`依上節五角色Project target matrix決定；Project target、assignment、Test Issue `tests` relation與Reviewer Development Task context都由此owner seam authoritative判定，不由CommentManagement或client推論。
 - resource missing、soft-deleted、inactive membership、cross-Project 或 denied permission 都回傳 `{ false, false }`，不回傳 Issue／Project metadata。
 - owner 是 System Admin 但不是目標 Project 的有效 scoped member時，不得以人類 System Admin 權限提升 AI fixed role 或略過 Project intersection。
 
+TestManagement需要驗證Case／Plan／Run的Test Issue context時，ProjectManagement另提供窄化的public application contract：
+
+```text
+IIssueCommentContextDirectory.IsAssignedTestIssueAsync(
+  issueId,
+  expectedProjectId,
+  aiActorAccountId,
+  ownerScopeAccountId,
+  cancellationToken) -> bool
+```
+
+此named seam在ProjectManagement內一次驗證active Project、owner scoped membership／read、Issue為`task`、assignee為該AI account及active outbound `tests` relation；只回boolean且不回Issue／Project metadata。它不是現有泛用`IIssueDirectory` DTO加欄位，也不讓TestManagement或CommentManagement自行重建Project role rules。
+
 ### TestManagement
 
-`TestCommentResourceDirectory` 以 `Actor.ScopeAccountId` 套用目標 Test Case／Plan／Run 的既有 owning-resource read policy：
+`TestCommentResourceDirectory` 以 `Actor.ScopeAccountId` 套用目標 Test Case／Plan／Run 的既有 owning-resource read policy，並把AI create交給Test-owned `TestCommentTargetAdmission` application seam：
 
 - active Workspace membership 是必要條件。
-- 當該 resource 的正常 read policy已有 Project dimension、Workspace–Project link 或 Project readability 要求時，Project 與 Workspace verdict 必須同時成立。
-- PF-01 不替 project-neutral Test resource 新增 Project association，也不更改 Test asset business model；只確保既有 resource policy 使用 owner-derived scope，而非 AI account ID。
+- human `CanCreate`維持既有active Workspace owner／manager規則。
+- AI只有`qa_ai`可通過Test asset Comment create target allowlist；其他四角色即使可read亦固定`CanCreate=false`。
+- `qa_ai`的testing context由TestManagement自己解析：Case使用既有immutable `TestCaseSourceLink`，Plan使用current `TestIssueProjectId/TestIssueId`，Run使用creation-time immutable Test Issue snapshot；不得接受request supplied Project／Test Issue context。
+- 解析到的Project必須存在active Workspace–Project link，owner必須同時具有active Workspace membership與Project scope，再由`IIssueCommentContextDirectory.IsAssignedTestIssueAsync`確認Test Issue assignment／`tests`語意。
+- PF-01不替沒有上述authoritative context的resource建立或猜測Project association；缺context即`CanCreate=false`，而已成立的Workspace read仍保留`CanRead=true`。
 - missing／soft-deleted resource、inactive Workspace member、invalid link、cross-Workspace 或任一必要 Project scope denied 都回傳 `{ false, false }`，不回傳 Workspace／Project／resource metadata。
 
 Resource owner 可以在自身 Application／Infrastructure boundary 使用其 DbContext 與既有 cross-module directory contract；CommentManagement 不得跨 module 查 ProjectMembers、WorkspaceMembers、WorkspaceProjects 或 resource entities。
@@ -153,8 +197,9 @@ Resource owner 可以在自身 Application／Infrastructure boundary 使用其 D
 ## Implementation slices（後續新 Handoff 才可執行）
 
 1. **Actor seam consolidation**：調整 project references，CommentService 改用 Identity-owned `IResourceActorDirectory`，移除 duplicate Comment actor directory，並加入 dependency-direction evidence。
-2. **Shared Comment access context**：新增 `CommentResourceAccessQuery`，讓 list/create 共用 fresh actor resolution；Project／Test directories只使用 `Actor.ScopeAccountId` 取得最小 verdict。
-3. **Focused authorization regression**：以 HTTP Bearer／human session驗證 allow、deny、transfer、disable、orphan與 non-disclosure；不修改 OpenAPI或資料模型。
+2. **Resource-owner create admission**：新增`CommentResourceAccessQuery`；在ProjectManagement建立`ProjectCommentTargetAdmission`與窄化的`IIssueCommentContextDirectory.IsAssignedTestIssueAsync`，在TestManagement建立`TestCommentTargetAdmission`。owner modules依accepted role／target matrix判定assignment、review與testing context，只回最小`CanRead/CanCreate` verdict。
+3. **Shared Comment access context**：讓list/create共用fresh actor resolution與同一resource-owner verdict；membership只使用`Actor.ScopeAccountId`，assignment只使用`Actor.AccountId`。缺role/context時保留read verdict但fail closed create，且在idempotency reservation前拒絕。
+4. **Focused authorization regression**：以HTTP Bearer／human session覆蓋accepted五角色target matrix、Reviewer readable-but-create-denied、Test asset testing-context allow／missing-context deny、scope／transfer／disable／orphan與non-disclosure；不修改OpenAPI或資料模型。
 
 每個 slice 必須保持 buildable／reviewable；不得在未確認新 Handoff 前開始實作或 commit。
 
@@ -162,20 +207,24 @@ Resource owner 可以在自身 Application／Infrastructure boundary 使用其 D
 
 ### Development-owned focused tests
 
-1. `ListComments_WithAiBearer_UsesOwnerDerivedProjectScope`：owner有 Issue read scope時，AI Bearer可 list；同一 token create後可 list回該 Comment。
-2. `ListComments_WithAiBearer_UsesOwnerDerivedWorkspaceScope`：owner有 active Workspace scope時，AI Bearer可 list Test Case、Plan、Run Comment；涵蓋 resource正常read policy所要求的 Project intersection。
-3. `ListComments_WhenOwnerLacksAnyRequiredScope_ReturnsNotFoundWithoutMetadata`：cross-Project、cross-Workspace、inactive membership、invalid link、System Admin owner但無 scoped membership皆為 `404`，body不含 resource title/name、Comment content、Project／Workspace metadata。
-4. `CommentAccess_AfterOwnerTransfer_UsesOnlyNewOwnerScope`：old token為 `401`；new owner的新 token不得沿用舊 owner scope，補齊新 owner scope後才可 list/create；existing Comment author snapshot仍顯示操作當下 owner。
-5. `CommentAccess_WhenAiDisabledOrOrphaned_IsRejected`：AI disabled、owner disabled／removed／orphan及 revoked token皆不可用 Bearer讀取 Comment。
-6. `CommentAccess_WithHumanSession_PreservesExistingReadAndCanCreateVerdict`：human owner／read-only member延續既有 `CanRead`／`CanCreate` 與 cookie behavior。
-7. `CommentAccess_UnsupportedOrDeletedResource_DoesNotDiscloseExistence`：unsupported、missing、soft-deleted與denied保持同一 external boundary。
+1. `CreateAndListComments_WithAiBearer_AdmitsAcceptedRoleTargetMatrix`：以accepted `PF01-QA-01`五rows parameterize `pm_ai` User Story、`development_ai` assigned Development Task、`qa_ai` assigned Test Issue、`reviewer_ai` corresponding Development Task、`devops_ai` Task。每row均以AI Bearer `POST 201`後`GET 200`讀回同一Comment，並確認author仍是AI account、scope來自owner。
+2. `ReviewerAi_OnReadableNonDevelopmentTarget_CannotCreateComment`：Reviewer owner可read的User Story維持`GET 200`與`canCreate=false`；POST為non-disclosing `404`且Comment與idempotency record都沒有mutation。
+3. `AiCommentCreate_WhenRequiredRoleContextIsMissing_FailsClosedButRemainsReadable`：parameterize Development Task未指派／指派他人、QA task沒有active `tests` relation、Reviewer target不是指派給active Development AI的Task、unknown／null fixed role；scope read成立時均`GET 200 canCreate=false`、POST `404`。
+4. `QaAi_TestAssetComments_RequireAuthoritativeTestingContext`：對Case／Plan／Run parameterize；Case source、Plan current Test Issue、Run snapshot都指向同一owner-scope Project內且assigned給current QA AI的active Test Issue時可create/list。缺source/snapshot、wrong assignee、inactive `tests` relation、inactive link或Project／Workspace任一邊scope缺失時，resource仍可read者回`200 canCreate=false`，POST `404`且無mutation。
+5. `ListComments_WithAiBearer_UsesOwnerDerivedProjectScope`：owner有Issue read scope時AI Bearer可list；AI account自己的membership或owner的System Administrator權限不得取代owner scoped membership。
+6. `ListComments_WithAiBearer_UsesOwnerDerivedWorkspaceScope`：owner有active Workspace scope時AI Bearer可list Test Case／Plan／Run Comment；涵蓋resource正常read policy所要求的Project intersection，且list不因create role/context denied而被撤銷。
+7. `ListComments_WhenOwnerLacksAnyRequiredScope_ReturnsNotFoundWithoutMetadata`：cross-Project、cross-Workspace、inactive membership、invalid link、System Admin owner但無scoped membership皆為`404`，body不含resource title/name、Comment content、Project／Workspace metadata。
+8. `CommentAccess_AfterOwnerTransfer_UsesOnlyNewOwnerScopeAndContext`：old token為`401`；new owner的新token不得沿用舊owner scope；assignment與role context仍以AI actor account重新判定，補齊新owner scope後才可依matrix list/create；existing Comment author snapshot不回寫。
+9. `CommentAccess_WhenAiDisabledOrOrphaned_IsRejected`：AI disabled、owner disabled／removed／orphan及revoked token皆不可用Bearer讀取或建立Comment。
+10. `CommentAccess_WithHumanSession_PreservesExistingReadAndCanCreateVerdict`：human owner／read-only member延續既有`CanRead`／`CanCreate`、cookie與CSRF behavior，不套fixed-role target matrix。
+11. `CommentAccess_UnsupportedOrDeletedResource_DoesNotDiscloseExistence`：unsupported、missing、soft-deleted與scope denied保持同一external boundary；role/context denied也不新增可辨識error code。
 
 以上 authorization／HTTP behavior 使用 `WebApplicationFactory`與實際 Identity、Comment、Project、Test application adapters，不以只驗證 mock call count 的測試取代。若沒有 PostgreSQL-specific query、schema、locking或transaction變更，SQLite HTTP integration可作本 PF-01 authorization evidence；不得把它宣稱為 PostgreSQL migration／concurrency證據。
 
 ### Architecture and compatibility evidence
 
 - backend solution restore／build／focused integration tests／relevant regression／targeted `dotnet format --verify-no-changes`。
-- 檢查 project references：Identity不再依賴 CommentManagement；CommentManagement只透過Identity public Contracts，不引用Identity Infrastructure／Domain／DbContext。
+- 檢查project references：Identity不再依賴CommentManagement；CommentManagement只透過Identity public Contracts；TestManagement只透過ProjectManagement public `IIssueCommentContextDirectory`取得boolean testing-context verdict；任何consumer均不引用owner module Infrastructure／Domain／DbContext。
 - Contract compatibility check：OpenAPI artifact零diff，既有 `ListComments`／`CreateComment` operationId、security、status與C# endpoint／TypeScript client mapping不變。
 - `git diff --check`與明確 staged manifest；不混入PF-02～PF-04或planning drafts。
 
@@ -192,10 +241,10 @@ Resource owner 可以在自身 Application／Infrastructure boundary 使用其 D
 ## Handoff Package
 
 - **Task / Feature**：PF-01 AI Comment owner-derived scope remediation。
-- **Current Phase**：新標準 remediation track `Parallel Design`；Development Specification completed，尚未進入 Artifact Review。
-- **Source-of-Truth Paths**：`doc/plans/2026-08-25-comment-traceability-ai-capability-pf01-pm-disposition-parallel-design-handoff.md`；`doc/zh-TW/02-specs/05-comment-and-ai-recording-capability.md` §4、§5、§9、§12；`doc/plans/2026-08-25-comment-traceability-ai-capability-implementation-review-conclusion-reviewer-ai.md` PF-01；`doc/plans/2026-08-20-comment-traceability-ai-capability-development-specification-dev-ai.md`；`doc/plans/2026-08-20-comment-traceability-ai-capability-qa-cases.md`。
-- **Scope / Non-Goals**：只設計single actor/scope seam、Comment list/create共同access flow、resource-owner最小verdict、non-disclosure、impact與verification；未修改產品code、OpenAPI、TypeScript、migration、test automation、PF-02～PF-04或兩個未追蹤planning drafts。
-- **Produced Artifact or Diff**：本PF-01 Development Specification與內嵌Handoff Package；沒有其他authorized diff。
-- **Validation Evidence**：已比對PM disposition、產品規格、Reviewer PF-01 evidence、原Development Specification與QA cases；已唯讀檢查`CommentService`、`ICommentActorDirectory`、`ICommentResourceDirectory`、Identity `IResourceActorDirectory`／`ResourceActorDirectory`、Project／Test Comment resource directories、Bearer authentication handler、DI與project references。設計確認既有Identity actor seam已由ProjectManagement／TestManagement使用，可取代Comment duplicate seam且不形成circular project reference。Parallel Design未執行build、test、runtime或Formal QA。
-- **Open Decisions / Blockers**：目前無blocker；超出已確認impact的contract／schema／Test resource Project語意／fixed-role變更必須回PM。
-- **Next Role and Required Action**：PM AI等待並整合QA AI的PF-01 cases，對兩份artifact執行Artifact Review；之後才可發出Reviewer AI Development Specification review handoff。Reviewer本phase `Not Involved`。Development AI等待新的明確Handoff，不自行實作、commit、push、deploy或推進phase。
+- **Current Phase**：新標準 remediation track `Artifact Review`；`PF01-DS-ROLE-ADMISSION`唯一一次Development artifact correction completed，phase未推進。
+- **Source-of-Truth Paths**：`doc/plans/2026-08-25-comment-traceability-ai-capability-pf01-development-specification-review-conclusion-reviewer-ai.md`；`doc/plans/2026-08-25-comment-traceability-ai-capability-pf01-qa-cases.md` accepted `PF01-QA-01`；`doc/plans/2026-08-25-comment-traceability-ai-capability-pf01-pm-artifact-review.md`；`doc/plans/2026-08-25-comment-traceability-ai-capability-pf01-pm-disposition-parallel-design-handoff.md`；`doc/zh-TW/02-specs/05-comment-and-ai-recording-capability.md` §4、§5、§9、§12；`doc/zh-TW/02-specs/04-issue-test-traceability.md`。
+- **Scope / Non-Goals**：只補resource-owner Comment create admission contract／decision order、Project assignment／review context、Test testing context、implementation slices與Development-focused HTTP verification；未修改產品code、OpenAPI、TypeScript、schema、migration、test automation、PF-02～PF-04或兩個未追蹤planning drafts。
+- **Produced Artifact or Diff**：本PF-01 Development Specification的`PF01-DS-ROLE-ADMISSION` correction與獨立persistent Reviewer recheck handoff；沒有產品diff。
+- **Validation Evidence**：已比對Reviewer finding、accepted `PF01-QA-01`、產品fixed-role matrix與traceability rules；唯讀確認ProjectManagement authoritative Issue type／assignee／`tests` relation、TestManagement Case source／Plan Test Issue／Run snapshot／Workspace–Project link，以及Identity fresh actor seam。這些既有資料可支援named owner application seams，無須新增產品語意、wire contract或schema。Artifact correction未執行build、test、runtime或Formal QA。
+- **Open Decisions / Blockers**：目前無blocker；`PF01-DS-ROLE-ADMISSION`已使用唯一直接修正。若Reviewer recheck仍認為同family不完整，必須升PM，不得第二次直接修正。
+- **Next Role and Required Action**：Reviewer AI只recheck `PF01-DS-ROLE-ADMISSION` correction，確認contract／decision order、owner-owned context seams、readable-but-not-creatable與accepted role matrix verification coverage。Development AI等待recheck結果，不自行實作、commit、push、deploy或推進phase。
