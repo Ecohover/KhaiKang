@@ -7,6 +7,8 @@
 - Current Phase：`Parallel Implementation`
 - Task / Feature：PF-01 AI Comment owner-derived scope與固定角色 target admission QA automation
 - QA test commit：`c797ca5` (`test: cover PF-01 AI comment admission`)
+- Persistent artifact commit：`b19a20d` (`docs: hand off PF-01 QA implementation`)
+- Implementation Review correction：`fc817de` (`test: align PF-01 QA class layout`)；只將human HTTP／CSRF／Bearer case移回matching public class file，assertion與coverage不變
 - Formal QA：未執行；本文件不構成驗收、Reviewer approval或phase推進
 
 ## Source of Truth
@@ -21,8 +23,7 @@
 
 | Path | QA ownership / coverage |
 | --- | --- |
-| `backend/tests/integration/KhaiKang.Api.IntegrationTests/Identity/Pf01AiCommentScopeTests.cs` | Public HTTP regression：五角色allowed matrix、representative Reviewer deny、required assignment/testing context fail-closed、Case／Plan／Run authoritative context、denied create不保留idempotency key、owner transfer/new-owner fresh scope、Project／Workspace intersection、System Administrator non-bypass、AI API/account disable、owner disable、`401`／non-disclosing `404`與metadata suppression。 |
-| `backend/tests/integration/KhaiKang.Api.IntegrationTests/Identity/Pf01HumanCsrfRegressionTests.cs` | Human cookie read/create與missing-CSRF negative boundary、AI Bearer without CSRF、human outsider non-disclosing `404` regression。 |
+| `backend/tests/integration/KhaiKang.Api.IntegrationTests/Identity/Pf01AiCommentScopeTests.cs` | Public HTTP regression：五角色allowed matrix、representative Reviewer deny、required assignment/testing context fail-closed、Case／Plan／Run authoritative context、denied create不保留idempotency key、owner transfer/new-owner fresh scope、Project／Workspace intersection、System Administrator non-bypass、AI API/account disable、owner disable、`401`／non-disclosing `404`與metadata suppression；亦包含human cookie read/create、missing-CSRF、AI Bearer without CSRF與human outsider regression。原`c797ca5`將human case放在`Pf01HumanCsrfRegressionTests.cs`中的partial class；`fc817de`依PF-06移入本matching file並刪除舊檔，test method與assertions不變。 |
 | `backend/tests/integration/KhaiKang.Api.IntegrationTests/Identity/AiResourceAdmissionTests.cs` | 將既有Reviewer Comment legacy fixture收斂至accepted target：Task需指派給active `development_ai`；產品斷言不變。 |
 
 ## Automated Case Mapping
