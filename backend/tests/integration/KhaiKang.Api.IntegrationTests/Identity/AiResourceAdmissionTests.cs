@@ -210,8 +210,17 @@ public sealed class AiResourceAdmissionTests
         using var api = await AuthenticatedApiTestContext.CreateAsync();
         var project = await ApiTestData.CreateProjectAsync(api, "AICOMMENT");
         var issue = await ApiTestData.CreateIssueAsync(api, project.Id, "Review this task");
+        var development = await CreateAiBearerAsync(
+            api,
+            "ai-development-review-target",
+            "development_ai");
         var reviewer = await CreateAiBearerAsync(api, "ai-reviewer-snapshot", "reviewer_ai");
         var devops = await CreateAiBearerAsync(api, "ai-devops-diagnostics", "devops_ai");
+        using var assign = await api.PutJsonAsync(
+            $"/api/v1/projects/{project.Id}/issues/{issue.Id}/assignee",
+            new { assigneeAccountId = development.AccountId, version = issue.Version });
+        Assert.Equal(HttpStatusCode.OK, assign.StatusCode);
+        issue = Assert.IsType<IssueResponse>(await assign.Content.ReadFromJsonAsync<IssueResponse>());
         using var bearer = api.CreateClient();
         bearer.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", reviewer.Token);
         using var devopsBearer = BearerClient(api, devops.Token);
