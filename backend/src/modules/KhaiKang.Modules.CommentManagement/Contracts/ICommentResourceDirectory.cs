@@ -5,8 +5,6 @@ public interface ICommentResourceDirectory
     bool Supports(CommentResourceType resourceType);
 
     Task<CommentResourceAccess> GetAccessAsync(
-        CommentResourceType resourceType,
-        Guid resourceId,
-        Guid accountId,
+        CommentResourceAccessQuery query,
         CancellationToken cancellationToken);
 }

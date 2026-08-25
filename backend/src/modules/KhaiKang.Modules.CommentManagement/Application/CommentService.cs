@@ -4,6 +4,7 @@ using System.Text.Json;
 using KhaiKang.Modules.CommentManagement.Contracts;
 using KhaiKang.Modules.CommentManagement.Domain;
 using KhaiKang.Modules.CommentManagement.Infrastructure;
+using KhaiKang.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -12,7 +13,7 @@ namespace KhaiKang.Modules.CommentManagement.Application;
 public sealed class CommentService(
     CommentManagementDbContext dbContext,
     IEnumerable<ICommentResourceDirectory> resourceDirectories,
-    ICommentActorDirectory actorDirectory,
+    IResourceActorDirectory actorDirectory,
     TimeProvider timeProvider)
 {
     private const int MaximumContentLength = 10_000;
@@ -23,10 +24,18 @@ public sealed class CommentService(
         ListCommentsQuery query,
         CancellationToken cancellationToken)
     {
+        var actor = await actorDirectory.FindActiveAsync(
+            query.ActorAccountId,
+            cancellationToken);
+        if (actor is null)
+        {
+            return null;
+        }
+
         var access = await GetAccessAsync(
             query.ResourceType,
             query.ResourceId,
-            query.ActorAccountId,
+            actor,
             cancellationToken);
         if (!access.CanRead)
         {
@@ -65,18 +74,10 @@ public sealed class CommentService(
             return CreateCommentResult.NotFound();
         }
 
-        var scopeAccountId = actor.AccountType == "ai_agent"
-            ? actor.OwnerAccountId
-            : actor.AccountId;
-        if (scopeAccountId is null)
-        {
-            return CreateCommentResult.NotFound();
-        }
-
         var access = await GetAccessAsync(
             command.ResourceType,
             command.ResourceId,
-            scopeAccountId.Value,
+            actor,
             cancellationToken);
         if (!access.CanCreate)
         {
@@ -85,7 +86,11 @@ public sealed class CommentService(
 
         var fingerprint = CreateFingerprint(command);
         await ReserveAsync(command, fingerprint, cancellationToken);
-        return await ExecuteReservedAsync(command, actor, fingerprint, cancellationToken);
+        return await ExecuteReservedAsync(
+            command,
+            ToCommentActorSnapshot(actor),
+            fingerprint,
+            cancellationToken);
     }
 
     private async Task ReserveAsync(
@@ -224,14 +229,31 @@ public sealed class CommentService(
     private async Task<CommentResourceAccess> GetAccessAsync(
         CommentResourceType resourceType,
         Guid resourceId,
-        Guid accountId,
+        ResourceActorSnapshot actor,
         CancellationToken cancellationToken)
     {
         var directory = resourceDirectories.SingleOrDefault(candidate => candidate.Supports(resourceType));
         return directory is null
             ? new CommentResourceAccess { CanRead = false, CanCreate = false }
-            : await directory.GetAccessAsync(resourceType, resourceId, accountId, cancellationToken);
+            : await directory.GetAccessAsync(
+                new CommentResourceAccessQuery
+                {
+                    ResourceType = resourceType,
+                    ResourceId = resourceId,
+                    Actor = actor,
+                },
+                cancellationToken);
     }
+
+    private static CommentActorSnapshot ToCommentActorSnapshot(ResourceActorSnapshot actor) => new()
+    {
+        AccountId = actor.AccountId,
+        DisplayName = actor.AccountName,
+        AccountType = actor.AccountType,
+        FixedRole = actor.FixedRole,
+        OwnerAccountId = actor.OwnerAccountId,
+        OwnerDisplayName = actor.OwnerDisplayName,
+    };
 
     private static Dictionary<string, string[]> ValidateContent(string? content)
     {

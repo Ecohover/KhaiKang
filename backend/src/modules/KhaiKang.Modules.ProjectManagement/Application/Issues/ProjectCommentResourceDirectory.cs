@@ -3,20 +3,36 @@ using KhaiKang.Modules.ProjectManagement.Contracts;
 
 namespace KhaiKang.Modules.ProjectManagement.Application.Issues;
 
-public sealed class ProjectCommentResourceDirectory(IIssueDirectory issueDirectory) : ICommentResourceDirectory
+public sealed class ProjectCommentResourceDirectory(
+    IIssueDirectory issueDirectory,
+    ProjectCommentTargetAdmission targetAdmission) : ICommentResourceDirectory
 {
     public bool Supports(CommentResourceType resourceType) => resourceType == CommentResourceType.Issue;
 
-    public async Task<CommentResourceAccess> GetAccessAsync(CommentResourceType resourceType, Guid resourceId, Guid accountId, CancellationToken cancellationToken)
+    public async Task<CommentResourceAccess> GetAccessAsync(
+        CommentResourceAccessQuery query,
+        CancellationToken cancellationToken)
     {
-        if (!Supports(resourceType)) return Denied();
-        var readable = await issueDirectory.FindReadableAsync(resourceId, accountId, cancellationToken);
+        if (!Supports(query.ResourceType)) return Denied();
+        var readable = await issueDirectory.FindReadableAsync(
+            query.ResourceId,
+            query.Actor.ScopeAccountId,
+            cancellationToken);
         if (readable is null) return Denied();
-        var commentable = await issueDirectory.FindCommentableAsync(resourceId, accountId, cancellationToken);
+        var commentable = await issueDirectory.FindCommentableAsync(
+            query.ResourceId,
+            query.Actor.ScopeAccountId,
+            cancellationToken);
+        var canCreate = commentable is not null &&
+            (!query.Actor.IsAi ||
+                await targetAdmission.CanCreateAsync(
+                    query.ResourceId,
+                    query.Actor,
+                    cancellationToken));
         return new CommentResourceAccess
         {
             CanRead = true,
-            CanCreate = commentable is not null,
+            CanCreate = canCreate,
         };
     }
 

@@ -3,6 +3,7 @@ using KhaiKang.Modules.CommentManagement.Application;
 using KhaiKang.Modules.CommentManagement.Contracts;
 using KhaiKang.Modules.CommentManagement.Domain;
 using KhaiKang.Modules.CommentManagement.Infrastructure;
+using KhaiKang.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
@@ -172,9 +173,7 @@ public sealed class CommentIdempotencyPostgreSqlTests
         public bool Supports(CommentResourceType resourceType) => resourceType == CommentResourceType.Issue;
 
         public Task<CommentResourceAccess> GetAccessAsync(
-            CommentResourceType resourceType,
-            Guid resourceId,
-            Guid accountId,
+            CommentResourceAccessQuery query,
             CancellationToken cancellationToken) => Task.FromResult(new CommentResourceAccess
             {
                 CanRead = true,
@@ -182,16 +181,17 @@ public sealed class CommentIdempotencyPostgreSqlTests
             });
     }
 
-    private sealed class ActiveHumanActorDirectory(Guid accountId) : ICommentActorDirectory
+    private sealed class ActiveHumanActorDirectory(Guid accountId) : IResourceActorDirectory
     {
-        public Task<CommentActorSnapshot?> FindActiveAsync(
+        public Task<ResourceActorSnapshot?> FindActiveAsync(
             Guid requestedAccountId,
-            CancellationToken cancellationToken) => Task.FromResult<CommentActorSnapshot?>(
+            CancellationToken cancellationToken) => Task.FromResult<ResourceActorSnapshot?>(
                 requestedAccountId == accountId
-                    ? new CommentActorSnapshot
+                    ? new ResourceActorSnapshot
                     {
                         AccountId = accountId,
-                        DisplayName = "postgres-test-actor",
+                        ScopeAccountId = accountId,
+                        AccountName = "postgres-test-actor",
                         AccountType = "human",
                     }
                     : null);

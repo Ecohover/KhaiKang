@@ -43,6 +43,8 @@ public static class ProjectManagementModuleExtensions
         services.AddScoped<ProjectManagementService>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IIssueDirectory, IssueDirectory>();
+        services.AddScoped<IIssueCommentContextDirectory, IssueCommentContextDirectory>();
+        services.AddScoped<ProjectCommentTargetAdmission>();
         services.AddScoped<ICommentResourceDirectory, ProjectCommentResourceDirectory>();
         services.AddScoped<IIssueCommandService, IssueCommandService>();
         services.AddScoped<IssueService>();

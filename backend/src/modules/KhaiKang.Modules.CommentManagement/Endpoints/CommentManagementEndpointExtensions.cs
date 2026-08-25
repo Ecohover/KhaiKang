@@ -27,10 +27,20 @@ public static class CommentManagementEndpointExtensions
             return response is null ? Results.NotFound() : Results.Ok(response);
         }).WithName("ListComments").Produces<CommentPageResponse>();
 
-        comments.MapPost("/{resourceType}/{resourceId:guid}", async (string resourceType, Guid resourceId, CreateCommentRequest request, HttpRequest httpRequest, ClaimsPrincipal principal, CommentService service, CancellationToken token) =>
+        comments.MapPost("/{resourceType}/{resourceId:guid}", async (string resourceType, Guid resourceId, CreateCommentRequest request, HttpRequest httpRequest, ClaimsPrincipal principal, IAntiforgery antiforgery, CommentService service, CancellationToken token) =>
         {
             if (!TryGetAccountId(principal, out var accountId)) return Results.Unauthorized();
             if (!TryParseResourceType(resourceType, out var type)) return Results.NotFound();
+            var usesBearer = httpRequest.Headers.Authorization.ToString()
+                .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
+            if (!usesBearer)
+            {
+                if (!await antiforgery.IsRequestValidAsync(httpRequest.HttpContext))
+                {
+                    return Results.BadRequest();
+                }
+            }
+
             if (!TryGetIdempotencyKey(httpRequest, out var idempotencyKey))
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
@@ -65,8 +75,7 @@ public static class CommentManagementEndpointExtensions
                     }),
                 _ => throw new InvalidOperationException($"Unsupported create comment outcome '{result.Outcome}'."),
             };
-        }).WithMetadata(new RequireAntiforgeryTokenAttribute(true))
-            .WithName("CreateComment")
+        }).WithName("CreateComment")
             .Produces<CommentResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict);

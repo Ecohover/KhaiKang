@@ -20,6 +20,8 @@ public static class TestManagementModuleExtensions
             ?? throw new InvalidOperationException("Connection string 'KhaiKang' is required.");
         services.AddDbContext<TestManagementDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<TestManagementService>();
+        services.AddScoped<TestCommentContextDirectory>();
+        services.AddScoped<TestCommentTargetAdmission>();
         services.AddScoped<ICommentResourceDirectory, TestCommentResourceDirectory>();
         services.AddScoped<TestCaseAttachmentService>();
         services.AddScoped<TestRunItemAttachmentService>();
