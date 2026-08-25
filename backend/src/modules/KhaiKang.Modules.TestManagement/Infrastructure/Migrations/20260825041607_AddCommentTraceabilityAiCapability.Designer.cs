@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(TestManagementDbContext))]
-    [Migration("20260824042310_AddImmutableTraceabilitySources")]
-    partial class AddImmutableTraceabilitySources
+    [Migration("20260825041607_AddCommentTraceabilityAiCapability")]
+    partial class AddCommentTraceabilityAiCapability
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -477,6 +477,71 @@ namespace KhaiKang.Modules.TestManagement.Infrastructure.Migrations
                         .HasDatabaseName("uq_test_case_tags_case_tag");
 
                     b.ToTable("test_case_tags", (string)null);
+                });
+
+            modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestOperationEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorFixedRoleSnapshot")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_fixed_role_snapshot");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("actor_name_snapshot");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_type");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("event_type");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid?>("OwnerAccountIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_account_id_snapshot");
+
+                    b.Property<string>("OwnerDisplayNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("owner_display_name_snapshot");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("resource_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_test_operation_events");
+
+                    b.HasIndex("ResourceType", "ResourceId", "OccurredAt")
+                        .HasDatabaseName("idx_test_operation_events_resource");
+
+                    b.ToTable("test_operation_events", (string)null);
                 });
 
             modelBuilder.Entity("KhaiKang.Modules.TestManagement.Domain.TestPlan", b =>

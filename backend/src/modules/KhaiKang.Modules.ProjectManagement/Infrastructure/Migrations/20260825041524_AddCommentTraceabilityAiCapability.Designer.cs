@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ProjectManagementDbContext))]
-    [Migration("20260824035811_AddIssueRelationIdempotency")]
-    partial class AddIssueRelationIdempotency
+    [Migration("20260825041524_AddCommentTraceabilityAiCapability")]
+    partial class AddCommentTraceabilityAiCapability
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -971,9 +971,19 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ActorFixedRoleSnapshot")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_fixed_role_snapshot");
+
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("actor_name_snapshot");
 
                     b.Property<string>("ActorType")
                         .IsRequired()
@@ -996,6 +1006,15 @@ namespace KhaiKang.Modules.ProjectManagement.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("outcome");
+
+                    b.Property<Guid?>("OwnerAccountIdSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_account_id_snapshot");
+
+                    b.Property<string>("OwnerDisplayNameSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("owner_display_name_snapshot");
 
                     b.Property<Guid>("TargetId")
                         .HasColumnType("uuid")
