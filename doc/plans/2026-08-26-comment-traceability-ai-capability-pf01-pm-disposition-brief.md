@@ -36,3 +36,10 @@ Choose one:
 
 1. Accept the PF-01 delivery with the stated coverage limits; or
 2. Request a new scoped change for one or more limits, which returns to PM Remediation Intake.
+
+## Human PO Disposition
+
+- Decision date：2026-08-26
+- Decision：**Accepted** PF-01 delivery with the documented coverage limits.
+- Scope：accepts the reviewed code branch delivery only.
+- Explicitly not authorized：merge, push, deployment, release, external AI Skill work, or changes to the retained coverage limits.
