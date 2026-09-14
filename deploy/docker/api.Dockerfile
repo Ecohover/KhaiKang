@@ -1,5 +1,5 @@
 ARG APP_VERSION=0.0.0-dev
-FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.401 AS build
 WORKDIR /src
 
 COPY VERSION global.json Directory.Build.props Directory.Packages.props ./
